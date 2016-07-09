@@ -222,6 +222,7 @@ void PassManagerBuilder::populateFunctionPassManager(
 
   FPM.add(createCFGSimplificationPass());
   FPM.add(createSROAPass());
+  FPM.add(createCFGSimplificationPass());
   FPM.add(createEarlyCSEPass());
   FPM.add(createLowerExpectIntrinsicPass());
 }
