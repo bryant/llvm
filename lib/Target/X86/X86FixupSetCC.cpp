@@ -50,6 +50,7 @@ private:
 
   // Return true if MI imp-uses eflags.
   bool impUsesFlags(MachineInstr *MI);
+  bool usesAllGR32_ABCD(const MachineInstr *) const;
 
   // Return true if this is the opcode of a SetCC instruction with a register
   // output.
@@ -57,6 +58,7 @@ private:
 
   MachineRegisterInfo *MRI;
   const X86InstrInfo *TII;
+  const X86RegisterInfo *TRI;
 
   enum { SearchBound = 16 };
 
@@ -116,10 +118,31 @@ bool X86FixupSetCCPass::impUsesFlags(MachineInstr *MI) {
   return false;
 }
 
+bool X86FixupSetCCPass::usesAllGR32_ABCD(const MachineInstr *mi) const {
+  BitVector gr32abcd(TRI->getNumRegs());
+  gr32abcd.set(X86::EAX);
+  gr32abcd.set(X86::EBX);
+  gr32abcd.set(X86::ECX);
+  gr32abcd.set(X86::EDX);
+
+  for (const MachineOperand &op : mi->operands()) {
+    if (op.isReg() && !TRI->isVirtualRegister(op.getReg()) && op.getReg() &&
+        (op.isDef() || op.isUse() || op.isImplicit())) {
+      for (MCRegAliasIterator reg(op.getReg(), TRI, true); reg.isValid();
+           ++reg) {
+        gr32abcd.reset(*reg);
+      }
+    }
+  }
+
+  return gr32abcd.none();
+}
+
 bool X86FixupSetCCPass::runOnMachineFunction(MachineFunction &MF) {
   bool Changed = false;
   MRI = &MF.getRegInfo();
   TII = MF.getSubtarget<X86Subtarget>().getInstrInfo();
+  TRI = MF.getSubtarget<X86Subtarget>().getRegisterInfo();
 
   SmallVector<MachineInstr*, 4> ToErase;
 
@@ -142,7 +165,8 @@ bool X86FixupSetCCPass::runOnMachineFunction(MachineFunction &MF) {
       // Find the preceding instruction that imp-defs eflags.
       MachineInstr *FlagsDefMI = findFlagsImpDef(
           MI.getParent(), MachineBasicBlock::reverse_iterator(&MI));
-      if (!FlagsDefMI)
+      if (!FlagsDefMI || (!MF.getSubtarget<X86Subtarget>().is64Bit() &&
+                          usesAllGR32_ABCD(FlagsDefMI)))
         continue;
 
       // We'd like to put something that clobbers eflags directly before
