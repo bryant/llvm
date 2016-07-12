@@ -1943,29 +1943,23 @@ define i32 @test_x86_sse42_pcmpestri128_load(<16 x i8>* %a0, <16 x i8>* %a2) {
 }
 
 
-define i32 @test_x86_sse42_pcmpestria128(<16 x i8> %a0, <16 x i8> %a2) nounwind {
+define i32 @test_x86_sse42_pcmpestria128(<16 x i8> %a0, <16 x i8> %a2) {
 ; AVX-LABEL: test_x86_sse42_pcmpestria128:
 ; AVX:       ## BB#0:
-; AVX-NEXT:    pushl %ebx
 ; AVX-NEXT:    movl $7, %eax
 ; AVX-NEXT:    movl $7, %edx
-; AVX-NEXT:    xorl %ebx, %ebx
 ; AVX-NEXT:    vpcmpestri $7, %xmm1, %xmm0
-; AVX-NEXT:    seta %bl
-; AVX-NEXT:    movl %ebx, %eax
-; AVX-NEXT:    popl %ebx
+; AVX-NEXT:    seta %al
+; AVX-NEXT:    movzbl %al, %eax
 ; AVX-NEXT:    retl
 ;
 ; AVX512VL-LABEL: test_x86_sse42_pcmpestria128:
 ; AVX512VL:       ## BB#0:
-; AVX512VL-NEXT:    pushl %ebx
 ; AVX512VL-NEXT:    movl $7, %eax
 ; AVX512VL-NEXT:    movl $7, %edx
-; AVX512VL-NEXT:    xorl %ebx, %ebx
 ; AVX512VL-NEXT:    vpcmpestri $7, %xmm1, %xmm0
-; AVX512VL-NEXT:    seta %bl
-; AVX512VL-NEXT:    movl %ebx, %eax
-; AVX512VL-NEXT:    popl %ebx
+; AVX512VL-NEXT:    seta %al
+; AVX512VL-NEXT:    movzbl %al, %eax
 ; AVX512VL-NEXT:    retl
   %res = call i32 @llvm.x86.sse42.pcmpestria128(<16 x i8> %a0, i32 7, <16 x i8> %a2, i32 7, i8 7) ; <i32> [#uses=1]
   ret i32 %res
@@ -1997,29 +1991,23 @@ define i32 @test_x86_sse42_pcmpestric128(<16 x i8> %a0, <16 x i8> %a2) {
 declare i32 @llvm.x86.sse42.pcmpestric128(<16 x i8>, i32, <16 x i8>, i32, i8) nounwind readnone
 
 
-define i32 @test_x86_sse42_pcmpestrio128(<16 x i8> %a0, <16 x i8> %a2) nounwind {
+define i32 @test_x86_sse42_pcmpestrio128(<16 x i8> %a0, <16 x i8> %a2) {
 ; AVX-LABEL: test_x86_sse42_pcmpestrio128:
 ; AVX:       ## BB#0:
-; AVX-NEXT:    pushl %ebx
 ; AVX-NEXT:    movl $7, %eax
 ; AVX-NEXT:    movl $7, %edx
-; AVX-NEXT:    xorl %ebx, %ebx
 ; AVX-NEXT:    vpcmpestri $7, %xmm1, %xmm0
-; AVX-NEXT:    seto %bl
-; AVX-NEXT:    movl %ebx, %eax
-; AVX-NEXT:    popl %ebx
+; AVX-NEXT:    seto %al
+; AVX-NEXT:    movzbl %al, %eax
 ; AVX-NEXT:    retl
 ;
 ; AVX512VL-LABEL: test_x86_sse42_pcmpestrio128:
 ; AVX512VL:       ## BB#0:
-; AVX512VL-NEXT:    pushl %ebx
 ; AVX512VL-NEXT:    movl $7, %eax
 ; AVX512VL-NEXT:    movl $7, %edx
-; AVX512VL-NEXT:    xorl %ebx, %ebx
 ; AVX512VL-NEXT:    vpcmpestri $7, %xmm1, %xmm0
-; AVX512VL-NEXT:    seto %bl
-; AVX512VL-NEXT:    movl %ebx, %eax
-; AVX512VL-NEXT:    popl %ebx
+; AVX512VL-NEXT:    seto %al
+; AVX512VL-NEXT:    movzbl %al, %eax
 ; AVX512VL-NEXT:    retl
   %res = call i32 @llvm.x86.sse42.pcmpestrio128(<16 x i8> %a0, i32 7, <16 x i8> %a2, i32 7, i8 7) ; <i32> [#uses=1]
   ret i32 %res
@@ -2027,29 +2015,23 @@ define i32 @test_x86_sse42_pcmpestrio128(<16 x i8> %a0, <16 x i8> %a2) nounwind 
 declare i32 @llvm.x86.sse42.pcmpestrio128(<16 x i8>, i32, <16 x i8>, i32, i8) nounwind readnone
 
 
-define i32 @test_x86_sse42_pcmpestris128(<16 x i8> %a0, <16 x i8> %a2) nounwind {
+define i32 @test_x86_sse42_pcmpestris128(<16 x i8> %a0, <16 x i8> %a2) {
 ; AVX-LABEL: test_x86_sse42_pcmpestris128:
 ; AVX:       ## BB#0:
-; AVX-NEXT:    pushl %ebx
 ; AVX-NEXT:    movl $7, %eax
 ; AVX-NEXT:    movl $7, %edx
-; AVX-NEXT:    xorl %ebx, %ebx
 ; AVX-NEXT:    vpcmpestri $7, %xmm1, %xmm0
-; AVX-NEXT:    sets %bl
-; AVX-NEXT:    movl %ebx, %eax
-; AVX-NEXT:    popl %ebx
+; AVX-NEXT:    sets %al
+; AVX-NEXT:    movzbl %al, %eax
 ; AVX-NEXT:    retl
 ;
 ; AVX512VL-LABEL: test_x86_sse42_pcmpestris128:
 ; AVX512VL:       ## BB#0:
-; AVX512VL-NEXT:    pushl %ebx
 ; AVX512VL-NEXT:    movl $7, %eax
 ; AVX512VL-NEXT:    movl $7, %edx
-; AVX512VL-NEXT:    xorl %ebx, %ebx
 ; AVX512VL-NEXT:    vpcmpestri $7, %xmm1, %xmm0
-; AVX512VL-NEXT:    sets %bl
-; AVX512VL-NEXT:    movl %ebx, %eax
-; AVX512VL-NEXT:    popl %ebx
+; AVX512VL-NEXT:    sets %al
+; AVX512VL-NEXT:    movzbl %al, %eax
 ; AVX512VL-NEXT:    retl
   %res = call i32 @llvm.x86.sse42.pcmpestris128(<16 x i8> %a0, i32 7, <16 x i8> %a2, i32 7, i8 7) ; <i32> [#uses=1]
   ret i32 %res
@@ -2057,29 +2039,23 @@ define i32 @test_x86_sse42_pcmpestris128(<16 x i8> %a0, <16 x i8> %a2) nounwind 
 declare i32 @llvm.x86.sse42.pcmpestris128(<16 x i8>, i32, <16 x i8>, i32, i8) nounwind readnone
 
 
-define i32 @test_x86_sse42_pcmpestriz128(<16 x i8> %a0, <16 x i8> %a2) nounwind {
+define i32 @test_x86_sse42_pcmpestriz128(<16 x i8> %a0, <16 x i8> %a2) {
 ; AVX-LABEL: test_x86_sse42_pcmpestriz128:
 ; AVX:       ## BB#0:
-; AVX-NEXT:    pushl %ebx
 ; AVX-NEXT:    movl $7, %eax
 ; AVX-NEXT:    movl $7, %edx
-; AVX-NEXT:    xorl %ebx, %ebx
 ; AVX-NEXT:    vpcmpestri $7, %xmm1, %xmm0
-; AVX-NEXT:    sete %bl
-; AVX-NEXT:    movl %ebx, %eax
-; AVX-NEXT:    popl %ebx
+; AVX-NEXT:    sete %al
+; AVX-NEXT:    movzbl %al, %eax
 ; AVX-NEXT:    retl
 ;
 ; AVX512VL-LABEL: test_x86_sse42_pcmpestriz128:
 ; AVX512VL:       ## BB#0:
-; AVX512VL-NEXT:    pushl %ebx
 ; AVX512VL-NEXT:    movl $7, %eax
 ; AVX512VL-NEXT:    movl $7, %edx
-; AVX512VL-NEXT:    xorl %ebx, %ebx
 ; AVX512VL-NEXT:    vpcmpestri $7, %xmm1, %xmm0
-; AVX512VL-NEXT:    sete %bl
-; AVX512VL-NEXT:    movl %ebx, %eax
-; AVX512VL-NEXT:    popl %ebx
+; AVX512VL-NEXT:    sete %al
+; AVX512VL-NEXT:    movzbl %al, %eax
 ; AVX512VL-NEXT:    retl
   %res = call i32 @llvm.x86.sse42.pcmpestriz128(<16 x i8> %a0, i32 7, <16 x i8> %a2, i32 7, i8 7) ; <i32> [#uses=1]
   ret i32 %res

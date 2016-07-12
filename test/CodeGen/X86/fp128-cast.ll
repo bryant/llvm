@@ -238,7 +238,6 @@ entry:
 ; X64-LABEL: TestConst128:
 ; X64:       movaps {{.*}}, %xmm1
 ; X64-NEXT:  callq __gttf2
-; X64-NEXT:  xorl
 ; X64-NEXT:  test
 ; X64:       retq
 }

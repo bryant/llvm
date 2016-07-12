@@ -33,17 +33,14 @@ define i32 @test_x86_sse42_pcmpestri128_load(<16 x i8>* %a0, <16 x i8>* %a2) {
 }
 
 
-define i32 @test_x86_sse42_pcmpestria128(<16 x i8> %a0, <16 x i8> %a2) nounwind {
+define i32 @test_x86_sse42_pcmpestria128(<16 x i8> %a0, <16 x i8> %a2) {
 ; CHECK-LABEL: test_x86_sse42_pcmpestria128:
 ; CHECK:       ## BB#0:
-; CHECK-NEXT:    pushl %ebx
 ; CHECK-NEXT:    movl $7, %eax
 ; CHECK-NEXT:    movl $7, %edx
-; CHECK-NEXT:    xorl %ebx, %ebx
 ; CHECK-NEXT:    pcmpestri $7, %xmm1, %xmm0
-; CHECK-NEXT:    seta %bl
-; CHECK-NEXT:    movl %ebx, %eax
-; CHECK-NEXT:    popl %ebx
+; CHECK-NEXT:    seta %al
+; CHECK-NEXT:    movzbl %al, %eax
 ; CHECK-NEXT:    retl
   %res = call i32 @llvm.x86.sse42.pcmpestria128(<16 x i8> %a0, i32 7, <16 x i8> %a2, i32 7, i8 7) ; <i32> [#uses=1]
   ret i32 %res
@@ -66,17 +63,14 @@ define i32 @test_x86_sse42_pcmpestric128(<16 x i8> %a0, <16 x i8> %a2) {
 declare i32 @llvm.x86.sse42.pcmpestric128(<16 x i8>, i32, <16 x i8>, i32, i8) nounwind readnone
 
 
-define i32 @test_x86_sse42_pcmpestrio128(<16 x i8> %a0, <16 x i8> %a2) nounwind {
+define i32 @test_x86_sse42_pcmpestrio128(<16 x i8> %a0, <16 x i8> %a2) {
 ; CHECK-LABEL: test_x86_sse42_pcmpestrio128:
 ; CHECK:       ## BB#0:
-; CHECK-NEXT:    pushl %ebx
 ; CHECK-NEXT:    movl $7, %eax
 ; CHECK-NEXT:    movl $7, %edx
-; CHECK-NEXT:    xorl %ebx, %ebx
 ; CHECK-NEXT:    pcmpestri $7, %xmm1, %xmm0
-; CHECK-NEXT:    seto %bl
-; CHECK-NEXT:    movl %ebx, %eax
-; CHECK-NEXT:    popl %ebx
+; CHECK-NEXT:    seto %al
+; CHECK-NEXT:    movzbl %al, %eax
 ; CHECK-NEXT:    retl
   %res = call i32 @llvm.x86.sse42.pcmpestrio128(<16 x i8> %a0, i32 7, <16 x i8> %a2, i32 7, i8 7) ; <i32> [#uses=1]
   ret i32 %res
@@ -84,17 +78,14 @@ define i32 @test_x86_sse42_pcmpestrio128(<16 x i8> %a0, <16 x i8> %a2) nounwind 
 declare i32 @llvm.x86.sse42.pcmpestrio128(<16 x i8>, i32, <16 x i8>, i32, i8) nounwind readnone
 
 
-define i32 @test_x86_sse42_pcmpestris128(<16 x i8> %a0, <16 x i8> %a2) nounwind {
+define i32 @test_x86_sse42_pcmpestris128(<16 x i8> %a0, <16 x i8> %a2) {
 ; CHECK-LABEL: test_x86_sse42_pcmpestris128:
 ; CHECK:       ## BB#0:
-; CHECK-NEXT:    pushl %ebx
 ; CHECK-NEXT:    movl $7, %eax
 ; CHECK-NEXT:    movl $7, %edx
-; CHECK-NEXT:    xorl %ebx, %ebx
 ; CHECK-NEXT:    pcmpestri $7, %xmm1, %xmm0
-; CHECK-NEXT:    sets %bl
-; CHECK-NEXT:    movl %ebx, %eax
-; CHECK-NEXT:    popl %ebx
+; CHECK-NEXT:    sets %al
+; CHECK-NEXT:    movzbl %al, %eax
 ; CHECK-NEXT:    retl
   %res = call i32 @llvm.x86.sse42.pcmpestris128(<16 x i8> %a0, i32 7, <16 x i8> %a2, i32 7, i8 7) ; <i32> [#uses=1]
   ret i32 %res
@@ -102,17 +93,14 @@ define i32 @test_x86_sse42_pcmpestris128(<16 x i8> %a0, <16 x i8> %a2) nounwind 
 declare i32 @llvm.x86.sse42.pcmpestris128(<16 x i8>, i32, <16 x i8>, i32, i8) nounwind readnone
 
 
-define i32 @test_x86_sse42_pcmpestriz128(<16 x i8> %a0, <16 x i8> %a2) nounwind {
+define i32 @test_x86_sse42_pcmpestriz128(<16 x i8> %a0, <16 x i8> %a2) {
 ; CHECK-LABEL: test_x86_sse42_pcmpestriz128:
 ; CHECK:       ## BB#0:
-; CHECK-NEXT:    pushl %ebx
 ; CHECK-NEXT:    movl $7, %eax
 ; CHECK-NEXT:    movl $7, %edx
-; CHECK-NEXT:    xorl %ebx, %ebx
 ; CHECK-NEXT:    pcmpestri $7, %xmm1, %xmm0
-; CHECK-NEXT:    sete %bl
-; CHECK-NEXT:    movl %ebx, %eax
-; CHECK-NEXT:    popl %ebx
+; CHECK-NEXT:    sete %al
+; CHECK-NEXT:    movzbl %al, %eax
 ; CHECK-NEXT:    retl
   %res = call i32 @llvm.x86.sse42.pcmpestriz128(<16 x i8> %a0, i32 7, <16 x i8> %a2, i32 7, i8 7) ; <i32> [#uses=1]
   ret i32 %res
