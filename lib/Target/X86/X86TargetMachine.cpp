@@ -29,6 +29,10 @@ static cl::opt<bool> EnableMachineCombinerPass("x86-machine-combiner",
                                cl::desc("Enable the machine combiner pass"),
                                cl::init(true), cl::Hidden);
 
+static cl::opt<bool> EnableSetCCFixup("setcc-fixup",
+                                      cl::desc("Apply X86FixupSetCC"),
+                                      cl::init(false), cl::Hidden);
+
 namespace llvm {
 void initializeWinEHStatePassPass(PassRegistry &);
 }
@@ -305,7 +309,9 @@ bool X86PassConfig::addPreISel() {
 
 void X86PassConfig::addPreRegAlloc() {
   if (getOptLevel() != CodeGenOpt::None) {
+  if (EnableSetCCFixup) {
     addPass(createX86FixupSetCC());
+  }
     addPass(createX86OptimizeLEAs());
     addPass(createX86CallFrameOptimization());
   }
