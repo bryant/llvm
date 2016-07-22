@@ -688,8 +688,6 @@ void X86RegisterInfo::getRegAllocationHints(unsigned vreg,
   std::pair<unsigned, unsigned> hint = mri.getRegAllocationHint(vreg);
   switch (hint.first) {
   default:
-    dbgs() << "getRegAllocationHints called on " << PrintReg(vreg, this)
-           << "\n";
     return TargetRegisterInfo::getRegAllocationHints(vreg, pregs, order, f, vrm,
                                                      lrm);
   case X86Hint::ParentGR32:
