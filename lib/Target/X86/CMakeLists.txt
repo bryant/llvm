@@ -20,6 +20,7 @@ set(sources
   X86FixupBWInsts.cpp
   X86FixupLEAs.cpp
   X86FixupSetCC.cpp
+  X86FixupZExt.cpp
   X86FloatingPoint.cpp
   X86FrameLowering.cpp
   X86ISelDAGToDAG.cpp
