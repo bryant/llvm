@@ -32,6 +32,9 @@ static cl::opt<bool> EnableSetCCFixup("setcc-fixup",
                                       cl::desc("Apply X86FixupSetCC"),
                                       cl::init(false), cl::Hidden);
 
+static cl::opt<bool> EnableSetCCFixup3("mark-movzx", cl::desc("Apply MarkZExt"),
+                                       cl::init(false), cl::Hidden);
+
 static cl::opt<bool> EnableSetCCFixup2("kuper", cl::desc("Apply X86FixupSetCC"),
                                        cl::init(false), cl::Hidden);
 
@@ -317,9 +320,11 @@ void X86PassConfig::addPreRegAlloc() {
     addPass(createX86OptimizeLEAs());
     addPass(createX86CallFrameOptimization());
   }
+  if (EnableSetCCFixup3) {
+    addPass(createMarkZExt());
+  }
 
   if (EnableSetCCFixup2) {
-    addPass(createMarkZExt());
     addPass(createX86FixupSetCC());
   }
 
