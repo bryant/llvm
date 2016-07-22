@@ -67,6 +67,10 @@ namespace llvm {
 
     /// \brief (re)compute li's spill weight and allocation hint.
     void calculateSpillWeightAndHint(LiveInterval &li);
+
+    static unsigned copyHint(const MachineInstr *, unsigned,
+                             const TargetRegisterInfo &,
+                             const MachineRegisterInfo &);
   };
 
   /// \brief Compute spill weights and allocation hints for all virtual register

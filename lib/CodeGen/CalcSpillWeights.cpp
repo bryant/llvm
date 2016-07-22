@@ -43,9 +43,9 @@ void llvm::calculateSpillWeightsAndHints(LiveIntervals &LIS,
 }
 
 // Return the preferred allocation register for reg, given a COPY instruction.
-static unsigned copyHint(const MachineInstr *mi, unsigned reg,
-                         const TargetRegisterInfo &tri,
-                         const MachineRegisterInfo &mri) {
+unsigned VirtRegAuxInfo::copyHint(const MachineInstr *mi, unsigned reg,
+                                  const TargetRegisterInfo &tri,
+                                  const MachineRegisterInfo &mri) {
   unsigned sub, hreg, hsub;
   if (mi->getOperand(0).getReg() == reg) {
     sub = mi->getOperand(0).getSubReg();

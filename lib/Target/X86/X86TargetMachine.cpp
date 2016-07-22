@@ -11,7 +11,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "X86TargetMachine.h"
 #include "X86.h"
 #include "X86TargetObjectFile.h"
 #include "X86TargetTransformInfo.h"
@@ -32,6 +31,9 @@ static cl::opt<bool> EnableMachineCombinerPass("x86-machine-combiner",
 static cl::opt<bool> EnableSetCCFixup("setcc-fixup",
                                       cl::desc("Apply X86FixupSetCC"),
                                       cl::init(false), cl::Hidden);
+
+static cl::opt<bool> EnableSetCCFixup2("kuper", cl::desc("Apply X86FixupSetCC"),
+                                       cl::init(false), cl::Hidden);
 
 namespace llvm {
 void initializeWinEHStatePassPass(PassRegistry &);
@@ -242,7 +244,6 @@ TargetIRAnalysis X86TargetMachine::getTargetIRAnalysis() {
   });
 }
 
-
 //===----------------------------------------------------------------------===//
 // Pass Pipeline Configuration
 //===----------------------------------------------------------------------===//
@@ -264,6 +265,7 @@ public:
   bool addPreISel() override;
   void addPreRegAlloc() override;
   void addPostRegAlloc() override;
+  bool addPreRewrite() override;
   void addPreEmitPass() override;
   void addPreSched2() override;
 };
@@ -316,11 +318,23 @@ void X86PassConfig::addPreRegAlloc() {
     addPass(createX86CallFrameOptimization());
   }
 
+  if (EnableSetCCFixup2) {
+    addPass(createMarkZExt());
+    addPass(createX86FixupSetCC());
+  }
+
   addPass(createX86WinAllocaExpander());
 }
 
 void X86PassConfig::addPostRegAlloc() {
   addPass(createX86FloatingPointStackifierPass());
+}
+
+bool X86PassConfig::addPreRewrite() {
+  if (EnableSetCCFixup) {
+    addPass(createX86FixupZExt());
+  }
+  return false;
 }
 
 void X86PassConfig::addPreSched2() { addPass(createX86ExpandPseudoPass()); }

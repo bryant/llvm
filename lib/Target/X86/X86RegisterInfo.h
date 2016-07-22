@@ -20,7 +20,11 @@
 #include "X86GenRegisterInfo.inc"
 
 namespace llvm {
-  class Triple;
+class Triple;
+
+namespace X86Hint {
+enum { ParentGR32 = 1, SubGR8 };
+}
 
 class X86RegisterInfo final : public X86GenRegisterInfo {
 private:
@@ -127,6 +131,14 @@ public:
   void eliminateFrameIndex(MachineBasicBlock::iterator MI,
                            int SPAdj, unsigned FIOperandNum,
                            RegScavenger *RS = nullptr) const override;
+
+  void getRegAllocationHints(unsigned, ArrayRef<MCPhysReg>,
+                             SmallVectorImpl<MCPhysReg> &,
+                             const MachineFunction &,
+                             const VirtRegMap * = nullptr,
+                             const LiveRegMatrix * = nullptr) const override;
+
+  void updateRegAllocHint(unsigned, unsigned, MachineFunction &) const override;
 
   // Debug information queries.
   unsigned getFrameRegister(const MachineFunction &MF) const override;

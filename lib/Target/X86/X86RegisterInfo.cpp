@@ -27,6 +27,7 @@
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
+#include "llvm/CodeGen/VirtRegMap.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Type.h"
@@ -674,6 +675,79 @@ X86RegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
     uint64_t Offset = FIOffset +
       (uint64_t)MI.getOperand(FIOperandNum+3).getOffset();
     MI.getOperand(FIOperandNum + 3).setOffset(Offset);
+  }
+}
+
+void X86RegisterInfo::getRegAllocationHints(unsigned vreg,
+                                            ArrayRef<MCPhysReg> pregs,
+                                            SmallVectorImpl<MCPhysReg> &order,
+                                            const MachineFunction &f,
+                                            const VirtRegMap *vrm,
+                                            const LiveRegMatrix *lrm) const {
+  const MachineRegisterInfo &mri = f.getRegInfo();
+  std::pair<unsigned, unsigned> hint = mri.getRegAllocationHint(vreg);
+  switch (hint.first) {
+  default:
+    dbgs() << "getRegAllocationHints called on " << PrintReg(vreg, this)
+           << "\n";
+    return TargetRegisterInfo::getRegAllocationHints(vreg, pregs, order, f, vrm,
+                                                     lrm);
+  case X86Hint::ParentGR32:
+    if (unsigned gr8phys = vrm->getPhys(hint.second)) {
+      if (unsigned gr32 =
+              getMatchingSuperReg(gr8phys, X86::sub_8bit, &X86::GR32RegClass)) {
+        dbgs() << "suggesting " << getName(gr32) << " to match "
+               << getName(gr8phys) << "\n";
+        order.push_back(gr32);
+        /*for (MCPhysReg preg : pregs) {
+          if (preg != gr32) {
+            order.push_back(preg);
+          }
+        }*/
+      }
+    } else {
+      dbgs() << "omfg noooooooooooooooooooooooooo\n";
+    }
+    break;
+
+  case X86Hint::SubGR8:
+    if (unsigned gr32phys = vrm->getPhys(hint.second)) {
+      if (unsigned gr8 = getSubReg(gr32phys, X86::sub_8bit)) {
+        dbgs() << "suggesting " << getName(gr8) << " to match "
+               << getName(gr32phys) << "\n";
+        order.push_back(gr8);
+        /*for (MCPhysReg preg : pregs) {
+          if (preg != gr8) {
+            order.push_back(preg);
+          }
+        }*/
+      }
+    } else {
+      dbgs() << "omfg noooooooooooooooooooooooooo\n";
+    }
+    break;
+  }
+  dbgs() << "getRegAllocationHints called on " << PrintReg(vreg, this)
+         << "; allocation order = ";
+  for (MCPhysReg preg : order) {
+    dbgs() << getName(preg) << " ";
+  }
+  dbgs() << '\n';
+}
+
+void X86RegisterInfo::updateRegAllocHint(unsigned oldreg, unsigned newreg,
+                                         MachineFunction &f) const {
+  MachineRegisterInfo &mri = f.getRegInfo();
+  std::pair<unsigned, unsigned> hint = mri.getRegAllocationHint(oldreg);
+  switch (hint.first) {
+  default:
+    return TargetRegisterInfo::updateRegAllocHint(oldreg, newreg, f);
+  case X86Hint::SubGR8:
+  case X86Hint::ParentGR32:
+    dbgs() << "updateRegAllocHint called on " << PrintReg(oldreg, this)
+           << " => " << PrintReg(newreg, this) << "\n";
+    mri.setRegAllocationHint(newreg, hint.first, hint.second);
+    break;
   }
 }
 
