@@ -13,8 +13,11 @@ opts.add_argument("-m", "--movzx", dest="modes", action="append_const",
                   const="movzx", help="bench the movzx chompa")
 opts.add_argument("-c", "--control", dest="modes", action="append_const",
                   const="control", help="bench control")
+opts.add_argument("-p", "--paste", default=False, action="store_true",
+                  help="bench from stdin")
 
 class FunctionNotFound(Exception): pass
+class MalformedAssembly(Exception): pass
 
 def add_iaca_marks(asm):
     startmark = "\nud2\nmovl $111, %ebx\n.byte 0x64, 0x67, 0x90\n"
@@ -23,15 +26,19 @@ def add_iaca_marks(asm):
 
 def extract_fn(fn, asm):
     reg = re.compile(r"^%s:.+?^\.Lfunc_end\d+:" % fn, re.M | re.DOTALL)
-    cfi_crap = re.compile(r"^\s+\.cfi.+\n", re.M)
     rv = reg.search(asm)
     if rv is None:
         raise FunctionNotFound
-    return cfi_crap.sub("", rv.group(0))
+    return rv.group(0)
+
+def sanitize(asm):
+    cfi_crap = re.compile(r"^\s+\.cfi.+\n", re.M)
+    return cfi_crap.sub("", asm)
 
 def llc(file, fn, extras=None):
     cmd = "llc -O3 -o -".split() + [file] + (extras or [])
-    return extract_fn(fn, Popen(cmd, stdout=PIPE, stderr=PIPE).stdout.read())
+    rv = extract_fn(fn, Popen(cmd, stdout=PIPE, stderr=PIPE).stdout.read())
+    return sanitize(rv)
 
 def assemble(asm, extras=None):
     obj = mktemp(suffix=".o")
@@ -39,7 +46,8 @@ def assemble(asm, extras=None):
     p = Popen(cmd, stdin=PIPE)
     p.stdin.write(asm + "\n")
     p.stdin.close()
-    p.wait()
+    if p.wait() != 0:
+        raise MalformedAssembly
     return obj
 
 def iaca(asm, extras=None):
@@ -60,24 +68,34 @@ def terse(asm, extras=None):
     uops = re.compile(r"^Total Num Of Uops:.+$", re.M)
     return (throughput.search(iaced).group(0), uops.search(iaced).group(0))
 
+def print_iaca(asm, extras=None, verbose=False):
+    if verbose:
+        print iaca(asm, extras)
+    else:
+        tp, uop = terse(asm, extras)
+        print "\t" + tp
+        print "\t" + uop
+
 def compare_file_fn(file, fn, flagsets, verbose=False):
     print "Testing function `%s` in file %s" % (fn, file)
     for flagset in flagsets:
-        print flagset
         try:
-            if verbose:
-                print iaca(llc(file, fn, MODES[flagset]))
-            else:
-                tp, uop = terse(llc(file, fn, MODES[flagset]))
-                print "\t" + tp
-                print "\t" + uop
+            print "===", flagset, "==="
+            print_iaca(llc(file, fn, MODES[flagset]), verbose=verbose)
         except FunctionNotFound:
             print "Function `%s` not in %s" % (fn, file)
             break
+        except MalformedAssembly:
+            print "Assembler fail."
+            break
 
 if __name__ == "__main__":
+    from sys import stdin
     p = opts.parse_args()
     p.modes = p.modes or ["movzx"]
-    assert p.file.endswith(".ll")
-    assert len(p.modes) > 0
-    compare_file_fn(p.file, p.fn, p.modes, p.verbose)
+    if p.paste:
+        print_iaca(sanitize(stdin.read()), verbose=p.verbose)
+    else:
+        assert p.file.endswith(".ll")
+        assert len(p.modes) > 0
+        compare_file_fn(p.file, p.fn, p.modes, p.verbose)
