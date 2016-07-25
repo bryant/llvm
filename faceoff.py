@@ -15,9 +15,12 @@ opts.add_argument("-c", "--control", dest="modes", action="append_const",
                   const="control", help="bench control")
 opts.add_argument("-p", "--paste", default=False, action="store_true",
                   help="bench from stdin")
+opts.add_argument("-32", dest="arch", const="x86", action="store_const")
+opts.add_argument("-64", dest="arch", const="amd64", action="store_const")
 
 class FunctionNotFound(Exception): pass
 class MalformedAssembly(Exception): pass
+class MalformedBitcode(Exception): pass
 
 def add_iaca_marks(asm):
     startmark = "\nud2\nmovl $111, %ebx\n.byte 0x64, 0x67, 0x90\n"
@@ -37,24 +40,34 @@ def sanitize(asm):
 
 def llc(file, fn, extras=None):
     cmd = "llc -O3 -o -".split() + [file] + (extras or [])
-    rv = extract_fn(fn, Popen(cmd, stdout=PIPE, stderr=PIPE).stdout.read())
+    p = Popen(cmd, stdout=PIPE, stderr=PIPE)
+    if p.wait() != 0:
+        raise MalformedBitcode(p.stderr.read())
+    rv = extract_fn(fn, p.stdout.read())
     return sanitize(rv)
 
-def assemble(asm, extras=None):
+def gas(asm, extras=None):
     obj = mktemp(suffix=".o")
     cmd = ("gcc -x assembler -c -o %s -" % obj).split() + (extras or [])
-    p = Popen(cmd, stdin=PIPE)
+    p = Popen(cmd, stdin=PIPE, stderr=PIPE)
     p.stdin.write(asm + "\n")
     p.stdin.close()
     if p.wait() != 0:
-        raise MalformedAssembly
+        raise MalformedAssembly(p.stderr.read())
     return obj
 
-def iaca(asm, extras=None):
-    obj = assemble(add_iaca_marks(asm))
+def assemble(asm, extras=None):
+    return gas(add_iaca_marks(sanitize(asm)), extras)
+
+def iaca(obj, extras=None):
     cmd = ["iaca"] + (extras or ["-64"]) + [obj]
     p = Popen(cmd, stdout=PIPE)
     return p.stdout.read()
+
+def tersify(output):
+    throughput = re.compile(r"^Block Throughput:.+$", re.M)
+    uops = re.compile(r"^Total Num Of Uops:.+$", re.M)
+    return (throughput.search(output).group(0), uops.search(output).group(0))
 
 MODES = {
     "kuper": "-kuper".split(),
@@ -62,40 +75,60 @@ MODES = {
     "control": []
 }
 
-def terse(asm, extras=None):
-    iaced = iaca(asm, extras)
-    throughput = re.compile(r"^Block Throughput:.+$", re.M)
-    uops = re.compile(r"^Total Num Of Uops:.+$", re.M)
-    return (throughput.search(iaced).group(0), uops.search(iaced).group(0))
+ARCHES = {
+    "amd64": (
+        "-march=x86-64 -mattr=+sse,+sse4.2,+avx".split(),
+        [],
+        ["-64"]
+    ),
+    "x86": (
+        "-march=x86 -mattr=+sse,+sse4.2,+avx".split(),
+        ["-m32"],
+        ["-32"],
+    )
+}
 
-def print_iaca(asm, extras=None, verbose=False):
+def print_iaca(output, verbose=False):
+    print "output", output
     if verbose:
-        print iaca(asm, extras)
+        print output
     else:
-        tp, uop = terse(asm, extras)
+        tp, uop = tersify(output)
         print "\t" + tp
         print "\t" + uop
 
-def compare_file_fn(file, fn, flagsets, verbose=False):
+def bench_plain_asm(asm, verbose=False, arch="amd64"):
+    _, gccf, iacf = ARCHES[arch]
+    obj = assemble(asm, gccf)
+    print_iaca(iaca(obj, iacf), verbose)
+
+def bench_bitcode_fn(file, fn, flagsets, verbose=False, arch="amd64"):
+    llcf, gccf, iacf = ARCHES[arch]
     print "Testing function `%s` in file %s" % (fn, file)
     for flagset in flagsets:
         try:
             print "===", flagset, "==="
-            print_iaca(llc(file, fn, MODES[flagset]), verbose=verbose)
+            asm = llc(file, fn, MODES[flagset] + llcf)
+            obj = assemble(asm, gccf)
+            print_iaca(iaca(obj, iacf), verbose)
         except FunctionNotFound:
             print "Function `%s` not in %s" % (fn, file)
             break
-        except MalformedAssembly:
-            print "Assembler fail."
+        except MalformedAssembly as e:
+            print "Assembler fail:", e
+            break
+        except MalformedBitcode as e:
+            print "llc fail:", e
             break
 
 if __name__ == "__main__":
     from sys import stdin
     p = opts.parse_args()
     p.modes = p.modes or ["movzx"]
+    p.arch = p.arch or "amd64"
     if p.paste:
-        print_iaca(sanitize(stdin.read()), verbose=p.verbose)
+        bench_plain_asm(stdin.read(), verbose=p.verbose, arch=p.arch)
     else:
         assert p.file.endswith(".ll")
         assert len(p.modes) > 0
-        compare_file_fn(p.file, p.fn, p.modes, p.verbose)
+        bench_bitcode_fn(p.file, p.fn, p.modes, arch=p.arch, verbose=p.verbose)
