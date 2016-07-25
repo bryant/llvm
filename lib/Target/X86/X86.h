@@ -66,6 +66,8 @@ FunctionPass *createX86FixupZExt();
 
 FunctionPass *createMarkZExt();
 
+FunctionPass *createZExtRepair();
+
 /// Return a pass that expands WinAlloca pseudo-instructions.
 FunctionPass *createX86WinAllocaExpander();
 

@@ -452,9 +452,81 @@ struct MarkZExt : public MachineFunctionPass {
 };
 
 char MarkZExt::id = 0;
+
+struct ZExtRepair : public MachineFunctionPass {
+  static char id;
+
+  ZExtRepair() : MachineFunctionPass(id) {}
+
+  const char *getPassName() const override {
+    return "x86 zext repair (actually marks all movzx as insert_subreg)";
+  }
+
+  void getAnalysisUsage(AnalysisUsage &a) const override {
+    a.addRequired<LiveIntervals>();
+    a.setPreservesAll();
+    return MachineFunctionPass::getAnalysisUsage(a);
+  }
+
+  bool runOnMachineFunction(MachineFunction &f) override {
+    MachineRegisterInfo &mri = f.getRegInfo();
+    const X86RegisterInfo &tri = *reinterpret_cast<const X86RegisterInfo *>(
+        f.getSubtarget<X86Subtarget>().getRegisterInfo());
+    LiveIntervals &li = getAnalysis<LiveIntervals>();
+
+    SmallVector<pair<MachineInstr *, MachineInstr *>, 12> queue;
+
+    for (MachineBasicBlock &bb : f) {
+      for (MachineInstr &i : bb) {
+        if (i.getOpcode() != X86::MOVZX32rr8 ||
+            i.getOperand(1).getSubReg() != 0 ||
+            any_of(mri.def_instr_begin(i.getOperand(1).getReg()),
+                   mri.def_instr_end(), [&](const MachineInstr &cpy) {
+                     return cpy.isCopy() && cpy.getOperand(1).getSubReg() != 0;
+                   })) {
+          continue;
+        }
+        dbgs() << "expanding " << i;
+
+        auto insdefs = insertion_points_for<4>(i.getOperand(1).getReg(), f, li);
+        // TODO: run transform for all dominating gr8 defs.
+        if (insdefs.size() > 1) {
+          dbgs() << "ignoring " << i << "as it has multiple dom defs:\n";
+          for (auto ins_defs : insdefs) {
+            dbgs() << "\t" << (*ins_defs.first) << "for "
+                   << (*ins_defs.second[0]);
+          };
+          continue;
+        }
+        queue.push_back(std::make_pair(insdefs.begin()->first(), &i));
+      }
+    }
+
+    const TargetRegisterClass *gr32c = f.getSubtarget<X86Subtarget>().is64Bit()
+                                           ? &X86::GR32RegClass
+                                           : &X86::GR32_ABCDRegClass;
+    for (auto ins_zext : queue) {
+      MachineInstr *ins = ins_zext.second;
+      MachineInstr *i = ins_zext.second;
+      unsigned gr32 = mri.createVirtualRegister(gr32c);
+      unsigned inserted = mri.createVirtualRegister(gr32c);
+      BuildMI(bb, ins, i.getDebugLoc(), tii.get(X86::MOV32r0), gr32);
+      BuildMI(bb, &i, i.getDebugLoc(), tii.get(X86::INSERT_SUBREG), inserted)
+          .addReg(gr32)
+          .addReg(i.getOperand(0).getReg())
+          .addImm(X86::sub_8bit);
+      mri.replaceRegWith(i.getOperand(0).getRegUnit(), inserted);
+      i->eraseFromParent();
+    }
+    return false;
+  }
+};
+
+char ZExtRepair::id = 0;
 }
 
 namespace llvm {
 FunctionPass *createX86FixupZExt() { return new X86FixupZExt(); }
 FunctionPass *createMarkZExt() { return new MarkZExt(); }
+FunctionPass *createZExtRepair() { return new ZExtRepair(); };
 }

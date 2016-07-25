@@ -35,6 +35,10 @@ static cl::opt<bool> EnableSetCCFixup("setcc-fixup",
 static cl::opt<bool> EnableSetCCFixup3("mark-movzx", cl::desc("Apply MarkZExt"),
                                        cl::init(false), cl::Hidden);
 
+static cl::opt<bool> EnableZExtRepair("zext-repair",
+                                      cl::desc("zextrepair pass"),
+                                      cl::init(false), cl::Hidden);
+
 static cl::opt<bool> EnableSetCCFixup2("kuper", cl::desc("Apply X86FixupSetCC"),
                                        cl::init(false), cl::Hidden);
 
@@ -326,6 +330,10 @@ void X86PassConfig::addPreRegAlloc() {
 
   if (EnableSetCCFixup2) {
     addPass(createX86FixupSetCC());
+  }
+
+  if (EnableZExtRepair) {
+      addPass(createZExtRepair());
   }
 
   addPass(createX86WinAllocaExpander());
