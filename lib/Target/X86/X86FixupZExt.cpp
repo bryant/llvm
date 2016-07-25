@@ -59,8 +59,8 @@ dominating_defs(unsigned gr8, const MachineRegisterInfo &mri,
 
 template <size_t N>
 DenseMap<MachineInstr *, SmallVector<MachineInstr *, N>>
-insertion_points_for(unsigned gr8, const MachineFunction &f, LiveIntervals &li,
-                     const VirtRegMap &vrm) {
+insertion_points_for(unsigned gr8, const MachineFunction &f,
+                     LiveIntervals &li) {
   DenseMap<MachineInstr *, SmallVector<MachineInstr *, N>> rv;
 
   for (auto bb_def :
@@ -207,8 +207,7 @@ struct X86FixupZExt : public MachineFunctionPass {
 
         dbgs() << "considering " << i;
 
-        auto insdefs =
-            insertion_points_for<4>(i.getOperand(1).getReg(), f, li, vrm);
+        auto insdefs = insertion_points_for<4>(i.getOperand(1).getReg(), f, li);
         // TODO: run transform for all dominating gr8 defs.
         if (insdefs.size() > 1) {
           dbgs() << "ignoring " << i << "as it has multiple dom defs:\n";
