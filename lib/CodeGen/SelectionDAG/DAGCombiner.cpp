@@ -4946,6 +4946,8 @@ SDValue DAGCombiner::visitSRL(SDNode *N) {
 
   if (N1C && N0.getOpcode() == ISD::SHL &&
       isa<ConstantSDNode>(N0.getOperand(1)) &&
+      cast<ConstantSDNode>(N0.getOperand(1))->getAPIntValue().getBitWidth() <=
+          64 &&
       cast<ConstantSDNode>(N0.getOperand(1))->getZExtValue() ==
           N1C->getZExtValue()) {
     unsigned BitSize = N0.getScalarValueSizeInBits();
