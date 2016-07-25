@@ -691,17 +691,19 @@ void X86RegisterInfo::getRegAllocationHints(unsigned vreg,
     return TargetRegisterInfo::getRegAllocationHints(vreg, pregs, order, f, vrm,
                                                      lrm);
   case X86Hint::ParentGR32:
+    assert(mri.getRegClass(hint.second) == &X86::GR8RegClass &&
+           mri.getRegClass(vreg) == &X86::GR32RegClass);
     if (unsigned gr8phys = vrm->getPhys(hint.second)) {
       if (unsigned gr32 =
               getMatchingSuperReg(gr8phys, X86::sub_8bit, &X86::GR32RegClass)) {
         dbgs() << "suggesting " << getName(gr32) << " to match "
                << getName(gr8phys) << "\n";
         order.push_back(gr32);
-        /*for (MCPhysReg preg : pregs) {
+        for (MCPhysReg preg : pregs) {
           if (preg != gr32) {
             order.push_back(preg);
           }
-        }*/
+        }
       }
     } else {
       dbgs() << "omfg noooooooooooooooooooooooooo\n";
@@ -714,11 +716,11 @@ void X86RegisterInfo::getRegAllocationHints(unsigned vreg,
         dbgs() << "suggesting " << getName(gr8) << " to match "
                << getName(gr32phys) << "\n";
         order.push_back(gr8);
-        /*for (MCPhysReg preg : pregs) {
+        for (MCPhysReg preg : pregs) {
           if (preg != gr8) {
             order.push_back(preg);
           }
-        }*/
+        }
       }
     } else {
       dbgs() << "omfg noooooooooooooooooooooooooo\n";
