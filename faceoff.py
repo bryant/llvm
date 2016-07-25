@@ -14,6 +14,8 @@ opts.add_argument("-m", "--movzx", dest="modes", action="append_const",
 opts.add_argument("-c", "--control", dest="modes", action="append_const",
                   const="control", help="bench control")
 
+class FunctionNotFound(Exception): pass
+
 def add_iaca_marks(asm):
     startmark = "\nud2\nmovl $111, %ebx\n.byte 0x64, 0x67, 0x90\n"
     endmark = "\nmovl $222, %ebx\n.byte 0x64, 0x67, 0x90\nud2\n"
@@ -22,8 +24,10 @@ def add_iaca_marks(asm):
 def extract_fn(fn, asm):
     reg = re.compile(r"^%s:.+?^\.Lfunc_end\d+:" % fn, re.M | re.DOTALL)
     cfi_crap = re.compile(r"^\s+\.cfi.+\n", re.M)
-    rv = reg.search(asm).group(0)
-    return cfi_crap.sub("", rv)
+    rv = reg.search(asm)
+    if rv is None:
+        raise FunctionNotFound
+    return cfi_crap.sub("", rv.group(0))
 
 def llc(file, fn, extras=None):
     cmd = "llc -O3 -o -".split() + [file] + (extras or [])
@@ -60,12 +64,16 @@ def compare_file_fn(file, fn, flagsets, verbose=False):
     print "Testing function `%s` in file %s" % (fn, file)
     for flagset in flagsets:
         print flagset
-        if verbose:
-            print iaca(llc(file, fn, MODES[flagset]))
-        else:
-            tp, uop = terse(llc(file, fn, MODES[flagset]))
-            print "\t" + tp
-            print "\t" + uop
+        try:
+            if verbose:
+                print iaca(llc(file, fn, MODES[flagset]))
+            else:
+                tp, uop = terse(llc(file, fn, MODES[flagset]))
+                print "\t" + tp
+                print "\t" + uop
+        except FunctionNotFound:
+            print "Function `%s` not in %s" % (fn, file)
+            break
 
 if __name__ == "__main__":
     p = opts.parse_args()
