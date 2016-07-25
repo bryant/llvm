@@ -1,3 +1,80 @@
+// TODO:
+// test/CodeGen/X86/swift-return.ll
+// consume_i1_ret
+// - need to learn to evict
+//
+// test/CodeGen/X86/select.ll
+// test7
+// - need to handle non-gr32 dest ops
+//
+// test/CodeGen/X86/return-ext.ll
+// use_i8
+// - abort if unable to match hinted dest reg.
+// - more specifically, check if existing matches hinted.
+//  - if not, then no need to abort because the extra mov{l,b} would be
+//    generated anyway.
+//  - otherwise, abort
+//
+// test/CodeGen/X86/cmov.ll
+// test4
+// - also ignore copy from sub-reg
+//
+// test/CodeGen/X86/avx512-calling-conv.ll
+// test12
+// - check gr8 copies for possible priority, too
+//
+//.file»··"test/CodeGen/X86/seh-safe-div.ll"
+// safe_div_filt0
+//
+//    .file»··"test/CodeGen/X86/seh-filter-no-personality.ll"
+// filt$main
+//
+// picture:
+//
+// eflags<use>
+// eflags<kill or dead>
+// vreg_gr8<def> = ...                              <== insertion
+// ...                                              |
+// ...                                              +-- extra gr32 live interval
+// ...                                              |
+// vreg_gr32<def> = movzx vreg_gr8<use or kill>     <== inspection
+//
+// becomes:
+//
+// eflags<use>
+// eflags<kill or dead>
+// vreg_gr32<def> = mov32r0 eflags<imp-def, dead>
+// vreg_gr32<sub_8bit, def> = ...
+// ...
+//
+// vreg_gr8 could have multiple dominating defs. for instance:
+//
+// bb0 (succ bb2):              bb1 (succ bb2):
+// ...                          ...
+// vreg_gr8<def> = ...          vreg_gr8<def> = ...
+//
+// bb2:
+// vreg_gr32<def> = movzx vreg_gr8<use>
+// ...
+// vreg_gr8<use>
+// ...
+// vreg_gr8<kill>
+//
+// optimally, each dom-def would undergo its own transformation, with the movzx
+// shifted upwards to places where the transform is unsuccessful:
+//
+// bb0 (succ bb2):              bb1 (succ bb2):
+// ...                          ...
+// vreg_gr32<def> = mov32r0     vreg_gr8<def> =
+// vreg_gr32<sub_8bit, def> =   vreg_gr32<def> = movzx vreg_gr8<kill>
+//
+// bb2:
+// ...
+// vreg_gr32<sub_8bit, use>
+//
+// (remember, the vreg ssa invariant is that all uses must be dominated by
+// defs.)
+
 #include "X86Subtarget.h"
 #include "llvm/CodeGen/CalcSpillWeights.h"
 #include "llvm/CodeGen/LiveIntervalAnalysis.h"
