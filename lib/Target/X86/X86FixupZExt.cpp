@@ -378,6 +378,9 @@ struct X86FixupZExt : public MachineFunctionPass {
         dbgs() << "gr8 would be live in " << live8 << "\n";
 
         bool changed = false;
+        if (priority) {
+          dbgs() << "giving priority to " << tri.getName(priority) << "\n";
+        }
         if (priority != 0 && could_work(priority)) {
           doit(priority);
           changed = true;
