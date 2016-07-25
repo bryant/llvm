@@ -6,6 +6,7 @@ import re
 opts = ArgumentParser()
 opts.add_argument("fn", help="function in .ll")
 opts.add_argument("file", help=".ll file")
+opts.add_argument("-v", "--verbose", default=False, action="store_true"),
 opts.add_argument("-k", "--kuper", dest="modes", action="append_const",
                   const="kuper", help="bench kuper")
 opts.add_argument("-m", "--movzx", dest="modes", action="append_const",
@@ -55,17 +56,20 @@ def terse(asm, extras=None):
     uops = re.compile(r"^Total Num Of Uops:.+$", re.M)
     return (throughput.search(iaced).group(0), uops.search(iaced).group(0))
 
-def compare_file_fn(file, fn, flagsets):
+def compare_file_fn(file, fn, flagsets, verbose=False):
     print "Testing function `%s` in file %s" % (fn, file)
     for flagset in flagsets:
         print flagset
-        tp, uop = terse(llc(file, fn, MODES[flagset]))
-        print "\t" + tp
-        print "\t" + uop
+        if verbose:
+            print iaca(llc(file, fn, MODES[flagset]))
+        else:
+            tp, uop = terse(llc(file, fn, MODES[flagset]))
+            print "\t" + tp
+            print "\t" + uop
 
 if __name__ == "__main__":
     p = opts.parse_args()
     p.modes = p.modes or ["movzx"]
     assert p.file.endswith(".ll")
     assert len(p.modes) > 0
-    compare_file_fn(p.file, p.fn, p.modes)
+    compare_file_fn(p.file, p.fn, p.modes, p.verbose)
