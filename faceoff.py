@@ -7,12 +7,16 @@ opts = ArgumentParser()
 opts.add_argument("fn", help="function in .ll")
 opts.add_argument("file", help=".ll file")
 opts.add_argument("-v", "--verbose", default=False, action="store_true"),
+
 opts.add_argument("-k", "--kuper", dest="modes", action="append_const",
                   const="kuper", help="bench kuper")
 opts.add_argument("-m", "--movzx", dest="modes", action="append_const",
                   const="movzx", help="bench the movzx chompa")
+opts.add_argument("--repair", dest="modes", action="append_const", 
+                  const="repair", help="bench repair")
 opts.add_argument("-c", "--control", dest="modes", action="append_const",
                   const="control", help="bench control")
+
 opts.add_argument("-p", "--paste", default=False, action="store_true",
                   help="bench from stdin")
 opts.add_argument("-32", dest="arch", const="x86", action="store_const")
@@ -72,6 +76,7 @@ def tersify(output):
 MODES = {
     "kuper": "-kuper".split(),
     "movzx": "-mark-movzx -setcc-fixup".split(),
+    "repair": ["-zext-repair"],
     "control": []
 }
 
@@ -89,7 +94,6 @@ ARCHES = {
 }
 
 def print_iaca(output, verbose=False):
-    print "output", output
     if verbose:
         print output
     else:
