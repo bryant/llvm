@@ -123,7 +123,16 @@ dominating_defs(unsigned gr8, const MachineRegisterInfo &mri,
   // at least until release_37, getInstructionIndex is expensive.
   DenseMap<MachineBasicBlock *, SlotIndex> cached;
 
+  dbgs() << "dominating_defs\n";
   for (MachineInstr &def : mri.def_instructions(gr8)) {
+    dbgs() << def;
+    unsigned tied_use;
+    if (def.isRegTiedToUseOperand(0, &tied_use) &&
+        def.getOperand(tied_use).getReg() != def.getOperand(0).getReg()) {
+      dbgs() << def.getOperand(0) << " is tied to " << def.getOperand(tied_use)
+             << "\n";
+      return dominating_defs(def.getOperand(tied_use).getReg(), mri, si);
+    }
     MachineBasicBlock *bb = def.getParent();
     if (defs.find(bb) == defs.end() ||
         si.getInstructionIndex(def) < cached.lookup(bb)) {
@@ -453,6 +462,29 @@ struct MarkZExt : public MachineFunctionPass {
 
 char MarkZExt::id = 0;
 
+MachineInstr *find_def(unsigned reg, const MachineRegisterInfo &mri,
+                       LiveIntervals &li) {
+  MachineInstr *rv = &*mri.def_instr_begin(reg);
+  SlotIndex s = li.getInstructionIndex(*rv);
+  dbgs() << "finding def for " << PrintReg(reg) << "\n";
+  for (MachineInstr &def : mri.def_instructions(reg)) {
+    unsigned tied_use;
+    if (def.isPHI() || (def.isCopy() && def.getOperand(1).getSubReg() != 0)) {
+      dbgs() << "unacceptable def: " << def;
+      return nullptr;
+    } else if (def.isRegTiedToUseOperand(0, &tied_use) &&
+               def.getOperand(tied_use).getReg() !=
+                   def.getOperand(0).getReg()) {
+      dbgs() << "found tied def: " << def;
+      return find_def(def.getOperand(tied_use).getReg(), mri, li);
+    } else if (li.getInstructionIndex(def) < s) {
+      rv = &def;
+      s = li.getInstructionIndex(def);
+    }
+  }
+  return rv;
+}
+
 struct ZExtRepair : public MachineFunctionPass {
   static char id;
 
@@ -464,7 +496,8 @@ struct ZExtRepair : public MachineFunctionPass {
 
   void getAnalysisUsage(AnalysisUsage &a) const override {
     a.addRequired<LiveIntervals>();
-    a.setPreservesAll();
+    a.setPreservesCFG();
+    // a.setPreservesAll();
     return MachineFunctionPass::getAnalysisUsage(a);
   }
 
@@ -472,20 +505,22 @@ struct ZExtRepair : public MachineFunctionPass {
     MachineRegisterInfo &mri = f.getRegInfo();
     const X86RegisterInfo &tri = *reinterpret_cast<const X86RegisterInfo *>(
         f.getSubtarget<X86Subtarget>().getRegisterInfo());
+    const TargetInstrInfo &tii = *f.getSubtarget<X86Subtarget>().getInstrInfo();
     LiveIntervals &li = getAnalysis<LiveIntervals>();
 
-    SmallVector<pair<MachineInstr *, MachineInstr *>, 12> queue;
+    SmallVector<std::pair<MachineInstr *, MachineInstr *>, 12> queue;
 
     for (MachineBasicBlock &bb : f) {
       for (MachineInstr &i : bb) {
         if (i.getOpcode() != X86::MOVZX32rr8 ||
-            i.getOperand(1).getSubReg() != 0 ||
-            any_of(mri.def_instr_begin(i.getOperand(1).getReg()),
-                   mri.def_instr_end(), [&](const MachineInstr &cpy) {
-                     return cpy.isCopy() && cpy.getOperand(1).getSubReg() != 0;
-                   })) {
+            i.getOperand(1).getSubReg() != 0) {
           continue;
         }
+        MachineInstr *def8 = find_def(i.getOperand(1).getReg(), mri, li);
+        if (def8 == nullptr) {
+          continue;
+        }
+
         dbgs() << "expanding " << i;
 
         auto insdefs = insertion_points_for<4>(i.getOperand(1).getReg(), f, li);
@@ -498,7 +533,7 @@ struct ZExtRepair : public MachineFunctionPass {
           };
           continue;
         }
-        queue.push_back(std::make_pair(insdefs.begin()->first(), &i));
+        queue.push_back(std::make_pair(insdefs.begin()->first, &i));
       }
     }
 
@@ -506,16 +541,20 @@ struct ZExtRepair : public MachineFunctionPass {
                                            ? &X86::GR32RegClass
                                            : &X86::GR32_ABCDRegClass;
     for (auto ins_zext : queue) {
-      MachineInstr *ins = ins_zext.second;
+      MachineInstr *ins = ins_zext.first;
       MachineInstr *i = ins_zext.second;
       unsigned gr32 = mri.createVirtualRegister(gr32c);
       unsigned inserted = mri.createVirtualRegister(gr32c);
-      BuildMI(bb, ins, i.getDebugLoc(), tii.get(X86::MOV32r0), gr32);
-      BuildMI(bb, &i, i.getDebugLoc(), tii.get(X86::INSERT_SUBREG), inserted)
+      dbgs() << "inserting xor before " << (*ins);
+      BuildMI(*ins->getParent(), ins, i->getDebugLoc(), tii.get(X86::MOV32r0),
+              gr32);
+      dbgs() << "inserting insert_subreg before " << (*i);
+      BuildMI(*i->getParent(), i, i->getDebugLoc(), tii.get(X86::INSERT_SUBREG),
+              inserted)
           .addReg(gr32)
-          .addReg(i.getOperand(0).getReg())
+          .addReg(i->getOperand(1).getReg())
           .addImm(X86::sub_8bit);
-      mri.replaceRegWith(i.getOperand(0).getRegUnit(), inserted);
+      mri.replaceRegWith(i->getOperand(0).getReg(), inserted);
       i->eraseFromParent();
     }
     return false;
