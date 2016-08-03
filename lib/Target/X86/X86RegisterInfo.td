@@ -339,7 +339,7 @@ def GR16 : RegisterClass<"X86", [i16], 16,
                               R8W, R9W, R10W, R11W, R14W, R15W, R12W, R13W)>;
 
 def GR32 : RegisterClass<"X86", [i32], 32,
-                         (add EAX, ECX, EDX, ESI, EDI, EBX, EBP, ESP,
+                         (add EAX, ECX, EDX, EBX, ESI, EDI, EBP, ESP,
                               R8D, R9D, R10D, R11D, R14D, R15D, R12D, R13D)>;
 
 // GR64 - 64-bit GPRs. This oddly includes RIP, which isn't accurate, since
