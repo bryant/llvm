@@ -452,8 +452,7 @@ struct Candidate {
     lrm.assign(*live8, psrc);
   }
 
-  void assign_new(LiveRegMatrix &lrm, LiveIntervals &li, ReAllocTool &ratool,
-                  unsigned newdest) {
+  void assign_new(LiveRegMatrix &lrm, LiveIntervals &li, unsigned newdest) {
     // vsrc uses => vdest:sub_8bit; insert vdest = mov32r0; del movzx
     unsigned vdest = movzx->getOperand(0).getReg();
     unsigned vsrc = movzx->getOperand(1).getReg();
@@ -555,7 +554,7 @@ struct X86FixupZExt : public MachineFunctionPass {
         DEBUG(dbgs() << "trying to remap to " << tri.getName(preg) << "\n");
         SmallVector<LiveInterval *, 8> evictees;
         if (!ratool.interf(*c.extra, preg, evictees)) {
-          c.assign_new(lrm, li, ratool, preg);
+          c.assign_new(lrm, li, preg);
           return;
         } else if (evictees.size() > 0) {
           dbgs() << "attempting to evict: " << evictees;
@@ -563,7 +562,7 @@ struct X86FixupZExt : public MachineFunctionPass {
           if (auto newregs = ratool.alloc_intervals(evictees, {preg})) {
             DEBUG(dbgs() << "works\n");
             ratool.assign_all(evictees, *newregs);
-            c.assign_new(lrm, li, ratool, preg);
+            c.assign_new(lrm, li, preg);
             return;
           } else {
             // how depressing.
@@ -583,21 +582,37 @@ struct X86FixupZExt : public MachineFunctionPass {
       }
     });
 
+    auto try_harder_to_alloc = [&](Candidate &c) {
+      SmallVector<LiveInterval *, 8> evictees;
+      for (MCPhysReg newreg : X86::GR32_ABCDRegClass) {
+        if (ratool.interf(*c.extra, newreg, evictees) && evictees.size() > 0) {
+          vector<MCPhysReg> oldregs = ratool.unassign_all(evictees);
+          if (auto newregs = ratool.alloc_intervals(evictees, {newreg})) {
+            ratool.assign_all(evictees, *newregs);
+            c.assign_new(lrm, li, newreg);
+            return true;
+          }
+          ratool.assign_all(evictees, oldregs);
+        }
+      }
+      return false;
+    };
+
     std::sort(cands.begin(), cands.end());
     for (Candidate &c : cands) {
       DEBUG(dbgs() << c << "\n");
       c.unassign(lrm);
-      const TargetRegisterClass *rc = f.getSubtarget<X86Subtarget>().is64Bit()
-                                          ? nullptr
-                                          : &X86::GR32_ABCDRegClass;
-      if (unsigned newreg = ratool.alloc(*c.extra, nullptr, rc)) {
+      if (!f.getSubtarget<X86Subtarget>().is64Bit() && try_harder_to_alloc(c)) {
         DEBUG(dbgs() << "works\n");
-        c.assign_new(lrm, li, ratool, newreg);
-      } else {
-        DEBUG(dbgs() << "could not transform\n");
-        c.assign_old(lrm);
-        dispose.emplace_back(std::move(c));
+        continue;
+      } else if (unsigned newreg = ratool.alloc(*c.extra)) {
+        DEBUG(dbgs() << "works\n");
+        c.assign_new(lrm, li, newreg);
+        continue;
       }
+      DEBUG(dbgs() << "could not transform\n");
+      c.assign_old(lrm);
+      dispose.emplace_back(std::move(c));
     }
 
     for (Candidate &c : dispose) {
@@ -688,7 +703,9 @@ struct ZExtRepair : public MachineFunctionPass {
 
   ZExtRepair() : MachineFunctionPass(id) {}
 
-  const char *getPassName() const override { return "X86 Please Use EBX"; }
+  const char *getPassName() const override {
+    return "x86 zext repair (actually marks all movzx as insert_subreg)";
+  }
 
   void getAnalysisUsage(AnalysisUsage &a) const override {
     a.addRequired<LiveIntervals>();
