@@ -257,8 +257,8 @@ public:
     return rv == ord.end() ? nullptr : rv;
   }
 
-  MCPhysReg alloc(LiveInterval &live, const BitVector *except = nullptr,
-                  const TargetRegisterClass *rc = nullptr) const {
+  MCPhysReg alloc(LiveInterval &live, const TargetRegisterClass *rc = nullptr,
+                  const BitVector *except = nullptr) const {
     const MCPhysReg *rv = alloc_next(live, except, nullptr, rc);
     return rv == nullptr ? 0 : *rv;
   }
@@ -661,26 +661,26 @@ struct X86FixupZExt : public MachineFunctionPass {
     for (Candidate &c : cands) {
       DEBUG(dbgs() << c << "\n");
       c.unassign(lrm);
-      if (!f.getSubtarget<X86Subtarget>().is64Bit()) {
-        if (MCPhysReg newreg = try_harder_to_alloc(c)) {
-          DEBUG(dbgs() << "works\n");
-          // one last check
-          vector<LiveInterval *> evictees;
-          if (ratool.interf(*c.extra, newreg, evictees)) {
-            DEBUG(dbgs() << evictees);
-            assert(false);
-          }
-          c.assign_new(lrm, li, newreg);
-          continue;
+      MCPhysReg newreg;
+      if (!f.getSubtarget<X86Subtarget>().is64Bit() &&
+          ((newreg = ratool.alloc(*c.extra, &X86::GR32_ABCDRegClass)) != 0 ||
+           (newreg = try_harder_to_alloc(c)) != 0)) {
+        DEBUG(dbgs() << "works\n");
+        // one last check
+        vector<LiveInterval *> evictees;
+        if (ratool.interf(*c.extra, newreg, evictees)) {
+          DEBUG(dbgs() << evictees);
+          assert(false);
         }
-      } else if (MCPhysReg newreg = ratool.alloc(*c.extra)) {
+        c.assign_new(lrm, li, newreg);
+      } else if ((newreg = ratool.alloc(*c.extra)) != 0) {
         DEBUG(dbgs() << "works\n");
         c.assign_new(lrm, li, newreg);
-        continue;
+      } else {
+        DEBUG(dbgs() << "could not transform\n");
+        c.assign_old(lrm);
+        dispose.push_back(std::move(c));
       }
-      DEBUG(dbgs() << "could not transform\n");
-      c.assign_old(lrm);
-      dispose.push_back(std::move(c));
     }
 
     for (Candidate &c : dispose) {
