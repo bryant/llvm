@@ -311,7 +311,6 @@ public:
 
     auto try_next_reg = [&]() {
       assert(!assigned->empty());
-      assert(assigned->back().second != nullptr);
       maybe_unassign(assigned->back());
       assigned->back().second = alloc_next(*assigned->back().first, &except,
                                            &assigned->back().second);
