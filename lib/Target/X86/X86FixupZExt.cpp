@@ -78,7 +78,7 @@ MachineInstr *find_ins(MachineInstr &bottom, vector<Segment> &segments,
   MachineBasicBlock &bb = *bottom.getParent();
   MachineBasicBlock::iterator ins = &bottom;
   for (; ins != bb.begin(); --ins) {
-    SlotIndex s = li.getInstructionIndex(*ins);
+    SlotIndex s = slot(*ins);
     if (!li.getRegUnit(*MCRegUnitIterator(X86::EFLAGS, tri)).liveAt(s)) {
       break;
     }
@@ -95,8 +95,7 @@ MachineInstr *find_ins(MachineInstr &bottom, vector<Segment> &segments,
       BuildMI(bb, ins, bottom.getDebugLoc(),
               f.getSubtarget().getInstrInfo()->get(X86::MOV32r0), 0);
   li.InsertMachineInstrInMaps(*mib);
-  segments.push_back(
-      Segment(li.getInstructionIndex(*mib), slot(bottom), nullptr));
+  segments.push_back(Segment(slot(*mib), slot(bottom), nullptr));
   return mib;
 }
 
@@ -223,10 +222,8 @@ public:
     return lrm->checkInterference(live, preg) != LiveRegMatrix::IK_Free;
   }
 
-  template <typename Container,
-            typename = typename std::enable_if<std::is_same<
-                typename Container::value_type, LiveInterval *>::value>::type>
-  bool interf(LiveInterval &live, unsigned preg, Container &evictees) const {
+  template <typename T, typename = is_iterable_of<LiveInterval *, T>>
+  bool interf(LiveInterval &live, unsigned preg, T &evictees) const {
     if (lrm->checkRegMaskInterference(live, preg) ||
         lrm->checkRegUnitInterference(live, preg)) {
       return true;
@@ -235,10 +232,12 @@ public:
     for (MCRegUnitIterator regunit(preg, tri); regunit.isValid(); ++regunit) {
       LiveIntervalUnion::Query &q = lrm->query(live, *regunit);
       if (q.collectInterferingVRegs() > 0) {
-        llvm::copy(q.interferingVRegs(), llvm::fail_inserter(ev));
+        for (LiveInterval *l : q.interferingVRegs()) {
+          ev.insert(l);
+        }
       }
     }
-    llvm::copy(ev, std::back_inserter(evictees));
+    llvm::copy(ev, push_to(evictees));
     return evictees.size() > 0;
   }
 
@@ -264,6 +263,8 @@ public:
     return rv == nullptr ? 0 : *rv;
   }
 
+  // (re-)allocate a group of interfering intervals. brute force search. returns
+  // nullptr if impossible.
   template <typename C, typename = is_iterable_of<LiveInterval *, C>>
   unique_ptr<vector<pair<LiveInterval *, const MCPhysReg *>>>
   alloc_interf_intervals(C group, ArrayRef<MCPhysReg> excepts) const {
@@ -684,7 +685,7 @@ struct X86FixupZExt : public MachineFunctionPass {
     }
 
     for (Candidate &c : dispose) {
-      DEBUG(dbgs() << "killing " << (*c.ins));
+      DEBUG(dbgs() << "purging dummy instr: " << (*c.ins));
       li.RemoveMachineInstrFromMaps(*c.ins);
       c.ins->eraseFromParent();
     }
