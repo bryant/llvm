@@ -641,7 +641,7 @@ struct X86FixupZExt : public MachineFunctionPass {
             return newreg;
           } else if (evictees.size() > 0) {
             DEBUG(dbgs() << "trying to reserve " << tri.getName(newreg)
-                         << "\nattempting to evict:\n"
+                         << " by evicting:\n"
                          << evictees);
             vector<MCPhysReg> oldregs = ratool.unassign_all(evictees);
             if (auto newregs = ratool.alloc_intervals(evictees, {newreg})) {
@@ -649,7 +649,7 @@ struct X86FixupZExt : public MachineFunctionPass {
               ratool.assign_all(evictees, *newregs);
               return newreg;
             }
-            DEBUG(dbgs() << "couldn't re-alloc\n");
+            DEBUG(dbgs() << "couldn't re-alloc evictees\n");
             ratool.assign_all(evictees, oldregs);
           }
         }
