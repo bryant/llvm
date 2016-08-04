@@ -70,7 +70,7 @@ dominating_defs(unsigned gr8, const MachineRegisterInfo &mri,
   return defs;
 }
 
-MachineInstr *find_ins(MachineInstr &bottom, SmallVectorImpl<Segment> &segments,
+MachineInstr *find_ins(MachineInstr &bottom, vector<Segment> &segments,
                        LiveIntervals &li) {
   auto slot = [&](MachineInstr &i) { return li.getInstructionIndex(i); };
   const MachineFunction &f = *bottom.getParent()->getParent();
@@ -100,6 +100,13 @@ MachineInstr *find_ins(MachineInstr &bottom, SmallVectorImpl<Segment> &segments,
   return mib;
 }
 
+template <typename T, typename = is_iterable_of<LiveInterval *, T>>
+raw_ostream &operator<<(raw_ostream &out, const T &es) {
+  for (LiveInterval *e : es) {
+    out << "\t" << (*e) << "\n";
+  }
+  return out;
+}
 bool interferes(const LiveInterval &a, const LiveInterval &b,
                 const MachineRegisterInfo &mri) {
   return a.overlaps(b) && mri.getRegClass(a.reg) == mri.getRegClass(b.reg);
@@ -170,7 +177,26 @@ void li_union(LiveRange *dest, const Ranges *... src) {
   }
 }
 
-class ReAllocTool {
+template <typename Iterator, typename Predicate>
+Iterator move_to_end_if(Iterator first, Iterator last, Predicate p) {
+  Iterator rv = last;
+  while (first != rv) {
+    if (p(*first)) {
+      --rv;
+      std::swap(*first, *rv);
+    } else {
+      ++first;
+    }
+  }
+  return rv;
+}
+
+template <typename Range, typename Predicate>
+auto move_to_end_if(Range &r, Predicate p) -> decltype(r.end()) {
+  return move_to_end_if(r.begin(), r.end(), std::move(p));
+}
+
+struct ReAllocTool {
   const TargetRegisterInfo *tri;
   const MachineRegisterInfo *mri;
   LiveRegMatrix *lrm;
@@ -226,9 +252,9 @@ public:
     if (except != nullptr) {
       rs |= *except;
     }
-    auto rv = std::find_if(it ? *it : ord.begin(), ord.end(), [&](MCPhysReg r) {
-      return !rs.test(r) && !this->interf(live, r);
-    });
+    auto rv = std::find_if(
+        it ? std::next(*it) : ord.begin(), ord.end(),
+        [&](MCPhysReg r) { return !rs.test(r) && !interf(live, r); });
     return rv == ord.end() ? nullptr : rv;
   }
 
@@ -245,36 +271,67 @@ public:
       return make_unique<vector<pair<LiveInterval *, const MCPhysReg *>>>();
     }
     BitVector except(tri->getNumRegs());
+
     for (MCPhysReg r : excepts) {
       for (MCRegAliasIterator reg(r, tri, true); reg.isValid(); ++reg) {
-        DEBUG(dbgs() << "ReAllocTool: ignoring " << tri->getName(*reg) << "\n");
         except.set(*reg);
       }
     }
+
     auto assigned =
         make_unique<vector<pair<LiveInterval *, const MCPhysReg *>>>();
-    assigned->push_back(
-        std::make_pair(group.back(), alloc_next(*group.back(), &except)));
-    group.pop_back();
+
+    auto maybe_unassign = [&](pair<LiveInterval *, const MCPhysReg *> &p) {
+      if (p.second) {
+        lrm->unassign(*p.first);
+      }
+    };
+
+    auto maybe_assign = [&](pair<LiveInterval *, const MCPhysReg *> &p) {
+      if (p.second) {
+        lrm->assign(*p.first, *p.second);
+      }
+    };
+
+    auto try_next_in_group = [&]() {
+      assert(!group.empty());
+      assigned->push_back(
+          std::make_pair(group.back(), alloc_next(*group.back(), &except)));
+      group.pop_back();
+      maybe_assign(assigned->back());
+    };
+
+    auto back_to_previous = [&]() {
+      assert(!assigned->empty());
+      maybe_unassign(assigned->back());
+      group.push_back(assigned->back().first);
+      assigned->pop_back();
+    };
+
+    auto try_next_reg = [&]() {
+      assert(!assigned->empty());
+      assert(assigned->back().second != nullptr);
+      maybe_unassign(assigned->back());
+      assigned->back().second = alloc_next(*assigned->back().first, &except,
+                                           &assigned->back().second);
+      maybe_assign(assigned->back());
+    };
+
+    try_next_in_group();
 
     while (!group.empty() || assigned->back().second == nullptr) {
       if (assigned->back().second == nullptr) {
-        group.push_back(assigned->back().first);
-        assigned->pop_back();
+        back_to_previous();
         if (assigned->empty()) {
           return nullptr;
         }
-        assigned->back().second = alloc_next(*assigned->back().first, &except,
-                                             &assigned->back().second);
+        try_next_reg();
       } else {
-        if (const MCPhysReg *nextreg = alloc_next(*group.back(), &except)) {
-          assigned->push_back(std::make_pair(group.back(), nextreg));
-          group.pop_back();
-        } else {
-          assigned->back().second = alloc_next(*assigned->back().first, &except,
-                                               &assigned->back().second);
-        }
+        try_next_in_group();
       }
+    }
+    for (auto &p : *assigned) {
+      lrm->unassign(*p.first);
     }
     return assigned;
   }
@@ -283,17 +340,16 @@ public:
   unique_ptr<vector<MCPhysReg>>
   alloc_intervals(const C &lives, ArrayRef<MCPhysReg> excepts) const {
     DenseMap<LiveInterval *, const MCPhysReg *> newmap;
-    SmallVector<LiveInterval *, 8> ungrouped(lives);
+    vector<LiveInterval *> ungrouped(lives.begin(), lives.end());
 
     while (!ungrouped.empty()) {
-      SmallVector<LiveInterval *, 8> group;
+      vector<LiveInterval *> group;
       group.push_back(ungrouped.back());
       ungrouped.pop_back();
-      bool done = true;
+      bool done = false;
       while (!done) {
-        auto it = remove_if(ungrouped, [&](LiveInterval *h) {
-          bool rv = interferes(group, *h, *mri);
-          return rv;
+        auto it = move_to_end_if(ungrouped, [&](LiveInterval *h) {
+          return interferes(group, *h, *mri);
         });
         done = it == ungrouped.end();
         std::copy(it, ungrouped.end(), push_to(group));
@@ -341,7 +397,7 @@ struct Candidate {
   MachineInstr *movzx;
   unsigned pdest;
   unsigned psrc;
-  SmallVector<MCPhysReg, 2> constraints;
+  vector<MCPhysReg> constraints;
   LiveInterval *live32;
   LiveInterval *live8;
   unique_ptr<LiveInterval> extra;
@@ -373,7 +429,7 @@ struct Candidate {
     const MachineRegisterInfo &mri = f.getRegInfo();
     const TargetRegisterInfo &tri = *f.getSubtarget().getRegisterInfo();
 
-    SmallVector<Segment, 3> xorlive;
+    vector<Segment> xorlive;
     MachineInstr *def, *ins;
     if ((def = valid_candidate(i, li)) == nullptr ||
         (ins = find_ins(*def, xorlive, li)) == nullptr) {
@@ -382,7 +438,7 @@ struct Candidate {
 
     unsigned dest = i.getOperand(0).getReg(), src = i.getOperand(1).getReg();
     // look for reg alloc copy instr hints
-    SmallVector<MCPhysReg, 2> cx;
+    vector<MCPhysReg> cx;
     for (const MachineInstr &use : mri.use_instructions(dest)) {
       if (use.isCopy() && !tri.isVirtualRegister(use.getOperand(0).getReg())) {
         unsigned r =
@@ -429,9 +485,13 @@ struct Candidate {
     for (const Segment &s : *c.extra) {
       out << "[" << s.start << ", " << s.end << "), ";
     }
-    out << "\n\tconstraints:";
-    for (unsigned cx : c.constraints) {
-      out << " " << PrintReg(cx, &c.get_tri());
+    if (c.constraints.size() > 0) {
+      out << "\n\tconstraints:";
+      for (unsigned cx : c.constraints) {
+        out << " " << PrintReg(cx, &c.get_tri());
+      }
+    } else {
+      out << "\n\tno constraints.";
     }
     return out;
   }
@@ -452,7 +512,7 @@ struct Candidate {
     lrm.assign(*live8, psrc);
   }
 
-  void assign_new(LiveRegMatrix &lrm, LiveIntervals &li, unsigned newdest) {
+  void assign_new(LiveRegMatrix &lrm, LiveIntervals &li, MCPhysReg newdest) {
     // vsrc uses => vdest:sub_8bit; insert vdest = mov32r0; del movzx
     unsigned vdest = movzx->getOperand(0).getReg();
     unsigned vsrc = movzx->getOperand(1).getReg();
@@ -460,7 +520,7 @@ struct Candidate {
     const MachineFunction &f = *ins->getParent()->getParent();
     const auto &mri = f.getRegInfo();
     // in-place operand mutation would confuse defusechain_iterator
-    SmallVector<MachineOperand *, 16> ops;
+    vector<MachineOperand *> ops;
     transform(mri.reg_operands(vsrc), push_to(ops),
               [](MachineOperand &op) { return &op; });
     for (MachineOperand *op : ops) {
@@ -489,13 +549,6 @@ struct Candidate {
     lrm.assign(li.createAndComputeVirtRegInterval(vdest), newdest);
   }
 };
-
-raw_ostream &operator<<(raw_ostream &out, const ArrayRef<LiveInterval *> es) {
-  for (LiveInterval *e : es) {
-    out << "\t" << (*e) << "\n";
-  }
-  return out;
-}
 
 BitVector bitvec_from_reg(unsigned preg, const TargetRegisterInfo &tri) {
   BitVector rv(tri.getNumRegs());
@@ -528,10 +581,9 @@ struct X86FixupZExt : public MachineFunctionPass {
     VirtRegMap &vrm = getAnalysis<VirtRegMap>();
     LiveIntervals &li = getAnalysis<LiveIntervals>();
     LiveRegMatrix &lrm = getAnalysis<LiveRegMatrix>();
-    SmallVector<Candidate, 8> constrained, cands, dispose;
+    vector<Candidate> constrained, cands, dispose;
     ReAllocTool ratool(f, lrm, vrm);
 
-    DEBUG(f.print(dbgs(), li.getSlotIndexes()));
     DEBUG(dbgs() << "analyzing " << f.getName() << "'s movzxes.\n");
     for (MachineBasicBlock &bb : f) {
       for (MachineInstr &i : bb) {
@@ -545,6 +597,8 @@ struct X86FixupZExt : public MachineFunctionPass {
       }
     }
 
+    DEBUG(vrm.print(dbgs()));
+    DEBUG(f.print(dbgs(), li.getSlotIndexes()));
     std::sort(constrained.begin(), constrained.end());
     std::for_each(constrained.begin(), constrained.end(), [&](Candidate &c) {
       DEBUG(dbgs() << c << "\n");
@@ -552,12 +606,13 @@ struct X86FixupZExt : public MachineFunctionPass {
       bool demote = true;
       for (MCPhysReg preg : c.constraints) {
         DEBUG(dbgs() << "trying to remap to " << tri.getName(preg) << "\n");
-        SmallVector<LiveInterval *, 8> evictees;
+        vector<LiveInterval *> evictees;
         if (!ratool.interf(*c.extra, preg, evictees)) {
+          DEBUG(dbgs() << "works\n");
           c.assign_new(lrm, li, preg);
           return;
         } else if (evictees.size() > 0) {
-          dbgs() << "attempting to evict: " << evictees;
+          DEBUG(dbgs() << "attempting to evict: " << evictees);
           vector<MCPhysReg> oldregs = ratool.unassign_all(evictees);
           if (auto newregs = ratool.alloc_intervals(evictees, {preg})) {
             DEBUG(dbgs() << "works\n");
@@ -576,43 +631,62 @@ struct X86FixupZExt : public MachineFunctionPass {
       if (demote) {
         c.constraints.clear();
         DEBUG(dbgs() << "demoting to unconstrained candidate\n");
-        cands.emplace_back(std::move(c));
+        cands.push_back(std::move(c));
       } else {
-        dispose.emplace_back(std::move(c));
+        dispose.push_back(std::move(c));
       }
     });
 
     auto try_harder_to_alloc = [&](Candidate &c) {
-      SmallVector<LiveInterval *, 8> evictees;
       for (MCPhysReg newreg : X86::GR32_ABCDRegClass) {
-        if (ratool.interf(*c.extra, newreg, evictees) && evictees.size() > 0) {
-          vector<MCPhysReg> oldregs = ratool.unassign_all(evictees);
-          if (auto newregs = ratool.alloc_intervals(evictees, {newreg})) {
-            ratool.assign_all(evictees, *newregs);
-            c.assign_new(lrm, li, newreg);
-            return true;
+        vector<LiveInterval *> evictees;
+        if (!ratool.unused_csr.test(newreg)) {
+          DEBUG(dbgs() << "try_harder_to_alloc: trying " << tri.getName(newreg)
+                       << "\n");
+          if (!ratool.interf(*c.extra, newreg, evictees)) {
+            return newreg;
+          } else if (evictees.size() > 0) {
+            DEBUG(dbgs() << "trying to reserve " << tri.getName(newreg)
+                         << "\nattempting to evict:\n"
+                         << evictees);
+            vector<MCPhysReg> oldregs = ratool.unassign_all(evictees);
+            if (auto newregs = ratool.alloc_intervals(evictees, {newreg})) {
+              DEBUG(dbgs() << "found new assignment\n");
+              ratool.assign_all(evictees, *newregs);
+              return newreg;
+            }
+            DEBUG(dbgs() << "couldn't re-alloc\n");
+            ratool.assign_all(evictees, oldregs);
           }
-          ratool.assign_all(evictees, oldregs);
         }
       }
-      return false;
+      return static_cast<MCPhysReg>(0);
     };
 
     std::sort(cands.begin(), cands.end());
     for (Candidate &c : cands) {
       DEBUG(dbgs() << c << "\n");
       c.unassign(lrm);
-      if (!f.getSubtarget<X86Subtarget>().is64Bit() && try_harder_to_alloc(c)) {
-        DEBUG(dbgs() << "works\n");
-        continue;
-      } else if (unsigned newreg = ratool.alloc(*c.extra)) {
+      if (!f.getSubtarget<X86Subtarget>().is64Bit()) {
+        if (MCPhysReg newreg = try_harder_to_alloc(c)) {
+          DEBUG(dbgs() << "works\n");
+          // one last check
+          vector<LiveInterval *> evictees;
+          if (ratool.interf(*c.extra, newreg, evictees)) {
+            DEBUG(dbgs() << evictees);
+            assert(false);
+          }
+          c.assign_new(lrm, li, newreg);
+          continue;
+        }
+      } else if (MCPhysReg newreg = ratool.alloc(*c.extra)) {
         DEBUG(dbgs() << "works\n");
         c.assign_new(lrm, li, newreg);
         continue;
       }
       DEBUG(dbgs() << "could not transform\n");
       c.assign_old(lrm);
-      dispose.emplace_back(std::move(c));
+      dispose.push_back(std::move(c));
     }
 
     for (Candidate &c : dispose) {
@@ -620,7 +694,6 @@ struct X86FixupZExt : public MachineFunctionPass {
       li.RemoveMachineInstrFromMaps(*c.ins);
       c.ins->eraseFromParent();
     }
-    DEBUG(f.print(dbgs(), li.getSlotIndexes()));
     return false;
   }
 };
@@ -721,7 +794,7 @@ struct ZExtRepair : public MachineFunctionPass {
     const TargetInstrInfo &tii = *f.getSubtarget<X86Subtarget>().getInstrInfo();
     LiveIntervals &li = getAnalysis<LiveIntervals>();
 
-    SmallVector<std::pair<MachineInstr *, MachineInstr *>, 12> queue;
+    vector<std::pair<MachineInstr *, MachineInstr *>> queue;
 
     for (MachineBasicBlock &bb : f) {
       for (MachineInstr &i : bb) {
