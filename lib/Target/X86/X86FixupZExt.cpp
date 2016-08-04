@@ -517,8 +517,8 @@ struct Candidate {
     unsigned vdest = movzx->getOperand(0).getReg();
     unsigned vsrc = movzx->getOperand(1).getReg();
 
-    const MachineFunction &f = *ins->getParent()->getParent();
-    const auto &mri = f.getRegInfo();
+    MachineFunction &f = *ins->getParent()->getParent();
+    MachineRegisterInfo &mri = f.getRegInfo();
     // in-place operand mutation would confuse defusechain_iterator
     vector<MachineOperand *> ops;
     transform(mri.reg_operands(vsrc), push_to(ops),
@@ -540,6 +540,9 @@ struct Candidate {
       ins->getOperand(0).setSubReg(X86::sub_32bit);
       ins->getOperand(0).setIsUndef();
     }
+    mri.setRegClass(vdest, f.getSubtarget<X86Subtarget>().is64Bit()
+                               ? &X86::GR32RegClass
+                               : &X86::GR32_ABCDRegClass);
     lrm.assign(li.createAndComputeVirtRegInterval(vdest), newdest);
   }
 };
