@@ -529,12 +529,6 @@ struct Candidate {
       DEBUG(dbgs() << " to " << (*op) << "\n");
     }
 
-    /*MachineInstrBuilder mib =
-        BuildMI(*ins->getParent(), ins, movzx->getDebugLoc(),
-                f.getSubtarget().getInstrInfo()->get(X86::MOV32r0));*/
-    /*mib = mri.getRegClass(vdest)->getSize() == 32 / 8
-              ? mib.addReg(vdest, RegState::Define)
-              : mib.addReg(vdest, RegState::DefineNoRead, X86::sub_32bit);*/
     li.RemoveMachineInstrFromMaps(*movzx);
     movzx->eraseFromParent();
     li.removeInterval(vsrc);
