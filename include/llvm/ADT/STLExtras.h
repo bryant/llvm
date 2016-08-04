@@ -435,6 +435,17 @@ OutputIt transform(R &&Range, OutputIt d_first, UnaryPredicate &&P) {
                         std::forward<UnaryPredicate>(P));
 }
 
+template <typename R, class OutputIt>
+OutputIt copy(R &&Range, OutputIt d_first) {
+  return std::copy(Range.begin(), Range.end(), d_first);
+}
+
+template <typename R, class OutputIt, typename UnaryPredicate>
+OutputIt copy_if(R &&Range, OutputIt d_first, UnaryPredicate &&P) {
+  return std::copy(Range.begin(), Range.end(), d_first,
+                   std::forward<UnaryPredicate>(P));
+}
+
 //===----------------------------------------------------------------------===//
 //     Extra additions to <memory>
 //===----------------------------------------------------------------------===//
