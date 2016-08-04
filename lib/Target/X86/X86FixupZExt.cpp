@@ -673,7 +673,8 @@ struct X86FixupZExt : public MachineFunctionPass {
           assert(false);
         }
         c.assign_new(lrm, li, newreg);
-      } else if ((newreg = ratool.alloc(*c.extra)) != 0) {
+      } else if (f.getSubtarget<X86Subtarget>().is64Bit() &&
+                 (newreg = ratool.alloc(*c.extra)) != 0) {
         DEBUG(dbgs() << "works\n");
         c.assign_new(lrm, li, newreg);
       } else {
