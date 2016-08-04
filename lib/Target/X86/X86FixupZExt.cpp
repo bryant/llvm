@@ -395,13 +395,14 @@ struct Candidate {
   MachineInstr *ins;
   MachineInstr *gr8def;
   MachineInstr *movzx;
-  unsigned pdest;
-  unsigned psrc;
   vector<MCPhysReg> constraints;
   LiveInterval *live32;
   LiveInterval *live8;
   unique_ptr<LiveInterval> extra;
-
+  // private:
+  // assign/reassign
+  unsigned pdest;
+  unsigned psrc;
   static MachineInstr *valid_candidate(MachineInstr &i, LiveIntervals &li) {
     if (i.getOpcode() != X86::MOVZX32rr8 || i.getOperand(1).getSubReg() != 0) {
       return nullptr;
@@ -461,9 +462,8 @@ struct Candidate {
     }
     li_union(extra.get(), &live32, &live8);
 
-    return unique_ptr<Candidate>(
-        new Candidate{ins, def, &i, get_phys(dest, vrm), get_phys(src, vrm),
-                      std::move(cx), &live32, &live8, std::move(extra)});
+    return unique_ptr<Candidate>(new Candidate{
+        ins, def, &i, std::move(cx), &live32, &live8, std::move(extra)});
   }
 
   bool operator<(const Candidate &b) const {
@@ -502,14 +502,15 @@ struct Candidate {
         f.getSubtarget().getRegisterInfo());
   }
 
-  void unassign(LiveRegMatrix &lrm) {
-    lrm.unassign(*live32);
-    lrm.unassign(*live8);
+  void unassign(ReAllocTool &ratool) {
+    pdest = ratool.unassign(*live32);
+    psrc = ratool.unassign(*live8);
   }
 
   void assign_old(LiveRegMatrix &lrm) {
     lrm.assign(*live32, pdest);
     lrm.assign(*live8, psrc);
+    pdest = psrc = 0;
   }
 
   void assign_new(LiveRegMatrix &lrm, LiveIntervals &li, MCPhysReg newdest) {
@@ -599,7 +600,7 @@ struct X86FixupZExt : public MachineFunctionPass {
     std::sort(constrained.begin(), constrained.end());
     std::for_each(constrained.begin(), constrained.end(), [&](Candidate &c) {
       DEBUG(dbgs() << c << "\n");
-      c.unassign(lrm);
+      c.unassign(ratool);
       bool demote = true;
       for (MCPhysReg preg : c.constraints) {
         DEBUG(dbgs() << "trying to remap to " << tri.getName(preg) << "\n");
@@ -621,7 +622,8 @@ struct X86FixupZExt : public MachineFunctionPass {
             ratool.assign_all(evictees, oldregs);
           }
         }
-        demote &= preg != c.pdest; // only demote if RA pass missed all hints
+        // only demote if RA pass missed all hints
+        demote &= preg != get_phys(c.movzx->getOperand(0).getReg(), vrm);
       }
       DEBUG(dbgs() << "could not transform\n");
       c.assign_old(lrm);
@@ -663,7 +665,7 @@ struct X86FixupZExt : public MachineFunctionPass {
     std::sort(cands.begin(), cands.end());
     for (Candidate &c : cands) {
       DEBUG(dbgs() << c << "\n");
-      c.unassign(lrm);
+      c.unassign(ratool);
       MCPhysReg newreg;
       if (!f.getSubtarget<X86Subtarget>().is64Bit() &&
           ((newreg = ratool.alloc(*c.extra, &X86::GR32_ABCDRegClass)) != 0 ||
