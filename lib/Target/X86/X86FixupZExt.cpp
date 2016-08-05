@@ -237,7 +237,7 @@ public:
         }
       }
     }
-    llvm::copy(ev, push_to(evictees));
+    std::copy(ev.begin(), ev.end(), push_to(evictees));
     return evictees.size() > 0;
   }
 
