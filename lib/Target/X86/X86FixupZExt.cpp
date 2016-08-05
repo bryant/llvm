@@ -573,7 +573,7 @@ struct X86FixupZExt : public MachineFunctionPass {
           return;
         }
         // only demote if RA pass missed all hints
-        demote &= preg != get_phys(c.movzx->getOperand(0).getReg(), vrm);
+        demote &= preg != c.pdest;
       }
       DEBUG(dbgs() << "could not transform\n");
       c.assign_old(lrm);
