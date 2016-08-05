@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "X86.h"
+#include "X86TargetMachine.h"
 #include "X86TargetObjectFile.h"
 #include "X86TargetTransformInfo.h"
 #include "llvm/CodeGen/Passes.h"
@@ -28,12 +29,8 @@ static cl::opt<bool> EnableMachineCombinerPass("x86-machine-combiner",
                                cl::desc("Enable the machine combiner pass"),
                                cl::init(true), cl::Hidden);
 
-static cl::opt<bool> EnableSetCCFixup("setcc-fixup",
-                                      cl::desc("Apply X86FixupSetCC"),
+static cl::opt<bool> EnableSetCCFixup("kuper", cl::desc("Apply X86FixupSetCC"),
                                       cl::init(false), cl::Hidden);
-
-static cl::opt<bool> EnableSetCCFixup2("kuper", cl::desc("Apply X86FixupSetCC"),
-                                       cl::init(false), cl::Hidden);
 
 namespace llvm {
 void initializeWinEHStatePassPass(PassRegistry &);
@@ -311,20 +308,12 @@ bool X86PassConfig::addPreISel() {
 
 void X86PassConfig::addPreRegAlloc() {
   if (getOptLevel() != CodeGenOpt::None) {
-  if (EnableSetCCFixup) {
-    addPass(createX86FixupSetCC());
-  }
+    if (EnableSetCCFixup) {
+      addPass(createX86FixupSetCC());
+    }
     addPass(createX86OptimizeLEAs());
     addPass(createX86CallFrameOptimization());
   }
-  if (EnableSetCCFixup3) {
-    addPass(createMarkZExt());
-  }
-
-  if (EnableSetCCFixup2) {
-    addPass(createX86FixupSetCC());
-  }
-
   addPass(createX86WinAllocaExpander());
 }
 
@@ -333,7 +322,7 @@ void X86PassConfig::addPostRegAlloc() {
 }
 
 bool X86PassConfig::addPreRewrite() {
-  if (EnableSetCCFixup) {
+  if (!EnableSetCCFixup) {
     addPass(createX86FixupZExt());
   }
   return false;
