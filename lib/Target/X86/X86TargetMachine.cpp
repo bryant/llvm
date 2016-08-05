@@ -29,7 +29,8 @@ static cl::opt<bool> EnableMachineCombinerPass("x86-machine-combiner",
                                cl::desc("Enable the machine combiner pass"),
                                cl::init(true), cl::Hidden);
 
-static cl::opt<bool> EnableSetCCFixup("kuper", cl::desc("Apply X86FixupSetCC"),
+static cl::opt<bool> EnableSetCCFixup("setcc-fixup",
+                                      cl::desc("Apply X86FixupSetCC"),
                                       cl::init(false), cl::Hidden);
 
 namespace llvm {
