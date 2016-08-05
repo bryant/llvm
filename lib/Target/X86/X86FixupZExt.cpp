@@ -70,32 +70,32 @@ dominating_defs(unsigned gr8, const MachineRegisterInfo &mri,
   return defs;
 }
 
-MachineInstr *find_ins(MachineInstr &bottom, vector<Segment> &segments,
-                       LiveIntervals &li) {
+MachineInstr *insert_mov32r0(MachineInstr &def8, vector<Segment> &segments,
+                             LiveIntervals &li) {
   auto slot = [&](MachineInstr &i) { return li.getInstructionIndex(i); };
-  const MachineFunction &f = *bottom.getParent()->getParent();
+  const MachineFunction &f = *def8.getParent()->getParent();
   const auto &tri = f.getSubtarget().getRegisterInfo();
-  MachineBasicBlock &bb = *bottom.getParent();
-  MachineBasicBlock::iterator ins = &bottom;
-  for (; ins != bb.begin(); --ins) {
-    SlotIndex s = slot(*ins);
-    if (!li.getRegUnit(*MCRegUnitIterator(X86::EFLAGS, tri)).liveAt(s)) {
-      break;
+  MachineBasicBlock &bb = *def8.getParent();
+  MachineBasicBlock::iterator ins = &def8;
+
+  if (const Segment *eflagseg =
+          li.getRegUnit(*MCRegUnitIterator(X86::EFLAGS, tri))
+              .getSegmentContaining(slot(def8))) {
+    if (eflagseg->start <= slot(*bb.begin()) && bb.isLiveIn(X86::EFLAGS)) {
+      if (bb.pred_size() > 1) {
+        return nullptr;
+      }
+      segments.push_back(Segment(li.getMBBStartIdx(&bb), slot(def8), nullptr));
+      return insert_mov32r0(*(*bb.pred_begin())->rbegin(), segments, li);
     }
-  }
-  if (ins == bb.begin() && bb.isLiveIn(X86::EFLAGS)) {
-    if (bb.pred_size() > 1) {
-      return nullptr;
-    }
-    segments.push_back(Segment(li.getMBBStartIdx(&bb), slot(bottom), nullptr));
-    return find_ins(*(*bb.pred_begin())->rbegin(), segments, li);
+    ins = li.getInstructionFromIndex(eflagseg->start);
   }
   // insert dummy mov32r0
   MachineInstrBuilder mib =
-      BuildMI(bb, ins, bottom.getDebugLoc(),
+      BuildMI(bb, ins, def8.getDebugLoc(),
               f.getSubtarget().getInstrInfo()->get(X86::MOV32r0), 0);
   li.InsertMachineInstrInMaps(*mib);
-  segments.push_back(Segment(slot(*mib), slot(bottom), nullptr));
+  segments.push_back(Segment(slot(*mib), slot(def8), nullptr));
   return mib;
 }
 
@@ -433,7 +433,7 @@ struct Candidate {
     vector<Segment> xorlive;
     MachineInstr *def, *ins;
     if ((def = valid_candidate(i, li)) == nullptr ||
-        (ins = find_ins(*def, xorlive, li)) == nullptr) {
+        (ins = insert_mov32r0(*def, xorlive, li)) == nullptr) {
       return nullptr;
     }
 
