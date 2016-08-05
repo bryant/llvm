@@ -338,7 +338,7 @@ public:
 
   template <typename C, typename = is_iterable_of<LiveInterval *, C>>
   unique_ptr<vector<MCPhysReg>>
-  alloc_intervals(const C &lives, ArrayRef<MCPhysReg> excepts) const {
+  evict_intervals(const C &lives, ArrayRef<MCPhysReg> excepts) const {
     DenseMap<LiveInterval *, const MCPhysReg *> newmap;
     vector<LiveInterval *> ungrouped(lives.begin(), lives.end());
 
@@ -388,6 +388,28 @@ public:
     for (auto intv_reg : zip_first(lives, std::forward<D>(regs))) {
       lrm->assign(*std::get<0>(intv_reg), std::get<1>(intv_reg));
     }
+  }
+
+  bool reserve_phys_reg(MCPhysReg preg, LiveInterval &live) {
+    vector<LiveInterval *> evictees;
+    if (!interf(live, preg, evictees)) {
+      DEBUG(dbgs() << "ReAllocTool: " << tri->getName(preg)
+                   << " is already free.\n");
+      return true;
+    } else if (evictees.size() > 0) {
+      DEBUG(dbgs() << "ReAllocTool: trying to reserve " << tri->getName(preg)
+                   << " by evicting:\n"
+                   << evictees);
+      vector<MCPhysReg> oldregs = unassign_all(evictees);
+      if (auto newregs = evict_intervals(evictees, {preg})) {
+        assign_all(evictees, *newregs);
+        return true;
+      }
+      assign_all(evictees, oldregs);
+    }
+    DEBUG(dbgs() << "ReAllocTool: unable to reserve " << tri->getName(preg)
+                 << "\n");
+    return false;
   }
 };
 
@@ -603,25 +625,10 @@ struct X86FixupZExt : public MachineFunctionPass {
       c.unassign(ratool);
       bool demote = true;
       for (MCPhysReg preg : c.constraints) {
-        vector<LiveInterval *> evictees;
-        if (!ratool.interf(*c.extra, preg, evictees)) {
-          DEBUG(dbgs() << tri.getName(preg) << "is already free.\nworks\n");
+        if (ratool.reserve_phys_reg(preg, *c.extra)) {
+          DEBUG(dbgs() << "works\n");
           c.assign_new(lrm, li, preg);
           return;
-        } else if (evictees.size() > 0) {
-          DEBUG(dbgs() << "trying to reserve " << tri.getName(preg)
-                       << " by evicting:\n"
-                       << evictees);
-          vector<MCPhysReg> oldregs = ratool.unassign_all(evictees);
-          if (auto newregs = ratool.alloc_intervals(evictees, {preg})) {
-            DEBUG(dbgs() << "works\n");
-            ratool.assign_all(evictees, *newregs);
-            c.assign_new(lrm, li, preg);
-            return;
-          } else {
-            // how depressing.
-            ratool.assign_all(evictees, oldregs);
-          }
         }
         // only demote if RA pass missed all hints
         demote &= preg != get_phys(c.movzx->getOperand(0).getReg(), vrm);
@@ -639,25 +646,8 @@ struct X86FixupZExt : public MachineFunctionPass {
 
     auto try_harder_to_alloc = [&](Candidate &c) {
       for (MCPhysReg newreg : X86::GR32_ABCDRegClass) {
-        vector<LiveInterval *> evictees;
-        if (!ratool.unused_csr.test(newreg)) {
-          DEBUG(dbgs() << "try_harder_to_alloc: trying " << tri.getName(newreg)
-                       << "\n");
-          if (!ratool.interf(*c.extra, newreg, evictees)) {
-            return newreg;
-          } else if (evictees.size() > 0) {
-            DEBUG(dbgs() << "trying to reserve " << tri.getName(newreg)
-                         << " by evicting:\n"
-                         << evictees);
-            vector<MCPhysReg> oldregs = ratool.unassign_all(evictees);
-            if (auto newregs = ratool.alloc_intervals(evictees, {newreg})) {
-              DEBUG(dbgs() << "found new assignment\n");
-              ratool.assign_all(evictees, *newregs);
-              return newreg;
-            }
-            DEBUG(dbgs() << "couldn't re-alloc evictees\n");
-            ratool.assign_all(evictees, oldregs);
-          }
+        if (ratool.reserve_phys_reg(newreg, *c.extra)) {
+          return newreg;
         }
       }
       return static_cast<MCPhysReg>(0);
