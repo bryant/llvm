@@ -376,6 +376,7 @@ struct Candidate {
   // assign/reassign
   unsigned pdest;
   unsigned psrc;
+
   static MachineInstr *valid_candidate(MachineInstr &i, LiveIntervals &li) {
     if (i.getOpcode() != X86::MOVZX32rr8 || i.getOperand(1).getSubReg() != 0) {
       return nullptr;
@@ -411,7 +412,7 @@ struct Candidate {
     }
 
     unsigned dest = i.getOperand(0).getReg(), src = i.getOperand(1).getReg();
-    // look for reg alloc copy instr hints
+    // look for copy instr reg alloc hints
     vector<MCPhysReg> cx;
     for (const MachineInstr &use : mri.use_instructions(dest)) {
       if (use.isCopy() && !tri.isVirtualRegister(use.getOperand(0).getReg())) {
