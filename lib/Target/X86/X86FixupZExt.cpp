@@ -525,9 +525,9 @@ struct Candidate {
     transform(mri.reg_operands(vsrc), push_to(ops),
               [](MachineOperand &op) { return &op; });
     for (MachineOperand *op : ops) {
-      DEBUG(dbgs() << "changing " << (*op));
+      DEBUG(dbgs() << "changing " << (*op->getParent()));
       op->substVirtReg(vdest, X86::sub_8bit, get_tri());
-      DEBUG(dbgs() << " to " << (*op) << "\n");
+      DEBUG(dbgs() << "to " << (*op->getParent()));
     }
 
     li.RemoveMachineInstrFromMaps(*movzx);
@@ -603,14 +603,15 @@ struct X86FixupZExt : public MachineFunctionPass {
       c.unassign(ratool);
       bool demote = true;
       for (MCPhysReg preg : c.constraints) {
-        DEBUG(dbgs() << "trying to remap to " << tri.getName(preg) << "\n");
         vector<LiveInterval *> evictees;
         if (!ratool.interf(*c.extra, preg, evictees)) {
-          DEBUG(dbgs() << "works\n");
+          DEBUG(dbgs() << tri.getName(preg) << "is already free.\nworks\n");
           c.assign_new(lrm, li, preg);
           return;
         } else if (evictees.size() > 0) {
-          DEBUG(dbgs() << "attempting to evict: " << evictees);
+          DEBUG(dbgs() << "trying to reserve " << tri.getName(preg)
+                       << " by evicting:\n"
+                       << evictees);
           vector<MCPhysReg> oldregs = ratool.unassign_all(evictees);
           if (auto newregs = ratool.alloc_intervals(evictees, {preg})) {
             DEBUG(dbgs() << "works\n");
