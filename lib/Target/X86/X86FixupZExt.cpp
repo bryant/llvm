@@ -588,7 +588,8 @@ struct X86FixupZExt : public MachineFunctionPass {
 
     auto try_harder_to_alloc = [&](Candidate &c) {
       for (MCPhysReg newreg : X86::GR32_ABCDRegClass) {
-        if (ratool.reserve_phys_reg(newreg, *c.extra)) {
+        if (!ratool.unused_csr.test(newreg) &&
+            ratool.reserve_phys_reg(newreg, *c.extra)) {
           return newreg;
         }
       }
