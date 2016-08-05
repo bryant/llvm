@@ -437,7 +437,7 @@ struct Candidate {
     li_union(extra.get(), &live32, &live8);
 
     return unique_ptr<Candidate>(new Candidate{
-        ins, def, &i, std::move(cx), &live32, &live8, std::move(extra)});
+        ins, def, &i, std::move(cx), &live32, &live8, std::move(extra), 0, 0});
   }
 
   bool operator<(const Candidate &b) const {
