@@ -540,8 +540,6 @@ struct X86FixupZExt : public MachineFunctionPass {
   }
 
   bool runOnMachineFunction(MachineFunction &f) override {
-    const MachineRegisterInfo &mri = f.getRegInfo();
-    const TargetRegisterInfo &tri = *f.getSubtarget().getRegisterInfo();
     VirtRegMap &vrm = getAnalysis<VirtRegMap>();
     LiveIntervals &li = getAnalysis<LiveIntervals>();
     LiveRegMatrix &lrm = getAnalysis<LiveRegMatrix>();
