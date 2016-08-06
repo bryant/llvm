@@ -47,9 +47,19 @@ def extract_fn(fn, asm):
     return rv.group(0)
 
 def extract_all_fns(asm):
-    reg = re.compile(r"(^[_\$a-zA-Z0-9]+):(.+?^(?:\.Lfunc_end\d+:|\s+ret[qlb]))",
-                     re.M | re.DOTALL)
-    return [AsmFunc(name, body) for name, body in reg.findall(asm)]
+    fns = re.findall(r"(?:\.global|\.globl)\s+([^,\s]+)", asm, flags=re.M)
+    rv = []
+    for fn, nextfn in zip(fns, fns[1:] + [None]):
+        f = re.search(r"^%s:" % re.escape(fn), asm, flags=re.M)
+        if f is None:
+            continue
+        if nextfn is not None:
+            e = re.search(r"^%s:" % re.escape(nextfn), asm, flags=re.M)
+            body = asm[f.span()[1]:e.span()[0]]
+        else:
+            body = asm[f.span()[1]:]
+        rv.append(AsmFunc(f.group(0).rstrip(":"), body))
+    return rv
 
 def sanitize(asm):
     cfi_crap = re.compile(r"^\s+\..+\n", re.M)
