@@ -70,7 +70,27 @@ dominating_defs(unsigned gr8, const MachineRegisterInfo &mri,
   return defs;
 }
 
-MachineInstr *insert_mov32r0(MachineInstr &def8, vector<Segment> &segments,
+void add_seg(SlotIndex s, SlotIndex e, LiveInterval &live, LiveIntervals &li) {
+  VNInfo *valno = !live.hasAtLeastOneValue()
+                      ? live.getNextValue(s, li.getVNInfoAllocator())
+                      : *live.vni_begin();
+  assert(live.getNumValNums() == 1);
+  live.addSegment(Segment(std::move(s), std::move(e), valno));
+}
+
+void add_seg(MachineInstr &s, MachineInstr &e, LiveInterval &live,
+             LiveIntervals &li) {
+  return add_seg(li.getInstructionIndex(s), li.getInstructionIndex(e), live,
+                 li);
+}
+
+void add_segs(LiveInterval &src, LiveInterval &dest, LiveIntervals &li) {
+  for (const Segment &s : src) {
+    add_seg(s.start, s.end, dest, li);
+  }
+}
+
+MachineInstr *insert_mov32r0(MachineInstr &def8, LiveInterval &live,
                              LiveIntervals &li) {
   auto slot = [&](MachineInstr &i) { return li.getInstructionIndex(i); };
   const MachineFunction &f = *def8.getParent()->getParent();
@@ -85,8 +105,8 @@ MachineInstr *insert_mov32r0(MachineInstr &def8, vector<Segment> &segments,
       if (bb.pred_size() > 1) {
         return nullptr;
       }
-      segments.push_back(Segment(li.getMBBStartIdx(&bb), slot(def8), nullptr));
-      return insert_mov32r0(*(*bb.pred_begin())->rbegin(), segments, li);
+      add_seg(li.getMBBStartIdx(&bb), slot(def8), live, li);
+      return insert_mov32r0(*(*bb.pred_begin())->rbegin(), live, li);
     }
     ins = li.getInstructionFromIndex(eflagseg->start);
   }
@@ -94,8 +114,6 @@ MachineInstr *insert_mov32r0(MachineInstr &def8, vector<Segment> &segments,
   MachineInstrBuilder mib =
       BuildMI(bb, ins, def8.getDebugLoc(),
               f.getSubtarget().getInstrInfo()->get(X86::MOV32r0), 0);
-  li.InsertMachineInstrInMaps(*mib);
-  segments.push_back(Segment(slot(*mib), slot(def8), nullptr));
   return mib;
 }
 
@@ -116,15 +134,6 @@ bool interferes(const T &as, const LiveInterval &b,
                 const MachineRegisterInfo &mri) {
   return any_of(as,
                 [&](const LiveInterval *a) { return interferes(*a, b, mri); });
-}
-
-template <typename... Ranges>
-void li_union(LiveRange *dest, const Ranges *... src) {
-  for (const auto *r : {src...}) {
-    for (const Segment &s : *r) {
-      dest->addSegment(Segment(s.start, s.end, nullptr));
-    }
-  }
 }
 
 template <typename Iterator, typename Predicate>
@@ -404,14 +413,30 @@ struct Candidate {
     const MachineRegisterInfo &mri = f.getRegInfo();
     const TargetRegisterInfo &tri = *f.getSubtarget().getRegisterInfo();
 
-    vector<Segment> xorlive;
     MachineInstr *def, *ins;
-    if ((def = valid_candidate(i, li)) == nullptr ||
-        (ins = insert_mov32r0(*def, xorlive, li)) == nullptr) {
+    if ((def = valid_candidate(i, li)) == nullptr) {
       return nullptr;
     }
 
     unsigned dest = i.getOperand(0).getReg(), src = i.getOperand(1).getReg();
+    LiveInterval &live32 = li.getInterval(dest), &live8 = li.getInterval(src);
+    unique_ptr<LiveInterval> extra(new LiveInterval(live32.reg, live32.weight));
+
+    if ((ins = insert_mov32r0(*def, *extra, li)) == nullptr) {
+      return nullptr;
+    }
+
+    li.InsertMachineInstrInMaps(*ins);
+    add_seg(*ins, *def, *extra, li);
+    if (extra->overlaps(live32)) {
+      li.RemoveMachineInstrFromMaps(*ins);
+      ins->eraseFromParent();
+      return nullptr;
+    }
+
+    add_segs(live32, *extra, li);
+    add_segs(live8, *extra, li);
+
     // look for copy instr reg alloc hints
     vector<MCPhysReg> cx;
     for (const MachineInstr &use : mri.use_instructions(dest)) {
@@ -428,13 +453,6 @@ struct Candidate {
         }
       }
     }
-
-    LiveInterval &live32 = li.getInterval(dest), &live8 = li.getInterval(src);
-    unique_ptr<LiveInterval> extra(new LiveInterval(live32.reg, live32.weight));
-    for (Segment seg : xorlive) {
-      extra->addSegment(seg);
-    }
-    li_union(extra.get(), &live32, &live8);
 
     return unique_ptr<Candidate>(new Candidate{
         ins, def, &i, std::move(cx), &live32, &live8, std::move(extra), 0, 0});
@@ -455,10 +473,7 @@ struct Candidate {
   friend raw_ostream &operator<<(raw_ostream &out, const Candidate &c) {
     out << "Candidate:\n\tinserted: " << (*c.ins)
         << "\tgr8 def: " << (*c.gr8def) << "\tmovzx: " << (*c.movzx)
-        << "\txor gr32: ";
-    for (const Segment &s : *c.extra) {
-      out << "[" << s.start << ", " << s.end << "), ";
-    }
+        << "\txor gr32: " << (*c.extra);
     if (c.constraints.size() > 0) {
       out << "\n\tconstraints:";
       for (unsigned cx : c.constraints) {
