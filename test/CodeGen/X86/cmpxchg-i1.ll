@@ -34,7 +34,7 @@ define i64 @cmpxchg_sext(i32* %addr, i32 %desired, i32 %new) {
 ; CHECK-LABEL: cmpxchg_sext:
 ; CHECK-DAG: cmpxchgl
 ; CHECK-NOT: cmpl
-; CHECK: sete %cl
+; CHECK: sete %al
 ; CHECK: retq
   %pair = cmpxchg i32* %addr, i32 %desired, i32 %new seq_cst seq_cst
   %success = extractvalue { i32, i1 } %pair, 1
