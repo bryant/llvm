@@ -124,16 +124,11 @@ raw_ostream &operator<<(raw_ostream &out, const T &es) {
   }
   return out;
 }
-bool interferes(const LiveInterval &a, const LiveInterval &b,
-                const MachineRegisterInfo &mri) {
-  return a.overlaps(b) && mri.getRegClass(a.reg) == mri.getRegClass(b.reg);
-}
 
 template <typename T, typename = is_iterable_of<LiveInterval *, T>>
 bool interferes(const T &as, const LiveInterval &b,
                 const MachineRegisterInfo &mri) {
-  return any_of(as,
-                [&](const LiveInterval *a) { return interferes(*a, b, mri); });
+  return any_of(as, [&](const LiveInterval *a) { return a->overlaps(b); });
 }
 
 template <typename Iterator, typename Predicate>
