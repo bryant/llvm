@@ -158,16 +158,37 @@ struct ReAllocTool {
   RegisterClassInfo rci;
   BitVector unused_csr;
 
-public:
+  void add_reg_to_bv(BitVector &bv, MCPhysReg reg) const {
+    for (MCRegAliasIterator r(reg, tri, true); r.isValid(); ++r) {
+      bv.set(*r);
+    }
+  }
+
+  BitVector bv_from_regs(ArrayRef<MCPhysReg> regs) const {
+    BitVector rv(tri->getNumRegs());
+    for (const MCPhysReg &r : regs) {
+      add_reg_to_bv(rv, r);
+    }
+    return rv;
+  }
+
+  template <typename Predicate>
+  BitVector bv_from_regs(ArrayRef<MCPhysReg> regs, Predicate p) const {
+    BitVector rv(tri->getNumRegs());
+    for (const MCPhysReg &r : regs) {
+      if (p(r)) {
+        add_reg_to_bv(rv, r);
+      }
+    }
+  }
+
   ReAllocTool(const MachineFunction &f, LiveRegMatrix &lrm_, VirtRegMap &vrm_)
       : tri(f.getSubtarget().getRegisterInfo()), mri(&f.getRegInfo()),
         lrm(&lrm_), vrm(&vrm_), rci(), unused_csr(tri->getNumRegs()) {
     const MCPhysReg *csr = tri->getCalleeSavedRegs(&f);
     for (unsigned i = 0; csr[i] != 0; i += 1) {
       if (!lrm->isPhysRegUsed(csr[i])) {
-        for (MCRegAliasIterator reg(csr[i], tri, true); reg.isValid(); ++reg) {
-          unused_csr.set(*reg);
-        }
+        add_reg_to_bv(unused_csr, csr[i]);
       }
     }
     rci.runOnMachineFunction(f);
