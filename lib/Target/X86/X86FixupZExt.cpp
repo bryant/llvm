@@ -233,8 +233,8 @@ struct ReAllocTool {
     return rv == ord.end() ? nullptr : rv;
   }
 
-  MCPhysReg alloc(LiveInterval &live, const TargetRegisterClass *rc = nullptr,
-                  const BitVector *except = nullptr) const {
+  MCPhysReg alloc(LiveInterval &live, const BitVector *except = nullptr,
+                  const TargetRegisterClass *rc = nullptr) const {
     const MCPhysReg *rv = alloc_next(live, except, nullptr, rc);
     return rv == nullptr ? 0 : *rv;
   }
@@ -243,18 +243,10 @@ struct ReAllocTool {
   // nullptr if impossible.
   template <typename C, typename = is_iterable_of<LiveInterval *, C>>
   unique_ptr<vector<pair<LiveInterval *, const MCPhysReg *>>>
-  alloc_interf_intervals(C group, ArrayRef<MCPhysReg> excepts) const {
+  alloc_interf_intervals(C group, const BitVector *except = nullptr) const {
     if (group.empty()) {
       return make_unique<vector<pair<LiveInterval *, const MCPhysReg *>>>();
     }
-    BitVector except(tri->getNumRegs());
-
-    for (MCPhysReg r : excepts) {
-      for (MCRegAliasIterator reg(r, tri, true); reg.isValid(); ++reg) {
-        except.set(*reg);
-      }
-    }
-
     auto assigned =
         make_unique<vector<pair<LiveInterval *, const MCPhysReg *>>>();
 
@@ -273,7 +265,7 @@ struct ReAllocTool {
     auto try_next_in_group = [&]() {
       assert(!group.empty());
       assigned->push_back(
-          std::make_pair(group.back(), alloc_next(*group.back(), &except)));
+          std::make_pair(group.back(), alloc_next(*group.back(), except)));
       group.pop_back();
       maybe_assign(assigned->back());
     };
@@ -288,8 +280,8 @@ struct ReAllocTool {
     auto try_next_reg = [&]() {
       assert(!assigned->empty());
       maybe_unassign(assigned->back());
-      assigned->back().second = alloc_next(*assigned->back().first, &except,
-                                           &assigned->back().second);
+      assigned->back().second =
+          alloc_next(*assigned->back().first, except, &assigned->back().second);
       maybe_assign(assigned->back());
     };
 
@@ -314,7 +306,7 @@ struct ReAllocTool {
 
   template <typename C, typename = is_iterable_of<LiveInterval *, C>>
   unique_ptr<vector<MCPhysReg>>
-  evict_intervals(const C &lives, ArrayRef<MCPhysReg> excepts) const {
+  evict_intervals(const C &lives, const BitVector *excepts = nullptr) const {
     DenseMap<LiveInterval *, const MCPhysReg *> newmap;
     vector<LiveInterval *> ungrouped(lives.begin(), lives.end());
 
@@ -377,7 +369,8 @@ struct ReAllocTool {
                    << " by evicting:\n"
                    << evictees);
       vector<MCPhysReg> oldregs = unassign_all(evictees);
-      if (auto newregs = evict_intervals(evictees, {preg})) {
+      BitVector bv = bv_from_regs(preg);
+      if (auto newregs = evict_intervals(evictees, &bv)) {
         assign_all(evictees, *newregs);
         return true;
       }
@@ -540,16 +533,29 @@ struct Candidate {
     li.removeInterval(vsrc);
     li.removeInterval(vdest);
 
+    const TargetRegisterClass &destcls = *mri.getRegClass(vdest);
     ins->getOperand(0).setReg(vdest);
-    if (mri.getRegClass(vdest)->getSize() != 32 / 8) {
-      assert(mri.getRegClass(vdest)->getSize() > 32 / 8);
+    if (destcls.getSize() > 32 / 8) {
       ins->getOperand(0).setSubReg(X86::sub_32bit);
       ins->getOperand(0).setIsUndef();
     }
-    mri.setRegClass(vdest, f.getSubtarget<X86Subtarget>().is64Bit()
-                               ? &X86::GR32RegClass
-                               : &X86::GR32_ABCDRegClass);
+    if (const TargetRegisterClass *newcls = gr8def->getRegClassConstraintEffect(
+            0, ins->getRegClassConstraintEffect(
+                   0, &destcls, f.getSubtarget().getInstrInfo(), &get_tri()),
+            f.getSubtarget().getInstrInfo(), &get_tri())) {
+      DEBUG(dbgs() << "updating reg class from "
+                   << get_tri().getRegClassName(&destcls) << " to "
+                   << get_tri().getRegClassName(newcls) << "\n");
+      mri.setRegClass(vdest, newcls);
+    } else {
+      DEBUG(dbgs() << "not updating reg class\n");
+    }
     lrm.assign(li.createAndComputeVirtRegInterval(vdest), newdest);
+  }
+
+  bool valid_dest_reg(MCPhysReg physreg) const {
+    const auto &mri = movzx->getParent()->getParent()->getRegInfo();
+    return mri.getRegClass(movzx->getOperand(0).getReg())->contains(physreg);
   }
 };
 
@@ -590,6 +596,15 @@ struct X86FixupZExt : public MachineFunctionPass {
       }
     }
 
+    BitVector nosub8;
+    if (f.getSubtarget<X86Subtarget>().is64Bit()) {
+      nosub8 = ratool.bv_from_regs({X86::RIP});
+    } else {
+      nosub8 = ratool.bv_from_regs(ArrayRef<MCPhysReg>(
+          X86::GR32_ABCDRegClass.begin(), X86::GR32_ABCDRegClass.end()));
+      nosub8.flip();
+    }
+
     DEBUG(vrm.print(dbgs()));
     DEBUG(f.print(dbgs(), li.getSlotIndexes()));
     std::sort(constrained.begin(), constrained.end());
@@ -598,7 +613,8 @@ struct X86FixupZExt : public MachineFunctionPass {
       c.unassign(ratool);
       bool demote = true;
       for (MCPhysReg preg : c.constraints) {
-        if (ratool.reserve_phys_reg(preg, *c.extra)) {
+        if (!nosub8.test(preg) && c.valid_dest_reg(preg) &&
+            ratool.reserve_phys_reg(preg, *c.extra)) {
           DEBUG(dbgs() << "works\n");
           c.assign_new(lrm, li, preg);
           return;
@@ -619,7 +635,7 @@ struct X86FixupZExt : public MachineFunctionPass {
 
     auto try_harder_to_alloc = [&](Candidate &c) {
       for (MCPhysReg newreg : X86::GR32_ABCDRegClass) {
-        if (!ratool.unused_csr.test(newreg) &&
+        if (c.valid_dest_reg(newreg) && !ratool.unused_csr.test(newreg) &&
             ratool.reserve_phys_reg(newreg, *c.extra)) {
           return newreg;
         }
@@ -633,12 +649,12 @@ struct X86FixupZExt : public MachineFunctionPass {
       c.unassign(ratool);
       MCPhysReg newreg;
       if (!f.getSubtarget<X86Subtarget>().is64Bit() &&
-          ((newreg = ratool.alloc(*c.extra, &X86::GR32_ABCDRegClass)) != 0 ||
+          ((newreg = ratool.alloc(*c.extra, &nosub8)) != 0 ||
            (newreg = try_harder_to_alloc(c)) != 0)) {
         DEBUG(dbgs() << "works\n");
         c.assign_new(lrm, li, newreg);
       } else if (f.getSubtarget<X86Subtarget>().is64Bit() &&
-                 (newreg = ratool.alloc(*c.extra)) != 0) {
+                 (newreg = ratool.alloc(*c.extra, &nosub8)) != 0) {
         DEBUG(dbgs() << "works\n");
         c.assign_new(lrm, li, newreg);
       } else {
