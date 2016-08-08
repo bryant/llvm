@@ -494,13 +494,13 @@ struct Candidate {
     return out;
   }
 
-  X86RegisterInfo &tri() const {
-    return *reinterpret_cast<X86RegisterInfo *>(
-        ins->getParent()->getParent().getSubtarget().getRegisterInfo());
+  const X86RegisterInfo &tri() const {
+    return *reinterpret_cast<const X86RegisterInfo *>(
+        ins->getParent()->getParent()->getSubtarget().getRegisterInfo());
   }
 
-  X86InstrInfo &tii() const {
-    return *reinterpret_cast<X86InstrInfo *>(
+  const X86InstrInfo &tii() const {
+    return *reinterpret_cast<const X86InstrInfo *>(
         ins->getParent()->getParent()->getSubtarget().getInstrInfo());
   }
 
