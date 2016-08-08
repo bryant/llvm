@@ -149,20 +149,20 @@ declare <2 x double> @llvm.x86.sse2.cmp.sd(<2 x double>, <2 x double>, i8) nounw
 define i32 @test_x86_sse2_comieq_sd(<2 x double> %a0, <2 x double> %a1) {
 ; AVX-LABEL: test_x86_sse2_comieq_sd:
 ; AVX:       ## BB#0:
+; AVX-NEXT:    xorl %eax, %eax
 ; AVX-NEXT:    vcomisd %xmm1, %xmm0
-; AVX-NEXT:    setnp %al
-; AVX-NEXT:    sete %cl
-; AVX-NEXT:    andb %al, %cl
-; AVX-NEXT:    movzbl %cl, %eax
+; AVX-NEXT:    setnp %cl
+; AVX-NEXT:    sete %al
+; AVX-NEXT:    andb %cl, %al
 ; AVX-NEXT:    retl
 ;
 ; AVX512VL-LABEL: test_x86_sse2_comieq_sd:
 ; AVX512VL:       ## BB#0:
+; AVX512VL-NEXT:    xorl %eax, %eax
 ; AVX512VL-NEXT:    vcomisd %xmm1, %xmm0
-; AVX512VL-NEXT:    setnp %al
-; AVX512VL-NEXT:    sete %cl
-; AVX512VL-NEXT:    andb %al, %cl
-; AVX512VL-NEXT:    movzbl %cl, %eax
+; AVX512VL-NEXT:    setnp %cl
+; AVX512VL-NEXT:    sete %al
+; AVX512VL-NEXT:    andb %cl, %al
 ; AVX512VL-NEXT:    retl
   %res = call i32 @llvm.x86.sse2.comieq.sd(<2 x double> %a0, <2 x double> %a1) ; <i32> [#uses=1]
   ret i32 %res
@@ -253,20 +253,20 @@ declare i32 @llvm.x86.sse2.comilt.sd(<2 x double>, <2 x double>) nounwind readno
 define i32 @test_x86_sse2_comineq_sd(<2 x double> %a0, <2 x double> %a1) {
 ; AVX-LABEL: test_x86_sse2_comineq_sd:
 ; AVX:       ## BB#0:
+; AVX-NEXT:    xorl %eax, %eax
 ; AVX-NEXT:    vcomisd %xmm1, %xmm0
-; AVX-NEXT:    setp %al
-; AVX-NEXT:    setne %cl
-; AVX-NEXT:    orb %al, %cl
-; AVX-NEXT:    movzbl %cl, %eax
+; AVX-NEXT:    setp %cl
+; AVX-NEXT:    setne %al
+; AVX-NEXT:    orb %cl, %al
 ; AVX-NEXT:    retl
 ;
 ; AVX512VL-LABEL: test_x86_sse2_comineq_sd:
 ; AVX512VL:       ## BB#0:
+; AVX512VL-NEXT:    xorl %eax, %eax
 ; AVX512VL-NEXT:    vcomisd %xmm1, %xmm0
-; AVX512VL-NEXT:    setp %al
-; AVX512VL-NEXT:    setne %cl
-; AVX512VL-NEXT:    orb %al, %cl
-; AVX512VL-NEXT:    movzbl %cl, %eax
+; AVX512VL-NEXT:    setp %cl
+; AVX512VL-NEXT:    setne %al
+; AVX512VL-NEXT:    orb %cl, %al
 ; AVX512VL-NEXT:    retl
   %res = call i32 @llvm.x86.sse2.comineq.sd(<2 x double> %a0, <2 x double> %a1) ; <i32> [#uses=1]
   ret i32 %res
@@ -1240,20 +1240,20 @@ declare <2 x double> @llvm.x86.sse2.sub.sd(<2 x double>, <2 x double>) nounwind 
 define i32 @test_x86_sse2_ucomieq_sd(<2 x double> %a0, <2 x double> %a1) {
 ; AVX-LABEL: test_x86_sse2_ucomieq_sd:
 ; AVX:       ## BB#0:
+; AVX-NEXT:    xorl %eax, %eax
 ; AVX-NEXT:    vucomisd %xmm1, %xmm0
-; AVX-NEXT:    setnp %al
-; AVX-NEXT:    sete %cl
-; AVX-NEXT:    andb %al, %cl
-; AVX-NEXT:    movzbl %cl, %eax
+; AVX-NEXT:    setnp %cl
+; AVX-NEXT:    sete %al
+; AVX-NEXT:    andb %cl, %al
 ; AVX-NEXT:    retl
 ;
 ; AVX512VL-LABEL: test_x86_sse2_ucomieq_sd:
 ; AVX512VL:       ## BB#0:
+; AVX512VL-NEXT:    xorl %eax, %eax
 ; AVX512VL-NEXT:    vucomisd %xmm1, %xmm0
-; AVX512VL-NEXT:    setnp %al
-; AVX512VL-NEXT:    sete %cl
-; AVX512VL-NEXT:    andb %al, %cl
-; AVX512VL-NEXT:    movzbl %cl, %eax
+; AVX512VL-NEXT:    setnp %cl
+; AVX512VL-NEXT:    sete %al
+; AVX512VL-NEXT:    andb %cl, %al
 ; AVX512VL-NEXT:    retl
   %res = call i32 @llvm.x86.sse2.ucomieq.sd(<2 x double> %a0, <2 x double> %a1) ; <i32> [#uses=1]
   ret i32 %res
@@ -1344,20 +1344,20 @@ declare i32 @llvm.x86.sse2.ucomilt.sd(<2 x double>, <2 x double>) nounwind readn
 define i32 @test_x86_sse2_ucomineq_sd(<2 x double> %a0, <2 x double> %a1) {
 ; AVX-LABEL: test_x86_sse2_ucomineq_sd:
 ; AVX:       ## BB#0:
+; AVX-NEXT:    xorl %eax, %eax
 ; AVX-NEXT:    vucomisd %xmm1, %xmm0
-; AVX-NEXT:    setp %al
-; AVX-NEXT:    setne %cl
-; AVX-NEXT:    orb %al, %cl
-; AVX-NEXT:    movzbl %cl, %eax
+; AVX-NEXT:    setp %cl
+; AVX-NEXT:    setne %al
+; AVX-NEXT:    orb %cl, %al
 ; AVX-NEXT:    retl
 ;
 ; AVX512VL-LABEL: test_x86_sse2_ucomineq_sd:
 ; AVX512VL:       ## BB#0:
+; AVX512VL-NEXT:    xorl %eax, %eax
 ; AVX512VL-NEXT:    vucomisd %xmm1, %xmm0
-; AVX512VL-NEXT:    setp %al
-; AVX512VL-NEXT:    setne %cl
-; AVX512VL-NEXT:    orb %al, %cl
-; AVX512VL-NEXT:    movzbl %cl, %eax
+; AVX512VL-NEXT:    setp %cl
+; AVX512VL-NEXT:    setne %al
+; AVX512VL-NEXT:    orb %cl, %al
 ; AVX512VL-NEXT:    retl
   %res = call i32 @llvm.x86.sse2.ucomineq.sd(<2 x double> %a0, <2 x double> %a1) ; <i32> [#uses=1]
   ret i32 %res
@@ -2333,20 +2333,20 @@ declare <4 x float> @llvm.x86.sse.cmp.ss(<4 x float>, <4 x float>, i8) nounwind 
 define i32 @test_x86_sse_comieq_ss(<4 x float> %a0, <4 x float> %a1) {
 ; AVX-LABEL: test_x86_sse_comieq_ss:
 ; AVX:       ## BB#0:
+; AVX-NEXT:    xorl %eax, %eax
 ; AVX-NEXT:    vcomiss %xmm1, %xmm0
-; AVX-NEXT:    setnp %al
-; AVX-NEXT:    sete %cl
-; AVX-NEXT:    andb %al, %cl
-; AVX-NEXT:    movzbl %cl, %eax
+; AVX-NEXT:    setnp %cl
+; AVX-NEXT:    sete %al
+; AVX-NEXT:    andb %cl, %al
 ; AVX-NEXT:    retl
 ;
 ; AVX512VL-LABEL: test_x86_sse_comieq_ss:
 ; AVX512VL:       ## BB#0:
+; AVX512VL-NEXT:    xorl %eax, %eax
 ; AVX512VL-NEXT:    vcomiss %xmm1, %xmm0
-; AVX512VL-NEXT:    setnp %al
-; AVX512VL-NEXT:    sete %cl
-; AVX512VL-NEXT:    andb %al, %cl
-; AVX512VL-NEXT:    movzbl %cl, %eax
+; AVX512VL-NEXT:    setnp %cl
+; AVX512VL-NEXT:    sete %al
+; AVX512VL-NEXT:    andb %cl, %al
 ; AVX512VL-NEXT:    retl
   %res = call i32 @llvm.x86.sse.comieq.ss(<4 x float> %a0, <4 x float> %a1) ; <i32> [#uses=1]
   ret i32 %res
@@ -2437,20 +2437,20 @@ declare i32 @llvm.x86.sse.comilt.ss(<4 x float>, <4 x float>) nounwind readnone
 define i32 @test_x86_sse_comineq_ss(<4 x float> %a0, <4 x float> %a1) {
 ; AVX-LABEL: test_x86_sse_comineq_ss:
 ; AVX:       ## BB#0:
+; AVX-NEXT:    xorl %eax, %eax
 ; AVX-NEXT:    vcomiss %xmm1, %xmm0
-; AVX-NEXT:    setp %al
-; AVX-NEXT:    setne %cl
-; AVX-NEXT:    orb %al, %cl
-; AVX-NEXT:    movzbl %cl, %eax
+; AVX-NEXT:    setp %cl
+; AVX-NEXT:    setne %al
+; AVX-NEXT:    orb %cl, %al
 ; AVX-NEXT:    retl
 ;
 ; AVX512VL-LABEL: test_x86_sse_comineq_ss:
 ; AVX512VL:       ## BB#0:
+; AVX512VL-NEXT:    xorl %eax, %eax
 ; AVX512VL-NEXT:    vcomiss %xmm1, %xmm0
-; AVX512VL-NEXT:    setp %al
-; AVX512VL-NEXT:    setne %cl
-; AVX512VL-NEXT:    orb %al, %cl
-; AVX512VL-NEXT:    movzbl %cl, %eax
+; AVX512VL-NEXT:    setp %cl
+; AVX512VL-NEXT:    setne %al
+; AVX512VL-NEXT:    orb %cl, %al
 ; AVX512VL-NEXT:    retl
   %res = call i32 @llvm.x86.sse.comineq.ss(<4 x float> %a0, <4 x float> %a1) ; <i32> [#uses=1]
   ret i32 %res
@@ -2773,20 +2773,20 @@ declare <4 x float> @llvm.x86.sse.sub.ss(<4 x float>, <4 x float>) nounwind read
 define i32 @test_x86_sse_ucomieq_ss(<4 x float> %a0, <4 x float> %a1) {
 ; AVX-LABEL: test_x86_sse_ucomieq_ss:
 ; AVX:       ## BB#0:
+; AVX-NEXT:    xorl %eax, %eax
 ; AVX-NEXT:    vucomiss %xmm1, %xmm0
-; AVX-NEXT:    setnp %al
-; AVX-NEXT:    sete %cl
-; AVX-NEXT:    andb %al, %cl
-; AVX-NEXT:    movzbl %cl, %eax
+; AVX-NEXT:    setnp %cl
+; AVX-NEXT:    sete %al
+; AVX-NEXT:    andb %cl, %al
 ; AVX-NEXT:    retl
 ;
 ; AVX512VL-LABEL: test_x86_sse_ucomieq_ss:
 ; AVX512VL:       ## BB#0:
+; AVX512VL-NEXT:    xorl %eax, %eax
 ; AVX512VL-NEXT:    vucomiss %xmm1, %xmm0
-; AVX512VL-NEXT:    setnp %al
-; AVX512VL-NEXT:    sete %cl
-; AVX512VL-NEXT:    andb %al, %cl
-; AVX512VL-NEXT:    movzbl %cl, %eax
+; AVX512VL-NEXT:    setnp %cl
+; AVX512VL-NEXT:    sete %al
+; AVX512VL-NEXT:    andb %cl, %al
 ; AVX512VL-NEXT:    retl
   %res = call i32 @llvm.x86.sse.ucomieq.ss(<4 x float> %a0, <4 x float> %a1) ; <i32> [#uses=1]
   ret i32 %res
@@ -2877,20 +2877,20 @@ declare i32 @llvm.x86.sse.ucomilt.ss(<4 x float>, <4 x float>) nounwind readnone
 define i32 @test_x86_sse_ucomineq_ss(<4 x float> %a0, <4 x float> %a1) {
 ; AVX-LABEL: test_x86_sse_ucomineq_ss:
 ; AVX:       ## BB#0:
+; AVX-NEXT:    xorl %eax, %eax
 ; AVX-NEXT:    vucomiss %xmm1, %xmm0
-; AVX-NEXT:    setp %al
-; AVX-NEXT:    setne %cl
-; AVX-NEXT:    orb %al, %cl
-; AVX-NEXT:    movzbl %cl, %eax
+; AVX-NEXT:    setp %cl
+; AVX-NEXT:    setne %al
+; AVX-NEXT:    orb %cl, %al
 ; AVX-NEXT:    retl
 ;
 ; AVX512VL-LABEL: test_x86_sse_ucomineq_ss:
 ; AVX512VL:       ## BB#0:
+; AVX512VL-NEXT:    xorl %eax, %eax
 ; AVX512VL-NEXT:    vucomiss %xmm1, %xmm0
-; AVX512VL-NEXT:    setp %al
-; AVX512VL-NEXT:    setne %cl
-; AVX512VL-NEXT:    orb %al, %cl
-; AVX512VL-NEXT:    movzbl %cl, %eax
+; AVX512VL-NEXT:    setp %cl
+; AVX512VL-NEXT:    setne %al
+; AVX512VL-NEXT:    orb %cl, %al
 ; AVX512VL-NEXT:    retl
   %res = call i32 @llvm.x86.sse.ucomineq.ss(<4 x float> %a0, <4 x float> %a1) ; <i32> [#uses=1]
   ret i32 %res

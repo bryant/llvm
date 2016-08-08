@@ -51,11 +51,11 @@ l2:
 define i32 @test3(float %a, float %b) {
 ; ALL-LABEL: test3:
 ; ALL:       ## BB#0:
+; ALL-NEXT:    xorl %eax, %eax
 ; ALL-NEXT:    vucomiss %xmm1, %xmm0
-; ALL-NEXT:    setnp %al
-; ALL-NEXT:    sete %cl
-; ALL-NEXT:    andb %al, %cl
-; ALL-NEXT:    movzbl %cl, %eax
+; ALL-NEXT:    setnp %cl
+; ALL-NEXT:    sete %al
+; ALL-NEXT:    andb %cl, %al
 ; ALL-NEXT:    retq
 
   %cmp10.i = fcmp oeq float %a, %b
@@ -67,12 +67,12 @@ define float @test5(float %p) #0 {
 ; ALL-LABEL: test5:
 ; ALL:       ## BB#0: ## %entry
 ; ALL-NEXT:    vxorps %xmm1, %xmm1, %xmm1
+; ALL-NEXT:    xorl %eax, %eax
 ; ALL-NEXT:    vucomiss %xmm1, %xmm0
 ; ALL-NEXT:    jne LBB3_1
 ; ALL-NEXT:    jnp LBB3_2
 ; ALL-NEXT:  LBB3_1: ## %if.end
 ; ALL-NEXT:    seta %al
-; ALL-NEXT:    movzbl %al, %eax
 ; ALL-NEXT:    leaq {{.*}}(%rip), %rcx
 ; ALL-NEXT:    vmovss {{.*#+}} xmm0 = mem[0],zero,zero,zero
 ; ALL-NEXT:  LBB3_2: ## %return
