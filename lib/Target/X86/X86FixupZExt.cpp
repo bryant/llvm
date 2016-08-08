@@ -486,7 +486,7 @@ struct Candidate {
     if (c.constraints.size() > 0) {
       out << "\n\tconstraints:";
       for (unsigned cx : c.constraints) {
-        out << " " << PrintReg(cx, &c.get_tri());
+        out << " " << PrintReg(cx, &c.tri());
       }
     } else {
       out << "\n\tno constraints.";
@@ -494,10 +494,19 @@ struct Candidate {
     return out;
   }
 
-  const X86RegisterInfo &get_tri() const {
+  X86RegisterInfo &tri() const {
     const MachineFunction &f = *ins->getParent()->getParent();
     return *reinterpret_cast<const X86RegisterInfo *>(
         f.getSubtarget().getRegisterInfo());
+  }
+
+  X86InstrInfo &tii() const {
+    return *reinterpret_cast<const X86InstrInfo *>(
+        ins->getParent()->getParent()->getSubtarget().getInstrInfo());
+  }
+
+  MachineRegisterInfo &mri() const {
+    return ins->getParent()->getParent()->getRegInfo();
   }
 
   void unassign(ReAllocTool &ratool) {
@@ -516,15 +525,13 @@ struct Candidate {
     unsigned vdest = movzx->getOperand(0).getReg();
     unsigned vsrc = movzx->getOperand(1).getReg();
 
-    MachineFunction &f = *ins->getParent()->getParent();
-    MachineRegisterInfo &mri = f.getRegInfo();
     // in-place operand mutation would confuse defusechain_iterator
     vector<MachineOperand *> ops;
-    transform(mri.reg_operands(vsrc), push_to(ops),
+    transform(mri().reg_operands(vsrc), push_to(ops),
               [](MachineOperand &op) { return &op; });
     for (MachineOperand *op : ops) {
       DEBUG(dbgs() << "changing " << (*op->getParent()));
-      op->substVirtReg(vdest, X86::sub_8bit, get_tri());
+      op->substVirtReg(vdest, X86::sub_8bit, tri());
       DEBUG(dbgs() << "to " << (*op->getParent()));
     }
 
@@ -533,20 +540,19 @@ struct Candidate {
     li.removeInterval(vsrc);
     li.removeInterval(vdest);
 
-    const TargetRegisterClass &destcls = *mri.getRegClass(vdest);
+    const TargetRegisterClass &destcls = *mri().getRegClass(vdest);
     ins->getOperand(0).setReg(vdest);
     if (destcls.getSize() > 32 / 8) {
       ins->getOperand(0).setSubReg(X86::sub_32bit);
       ins->getOperand(0).setIsUndef();
     }
     if (const TargetRegisterClass *newcls = gr8def->getRegClassConstraintEffect(
-            0, ins->getRegClassConstraintEffect(
-                   0, &destcls, f.getSubtarget().getInstrInfo(), &get_tri()),
-            f.getSubtarget().getInstrInfo(), &get_tri())) {
+            0, ins->getRegClassConstraintEffect(0, &destcls, tii(), &tri()),
+            tii(), &tri())) {
       DEBUG(dbgs() << "updating reg class from "
-                   << get_tri().getRegClassName(&destcls) << " to "
-                   << get_tri().getRegClassName(newcls) << "\n");
-      mri.setRegClass(vdest, newcls);
+                   << tri().getRegClassName(&destcls) << " to "
+                   << tri().getRegClassName(newcls) << "\n");
+      mri().setRegClass(vdest, newcls);
     } else {
       DEBUG(dbgs() << "not updating reg class\n");
     }
@@ -554,8 +560,7 @@ struct Candidate {
   }
 
   bool valid_dest_reg(MCPhysReg physreg) const {
-    const auto &mri = movzx->getParent()->getParent()->getRegInfo();
-    return mri.getRegClass(movzx->getOperand(0).getReg())->contains(physreg);
+    return mri().getRegClass(movzx->getOperand(0).getReg())->contains(physreg);
   }
 };
 
