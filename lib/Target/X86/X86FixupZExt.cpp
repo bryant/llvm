@@ -620,12 +620,6 @@ struct X86FixupZExt : public MachineFunctionPass {
           ((newreg = ratool.alloc(*c.extra, &X86::GR32_ABCDRegClass)) != 0 ||
            (newreg = try_harder_to_alloc(c)) != 0)) {
         DEBUG(dbgs() << "works\n");
-        // one last check
-        vector<LiveInterval *> evictees;
-        if (ratool.interf(*c.extra, newreg, evictees)) {
-          DEBUG(dbgs() << evictees);
-          assert(false);
-        }
         c.assign_new(lrm, li, newreg);
       } else if (f.getSubtarget<X86Subtarget>().is64Bit() &&
                  (newreg = ratool.alloc(*c.extra)) != 0) {
