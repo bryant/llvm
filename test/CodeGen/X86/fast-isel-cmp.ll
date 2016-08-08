@@ -8,9 +8,9 @@ define zeroext i1 @fcmp_oeq(float %x, float %y) {
 ; SDAG-NEXT:  andl     $1, %eax
 ; FAST-LABEL: fcmp_oeq
 ; FAST:       ucomiss  %xmm1, %xmm0
-; FAST-NEXT:  sete     %al
-; FAST-NEXT:  setnp    %cl
-; FAST-NEXT:  andb     %al, %cl
+; FAST-NEXT:  sete     %cl
+; FAST-NEXT:  setnp    %al
+; FAST-NEXT:  andb     %cl, %al
   %1 = fcmp oeq float %x, %y
   ret i1 %1
 }
@@ -153,9 +153,9 @@ define zeroext i1 @fcmp_une(float %x, float %y) {
 ; SDAG-NEXT:  andl     $1, %eax
 ; FAST-LABEL: fcmp_une
 ; FAST:       ucomiss  %xmm1, %xmm0
-; FAST-NEXT:  setne    %al
-; FAST-NEXT:  setp     %cl
-; FAST-NEXT:  orb      %al, %cl
+; FAST-NEXT:  setne    %cl
+; FAST-NEXT:  setp     %al
+; FAST-NEXT:  orb      %cl, %al
   %1 = fcmp une float %x, %y
   ret i1 %1
 }
@@ -290,10 +290,11 @@ define zeroext i1 @fcmp_oeq3(float %x) {
 ; SDAG-NEXT:  andl     $1, %eax
 ; FAST-LABEL: fcmp_oeq3
 ; FAST:       xorps    %xmm1, %xmm1
+; FAST-NEXT:  xorl     %eax, %eax
 ; FAST-NEXT:  ucomiss  %xmm1, %xmm0
-; FAST-NEXT:  sete     %al
-; FAST-NEXT:  setnp    %cl
-; FAST-NEXT:  andb     %al, %cl
+; FAST-NEXT:  sete     %cl
+; FAST-NEXT:  setnp    %al
+; FAST-NEXT:  andb     %cl, %al
   %1 = fcmp oeq float %x, 0.000000e+00
   ret i1 %1
 }
@@ -314,6 +315,7 @@ define zeroext i1 @fcmp_ogt3(float %x) {
 ; SDAG-NEXT:  seta     %al
 ; FAST-LABEL: fcmp_ogt3
 ; FAST:       xorps    %xmm1, %xmm1
+; FAST-NEXT:  xorl     %eax, %eax
 ; FAST-NEXT:  ucomiss  %xmm1, %xmm0
 ; FAST-NEXT:  seta     %al
   %1 = fcmp ogt float %x, 0.000000e+00
@@ -338,6 +340,7 @@ define zeroext i1 @fcmp_oge3(float %x) {
 ; SDAG-NEXT:  setae    %al
 ; FAST-LABEL: fcmp_oge3
 ; FAST:       xorps    %xmm1, %xmm1
+; FAST-NEXT:  xorl     %eax, %eax
 ; FAST-NEXT:  ucomiss  %xmm1, %xmm0
 ; FAST-NEXT:  setae    %al
   %1 = fcmp oge float %x, 0.000000e+00
@@ -360,6 +363,7 @@ define zeroext i1 @fcmp_olt3(float %x) {
 ; SDAG-NEXT:  seta     %al
 ; FAST-LABEL: fcmp_olt3
 ; FAST:       xorps    %xmm1, %xmm1
+; FAST-NEXT:  xorl     %eax, %eax
 ; FAST-NEXT:  ucomiss  %xmm0, %xmm1
 ; FAST-NEXT:  seta     %al
   %1 = fcmp olt float %x, 0.000000e+00
@@ -384,6 +388,7 @@ define zeroext i1 @fcmp_ole3(float %x) {
 ; SDAG-NEXT:  setae    %al
 ; FAST-LABEL: fcmp_ole3
 ; FAST:       xorps    %xmm1, %xmm1
+; FAST-NEXT:  xorl     %eax, %eax
 ; FAST-NEXT:  ucomiss  %xmm0, %xmm1
 ; FAST-NEXT:  setae    %al
   %1 = fcmp ole float %x, 0.000000e+00
@@ -406,6 +411,7 @@ define zeroext i1 @fcmp_one3(float %x) {
 ; SDAG-NEXT:  setne    %al
 ; FAST-LABEL: fcmp_one3
 ; FAST:       xorps    %xmm1, %xmm1
+; FAST-NEXT:  xorl     %eax, %eax
 ; FAST-NEXT:  ucomiss  %xmm1, %xmm0
 ; FAST-NEXT:  setne    %al
   %1 = fcmp one float %x, 0.000000e+00
@@ -472,6 +478,7 @@ define zeroext i1 @fcmp_ueq3(float %x) {
 ; SDAG-NEXT:  sete     %al
 ; FAST-LABEL: fcmp_ueq3
 ; FAST:       xorps    %xmm1, %xmm1
+; FAST-NEXT:  xorl     %eax, %eax
 ; FAST-NEXT:  ucomiss  %xmm1, %xmm0
 ; FAST-NEXT:  sete     %al
   %1 = fcmp ueq float %x, 0.000000e+00
@@ -496,6 +503,7 @@ define zeroext i1 @fcmp_ugt3(float %x) {
 ; SDAG-NEXT:  setb     %al
 ; FAST-LABEL: fcmp_ugt3
 ; FAST:       xorps    %xmm1, %xmm1
+; FAST-NEXT:  xorl     %eax, %eax
 ; FAST-NEXT:  ucomiss  %xmm0, %xmm1
 ; FAST-NEXT:  setb     %al
   %1 = fcmp ugt float %x, 0.000000e+00
@@ -518,6 +526,7 @@ define zeroext i1 @fcmp_uge3(float %x) {
 ; SDAG-NEXT:  setbe    %al
 ; FAST-LABEL: fcmp_uge3
 ; FAST:       xorps    %xmm1, %xmm1
+; FAST-NEXT:  xorl     %eax, %eax
 ; FAST-NEXT:  ucomiss  %xmm0, %xmm1
 ; FAST-NEXT:  setbe    %al
   %1 = fcmp uge float %x, 0.000000e+00
@@ -542,6 +551,7 @@ define zeroext i1 @fcmp_ult3(float %x) {
 ; SDAG-NEXT:  setb     %al
 ; FAST-LABEL: fcmp_ult3
 ; FAST:       xorps    %xmm1, %xmm1
+; FAST-NEXT:  xorl     %eax, %eax
 ; FAST-NEXT:  ucomiss  %xmm1, %xmm0
 ; FAST-NEXT:  setb     %al
   %1 = fcmp ult float %x, 0.000000e+00
@@ -564,6 +574,7 @@ define zeroext i1 @fcmp_ule3(float %x) {
 ; SDAG-NEXT:  setbe    %al
 ; FAST-LABEL: fcmp_ule3
 ; FAST:       xorps    %xmm1, %xmm1
+; FAST-NEXT:  xorl     %eax, %eax
 ; FAST-NEXT:  ucomiss  %xmm1, %xmm0
 ; FAST-NEXT:  setbe    %al
   %1 = fcmp ule float %x, 0.000000e+00
@@ -589,10 +600,11 @@ define zeroext i1 @fcmp_une3(float %x) {
 ; SDAG-NEXT:  andl     $1, %eax
 ; FAST-LABEL: fcmp_une3
 ; FAST:       xorps    %xmm1, %xmm1
+; FAST:       xorl     %eax, %eax
 ; FAST-NEXT:  ucomiss  %xmm1, %xmm0
-; FAST-NEXT:  setne    %al
-; FAST-NEXT:  setp     %cl
-; FAST-NEXT:  orb      %al, %cl
+; FAST-NEXT:  setne    %cl
+; FAST-NEXT:  setp     %al
+; FAST-NEXT:  orb      %cl, %al
   %1 = fcmp une float %x, 0.000000e+00
   ret i1 %1
 }
