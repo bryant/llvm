@@ -495,13 +495,12 @@ struct Candidate {
   }
 
   X86RegisterInfo &tri() const {
-    const MachineFunction &f = *ins->getParent()->getParent();
-    return *reinterpret_cast<const X86RegisterInfo *>(
-        f.getSubtarget().getRegisterInfo());
+    return *reinterpret_cast<X86RegisterInfo *>(
+        ins->getParent()->getParent().getSubtarget().getRegisterInfo());
   }
 
   X86InstrInfo &tii() const {
-    return *reinterpret_cast<const X86InstrInfo *>(
+    return *reinterpret_cast<X86InstrInfo *>(
         ins->getParent()->getParent()->getSubtarget().getInstrInfo());
   }
 
@@ -547,8 +546,8 @@ struct Candidate {
       ins->getOperand(0).setIsUndef();
     }
     if (const TargetRegisterClass *newcls = gr8def->getRegClassConstraintEffect(
-            0, ins->getRegClassConstraintEffect(0, &destcls, tii(), &tri()),
-            tii(), &tri())) {
+            0, ins->getRegClassConstraintEffect(0, &destcls, &tii(), &tri()),
+            &tii(), &tri())) {
       DEBUG(dbgs() << "updating reg class from "
                    << tri().getRegClassName(&destcls) << " to "
                    << tri().getRegClassName(newcls) << "\n");
