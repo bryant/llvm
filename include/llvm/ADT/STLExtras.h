@@ -341,6 +341,7 @@ make_filter_range(RangeT &&Range, PredicateT Pred) {
                     FilterIteratorT(std::end(std::forward<RangeT>(Range))));
 }
 
+namespace detail {
 template <unsigned N, unsigned... Ns> struct NatList {
   using eval = typename NatList<N - 1, N - 1, Ns...>::eval;
 };
@@ -413,6 +414,7 @@ public:
   iterator end() { return end_impl(nat_list{}); }
   Zippy(Args &&... ts_) : ts(std::forward<Args>(ts_)...) {}
 };
+} // End detail namespace
 
 // zip iterator for two or more iteratable types.
 template <typename T, typename U, typename... Args>
