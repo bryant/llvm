@@ -395,18 +395,17 @@ public:
 
 template <template <typename...> class ItType, typename... Args> class Zippy {
 public:
-  typedef ItType<typename std::remove_reference<Args>::type::iterator...>
-      iterator;
+  typedef ItType<decltype(std::begin(std::declval<Args>()))...> iterator;
 
 private:
   typedef typename NatList<sizeof...(Args)>::eval nat_list;
   std::tuple<Args...> ts;
 
   template <unsigned... Ns> iterator begin_impl(NatList<Ns...>) {
-    return iterator(std::get<Ns>(ts).begin()...);
+    return iterator(std::begin(std::get<Ns>(ts))...);
   }
   template <unsigned... Ns> iterator end_impl(NatList<Ns...>) {
-    return iterator(std::get<Ns>(ts).end()...);
+    return iterator(std::end(std::get<Ns>(ts))...);
   }
 
 public:
