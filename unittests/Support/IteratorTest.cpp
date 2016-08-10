@@ -116,4 +116,20 @@ TEST(PointeeIteratorTest, SmartPointer) {
   EXPECT_EQ(End, I);
 }
 
+TEST(ZipIteratorTest, Basic) {
+  using namespace std;
+  const SmallVector<unsigned, 4> pi{3, 1, 4, 1, 5, 9};
+  char message[] = "hello zip\0";
+
+  // note the rvalue
+  for (auto tup : zip(pi, vector<bool>{1, 1, 0, 1, 1, 1}, message)) {
+    EXPECT_EQ(get<0>(tup) & 0x01, get<1>(tup));
+    get<2>(tup) = get<0>(tup) & 0x01 ? 'y' : 'n';
+  }
+
+  for (auto tup : zip(message, "yynyyyzip\0")) {
+    EXPECT_EQ(get<0>(tup), get<1>(tup));
+  }
+}
+
 } // anonymous namespace
