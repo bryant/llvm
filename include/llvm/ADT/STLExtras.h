@@ -342,6 +342,12 @@ make_filter_range(RangeT &&Range, PredicateT Pred) {
 }
 
 namespace detail {
+constexpr bool all_true(bool b) { return b; }
+
+template <typename B, typename... Bs> constexpr bool all_true(B b, Bs... rest) {
+  return b && all_true(rest...);
+}
+
 template <unsigned N, unsigned... Ns> struct NatList {
   using eval = typename NatList<N - 1, N - 1, Ns...>::eval;
 };
@@ -380,9 +386,8 @@ public:
 template <typename... Iters> class ZipShortest : public ZipFirst<Iters...> {
   template <unsigned... Ns>
   bool test(const ZipFirst<Iters...> &other, NatList<Ns...>) const {
-    std::array<bool, sizeof...(Iters)> conds = {
-        (std::get<Ns>(this->iterators) != std::get<Ns>(other.iterators))...};
-    return std::all_of(conds.begin(), conds.end(), [](bool a) { return a; });
+    return all_true(
+        (std::get<Ns>(this->iterators) != std::get<Ns>(other.iterators))...);
   }
 
 public:
