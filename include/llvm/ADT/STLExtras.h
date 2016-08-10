@@ -419,7 +419,7 @@ public:
 };
 } // End detail namespace
 
-// zip iterator for two or more iteratable types.
+/// zip iterator for two or more iteratable types.
 template <typename T, typename U, typename... Args>
 detail::Zippy<detail::ZipShortest, T, U, Args...> zip(T &&t, U &&u,
                                                       Args &&... args) {
@@ -427,8 +427,8 @@ detail::Zippy<detail::ZipShortest, T, U, Args...> zip(T &&t, U &&u,
       std::forward<T>(t), std::forward<U>(u), std::forward<Args>(args)...);
 }
 
-// zip iterator that, for the sake of efficiency, assumes the first iteratee to
-// be the shortest.
+/// zip iterator that, for the sake of efficiency, assumes the first iteratee to
+/// be the shortest.
 template <typename T, typename U, typename... Args>
 detail::Zippy<detail::ZipFirst, T, U, Args...> zip_first(T &&t, U &&u,
                                                          Args &&... args) {
