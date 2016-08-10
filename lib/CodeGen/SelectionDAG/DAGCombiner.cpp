@@ -4948,14 +4948,14 @@ SDValue DAGCombiner::visitSRL(SDNode *N) {
       isa<ConstantSDNode>(N0.getOperand(1))) {
     APInt c1 = cast<ConstantSDNode>(N0.getOperand(1))->getAPIntValue();
     APInt c0 = N1C->getAPIntValue();
-    ZeroExtendToMatch(c1, c0);
+    zeroExtendToMatch(c1, c0);
     if (c1.eq(c0)) {
       unsigned BitSize = N0.getScalarValueSizeInBits();
       if (BitSize <= 64) {
-        uint64_t ShAmt = N1C->getZExtValue() + 64 - BitSize;
+        APInt Mask = APInt::getAllOnesValue(64).lshr(64 + c0 - BitSize);
         SDLoc DL(N);
         return DAG.getNode(ISD::AND, DL, VT, N0.getOperand(0),
-                           DAG.getConstant(~0ULL >> ShAmt, DL, VT));
+                           DAG.getConstant(Mask, DL, VT));
       }
     }
   }
