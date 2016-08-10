@@ -341,13 +341,11 @@ make_filter_range(RangeT &&Range, PredicateT Pred) {
                     FilterIteratorT(std::end(std::forward<RangeT>(Range))));
 }
 
+// forward declaration required by ZipShortest::operator!=
+template <typename R, class UnaryPredicate>
+bool all_of(R &&range, UnaryPredicate &&P);
+
 namespace detail {
-constexpr bool all_true(bool b) { return b; }
-
-template <typename B, typename... Bs> constexpr bool all_true(B b, Bs... rest) {
-  return b && all_true(rest...);
-}
-
 template <unsigned N, unsigned... Ns> struct NatList {
   using eval = typename NatList<N - 1, N - 1, Ns...>::eval;
 };
@@ -386,8 +384,9 @@ public:
 template <typename... Iters> class ZipShortest : public ZipFirst<Iters...> {
   template <unsigned... Ns>
   bool test(const ZipFirst<Iters...> &other, NatList<Ns...>) const {
-    return all_true(
-        (std::get<Ns>(this->iterators) != std::get<Ns>(other.iterators))...);
+    return all_of(std::initializer_list<bool>{std::get<Ns>(this->iterators) !=
+                                              std::get<Ns>(other.iterators)...},
+                  identity<bool>{});
   }
 
 public:
