@@ -341,31 +341,17 @@ make_filter_range(RangeT &&Range, PredicateT Pred) {
                     FilterIteratorT(std::end(std::forward<RangeT>(Range))));
 }
 
-// NatList :: [Nat]
-template <unsigned... Ns> struct NatList {};
-
-template <typename L, typename R> struct Cons {};
-
-template <unsigned n, unsigned... m> struct Cons<NatList<n>, NatList<m...>> {
-  using eval = NatList<n, m...>;
+template <unsigned N, unsigned... Ns> struct NatList {
+  using eval = typename NatList<N - 1, N - 1, Ns...>::eval;
 };
 
-template <unsigned n, typename T> struct Cons<NatList<n>, T> {
-  using eval = Cons<NatList<n>, typename T::eval>;
-};
-
-template <unsigned n, unsigned max> struct BuildNatList {
-  using eval =
-      typename Cons<NatList<n>, typename BuildNatList<n + 1, max>::eval>::eval;
-};
-
-template <unsigned max> struct BuildNatList<max, max> {
-  using eval = NatList<max>;
+template <unsigned... Ns> struct NatList<0, Ns...> {
+  using eval = NatList<Ns...>;
 };
 
 template <typename... Iters> class ZipFirst {
 public:
-  typedef typename BuildNatList<0, sizeof...(Iters)-1>::eval nat_list;
+  typedef typename NatList<sizeof...(Iters)>::eval nat_list;
   typedef std::input_iterator_tag iterator_category;
   typedef std::tuple<decltype(*std::declval<Iters>())...> value_type;
   std::tuple<Iters...> iterators;
@@ -412,7 +398,7 @@ public:
       iterator;
 
 private:
-  typedef typename BuildNatList<0, sizeof...(Args)-1>::eval nat_list;
+  typedef typename NatList<sizeof...(Args)>::eval nat_list;
   std::tuple<Args...> ts;
 
   template <unsigned... Ns> iterator begin_impl(NatList<Ns...>) {
