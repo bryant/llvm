@@ -127,25 +127,6 @@ bool interferes(const T &as, const LiveInterval &b,
   return any_of(as, [&](const LiveInterval *a) { return a->overlaps(b); });
 }
 
-template <typename Iterator, typename Predicate>
-Iterator move_to_end_if(Iterator first, Iterator last, Predicate p) {
-  Iterator rv = last;
-  while (first != rv) {
-    if (p(*first)) {
-      --rv;
-      std::swap(*first, *rv);
-    } else {
-      ++first;
-    }
-  }
-  return rv;
-}
-
-template <typename Range, typename Predicate>
-auto move_to_end_if(Range &r, Predicate p) -> decltype(r.end()) {
-  return move_to_end_if(r.begin(), r.end(), std::move(p));
-}
-
 struct ReAllocTool {
   const TargetRegisterInfo *tri;
   const MachineRegisterInfo *mri;
@@ -312,9 +293,9 @@ struct ReAllocTool {
       ungrouped.pop_back();
       bool done = false;
       while (!done) {
-        auto it = move_to_end_if(ungrouped, [&](LiveInterval *h) {
-          return interferes(group, *h, *mri);
-        });
+        auto it = std::partition(
+            ungrouped.begin(), ungrouped.end(),
+            [&](LiveInterval *h) { return !interferes(group, *h, *mri); });
         done = it == ungrouped.end();
         std::copy(it, ungrouped.end(), back_inserter(group));
         ungrouped.erase(it, ungrouped.end());
