@@ -592,9 +592,9 @@ struct X86FixupZExt : public MachineFunctionPass {
       for (MachineInstr &i : bb) {
         if (auto cand = Candidate::from_mi(i, li, vrm)) {
           if (cand->constraints.size() > 0) {
-            constrained.emplace_back(std::move(*cand.release()));
+            constrained.push_back(std::move(*cand.release()));
           } else {
-            cands.emplace_back(std::move(*cand.release()));
+            cands.push_back(std::move(*cand.release()));
           }
         }
       }
