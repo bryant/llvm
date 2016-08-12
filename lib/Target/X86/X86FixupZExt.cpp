@@ -149,16 +149,6 @@ struct ReAllocTool {
     return rv;
   }
 
-  template <typename Predicate>
-  BitVector bv_from_regs(ArrayRef<MCPhysReg> regs, Predicate p) const {
-    BitVector rv(tri->getNumRegs());
-    for (const MCPhysReg &r : regs) {
-      if (p(r)) {
-        add_reg_to_bv(rv, r);
-      }
-    }
-  }
-
   ReAllocTool(const MachineFunction &f, LiveRegMatrix &lrm_, VirtRegMap &vrm_)
       : tri(f.getSubtarget().getRegisterInfo()), mri(&f.getRegInfo()),
         lrm(&lrm_), vrm(&vrm_), rci(), unused_csr(tri->getNumRegs()) {
