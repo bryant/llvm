@@ -24,10 +24,6 @@ using is_iterable_of = typename std::enable_if<std::is_same<
     typename std::decay<decltype(*std::declval<Container>().begin())>::type,
     Elem>::value>::type;
 
-template <typename T> auto push_to(T &t) -> decltype(std::back_inserter(t)) {
-  return std::back_inserter(t);
-}
-
 unsigned get_phys(unsigned reg, const VirtRegMap &vrm) {
   return TargetRegisterInfo::isVirtualRegister(reg) ? vrm.getPhys(reg) : reg;
 }
@@ -213,7 +209,7 @@ struct ReAllocTool {
         }
       }
     }
-    std::copy(ev.begin(), ev.end(), push_to(evictees));
+    std::copy(ev.begin(), ev.end(), back_inserter(evictees));
     return evictees.size() > 0;
   }
 
@@ -320,7 +316,7 @@ struct ReAllocTool {
           return interferes(group, *h, *mri);
         });
         done = it == ungrouped.end();
-        std::copy(it, ungrouped.end(), push_to(group));
+        std::copy(it, ungrouped.end(), back_inserter(group));
         ungrouped.erase(it, ungrouped.end());
       }
       if (auto newassigns = alloc_interf_intervals(group, excepts)) {
@@ -332,7 +328,8 @@ struct ReAllocTool {
       }
     }
     auto rv = make_unique<vector<MCPhysReg>>();
-    transform(lives, push_to(*rv), [&](LiveInterval *l) { return *newmap[l]; });
+    transform(lives, back_inserter(*rv),
+              [&](LiveInterval *l) { return *newmap[l]; });
     return rv;
   }
 
@@ -345,7 +342,8 @@ struct ReAllocTool {
   template <typename C, typename = is_iterable_of<LiveInterval *, C>>
   vector<MCPhysReg> unassign_all(C &lives) {
     vector<MCPhysReg> r;
-    transform(lives, push_to(r), [&](LiveInterval *l) { return unassign(*l); });
+    transform(lives, back_inserter(r),
+              [&](LiveInterval *l) { return unassign(*l); });
     return r;
   }
 
@@ -526,7 +524,7 @@ struct Candidate {
 
     // in-place operand mutation would confuse defusechain_iterator
     vector<MachineOperand *> ops;
-    transform(mri().reg_operands(vsrc), push_to(ops),
+    transform(mri().reg_operands(vsrc), back_inserter(ops),
               [](MachineOperand &op) { return &op; });
     for (MachineOperand *op : ops) {
       DEBUG(dbgs() << "changing " << (*op->getParent()));
