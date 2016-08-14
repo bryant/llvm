@@ -191,7 +191,7 @@ struct ReAllocTool {
     ArrayRef<MCPhysReg> Ord =
         RCI.getOrder(TRC ? TRC : MRI->getRegClass(Live.reg));
     BitVector rs = unused_csr;
-    if (Except != nullptr) {
+    if (Except) {
       rs |= *Except;
     }
     auto rv = std::find_if(
@@ -203,7 +203,7 @@ struct ReAllocTool {
   MCPhysReg alloc(LiveInterval &Live, const BitVector *Except = nullptr,
                   const TargetRegisterClass *TRC = nullptr) const {
     const MCPhysReg *rv = allocNext(Live, Except, nullptr, TRC);
-    return rv == nullptr ? 0 : *rv;
+    return rv ? 0 : *rv;
   }
 
   // (re-)allocate a group of interfering intervals. brute force search. returns
@@ -254,15 +254,15 @@ struct ReAllocTool {
 
     tryNextInGroup();
 
-    while (!Group.empty() || Assigned->back().second == nullptr) {
-      if (Assigned->back().second == nullptr) {
+    while (!Group.empty() || !Assigned->back().second) {
+      if (Assigned->back().second) {
+        tryNextInGroup();
+      } else {
         backToPrevious();
         if (Assigned->empty()) {
           return nullptr;
         }
         tryNextReg();
-      } else {
-        tryNextInGroup();
       }
     }
     for (auto &P : *Assigned) {
@@ -443,8 +443,7 @@ public:
 
     MachineInstr *Def8;
     SmallVector<pair<MachineInstr *, MachineInstr *>, 4> Segs;
-    if ((Def8 = validCandidate(MI, LI)) == nullptr ||
-        !mov32r0Segs(*Def8, Segs, LI)) {
+    if (!(Def8 = validCandidate(MI, LI)) || !mov32r0Segs(*Def8, Segs, LI)) {
       return nullptr;
     }
 
