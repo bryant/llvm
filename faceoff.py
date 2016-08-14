@@ -37,6 +37,11 @@ def add_iaca_marks(asm):
     endmark = "\nmovl $222, %ebx\n.byte 0x64, 0x67, 0x90\nud2\n"
     return startmark + asm + endmark
 
+def add_iaca_bytes(raw):
+    start = "0f 0b bb 6f 00 00 00 64 67 90".replace(" ", "").decode("hex")
+    end = "bb de 00 00 00 64 67 90 0f 0b".replace(" ", "").decode("hex")
+    return start + raw + end
+
 AsmFunc = namedtuple("AsmFunc", ("name", "body"))
 
 def extract_fn(fn, asm):
@@ -53,8 +58,8 @@ def extract_all_fns(asm):
         f = re.search(r"^%s:" % re.escape(fn), asm, flags=re.M)
         if f is None:
             continue
-        if nextfn is not None:
-            e = re.search(r"^%s:" % re.escape(nextfn), asm, flags=re.M)
+        e = nextfn and re.search(r"^%s:" % re.escape(nextfn), asm, flags=re.M)
+        if e is not None:
             body = asm[f.span()[1]:e.span()[0]]
         else:
             body = asm[f.span()[1]:]
@@ -89,8 +94,61 @@ def gas(asm, extras=None):
         raise MalformedAssembly(p.stderr.read())
     return obj
 
+def clang_as(asm, extras=None):
+    obj = mktemp(suffix=".o")
+    cmd = ("clang -x assembler -c -o %s -" % obj).split() + (extras or [])
+    p = Popen(cmd, stdin=PIPE, stderr=PIPE)
+    p.stdin.write(asm + "\n")
+    p.stdin.close()
+    if p.wait() != 0:
+        raise MalformedAssembly(p.stderr.read())
+    return obj
+
 def assemble(asm, extras=None):
-    return gas(add_iaca_marks(asm), extras)
+    return clang_as(add_iaca_marks(asm), extras)
+
+def read_elf_fns(obj):
+    cmd = ("readelf -W --symbols %s" % obj).split()
+    exp = r"^\s*\d:\s+([0-9a-f]+)\s+(\d+) FUNC\s+GLOBAL\s+\S+\s+\S+\s+(\S+)$"
+    p = Popen(cmd, stdout=PIPE)
+    s = p.stdout.read()
+    return [(fn, int(offset, 16), int(offset, 16) + int(size))
+            for offset, size, fn in re.findall(exp, s, flags=re.M)]
+
+def arch_type(obj):
+    return "x86" if open(obj).read(5)[4] == "\x01" else "amd64"
+
+def objdump(obj, range_=None):
+    cmd = ("objdump --no-show-raw-insn -d " + obj).split()
+    if range_:
+        cmd += ("--start-address=%d --stop-address=%d" % (range_[0],
+                range_[1])).split()
+    p = Popen(cmd, stdout=PIPE)
+    lines = re.findall(r"^\s*([0-9a-f]+):\s+(.+)$", p.stdout.read(), flags=re.M)
+
+    counter = 0
+    jump_targets = {}
+    for _, mnem in lines:
+        if mnem.startswith("j") and mnem.split()[1] not in jump_targets:
+            jump_targets[mnem.split()[1]] = ".L%d" % counter
+            counter += 1
+
+    rv = ""
+    for n, mnem in lines:
+        mnem = mnem.split("#")[0].strip()  # filter commentss
+        if mnem.startswith("j"):
+            parts = mnem.split()
+            mnem = " ".join([parts[0],  jump_targets[parts[1]]])
+        if n in jump_targets:
+            rv += jump_targets[n] + ":\n"
+        rv += " " * 4 + mnem + "\n"
+    return rv
+
+def objcopy(obj):
+    bin = mktemp(suffix=".bin")
+    cmd = ("objcopy -j .text -O binary %s %s" % (obj, bin)).split()
+    Popen(cmd).wait()
+    return bin
 
 def iaca(obj, mode="throughput", extras=None):
     cmd = ["iaca"] + (extras or ["-64"]) + ["-analysis", mode.upper(), obj]
