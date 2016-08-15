@@ -271,12 +271,16 @@ struct ReAllocTool {
     return Assigned;
   }
 
+  // allocate a set of intervals (that may or may not interfere with each other)
+  // such that none of their allocations interfere with the registers in
+  // `Excepts`. return nullptr if no such allocation is possible.
   template <typename C, typename = is_iterable_of<LiveInterval *, C>>
   unique_ptr<vector<MCPhysReg>>
-  evictIntervals(const C &Lives, const BitVector *Excepts = nullptr) const {
+  allocIntervals(const C &Lives, const BitVector *Excepts = nullptr) const {
     DenseMap<LiveInterval *, const MCPhysReg *> NewAssigns;
     vector<LiveInterval *> Ungrouped(Lives.begin(), Lives.end());
 
+    // partition into groups interfering intervals; allocate group-by-group.
     while (!Ungrouped.empty()) {
       vector<LiveInterval *> Group;
       Group.push_back(Ungrouped.back());
@@ -339,7 +343,7 @@ struct ReAllocTool {
                    << Evictees);
       vector<MCPhysReg> OldRegs = unassignAll(Evictees);
       BitVector bv = bitVecFromRegs(PReg);
-      if (auto NewRegs = evictIntervals(Evictees, &bv)) {
+      if (auto NewRegs = allocIntervals(Evictees, &bv)) {
         assignAll(Evictees, *NewRegs);
         return true;
       }
