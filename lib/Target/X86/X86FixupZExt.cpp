@@ -362,6 +362,7 @@ struct Candidate {
   vector<MCPhysReg> constraints;
 
 private:
+  // used to cache originally assigned registers for live32 and live8.
   unsigned pdest;
   unsigned psrc;
 
