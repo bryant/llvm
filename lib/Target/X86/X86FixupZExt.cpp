@@ -265,7 +265,7 @@ struct ReAllocTool {
         tryNextReg();
       }
     }
-    for (auto &P : *Assigned) {
+    for (pair<LiveInterval *, const MCPhysReg *> &P : *Assigned) {
       LRM->unassign(*P.first);
     }
     return Assigned;
@@ -291,7 +291,7 @@ struct ReAllocTool {
         Ungrouped.erase(it, Ungrouped.end());
       }
       if (auto n = allocInterfIntervals(Group, Excepts)) {
-        for (auto pair_ : *n) {
+        for (pair<LiveInterval *, const MCPhysReg *> pair_ : *n) {
           NewAssigns.insert(pair_);
         }
       } else {
