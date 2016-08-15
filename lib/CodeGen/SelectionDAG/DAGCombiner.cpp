@@ -4949,14 +4949,13 @@ SDValue DAGCombiner::visitSRL(SDNode *N) {
     APInt c1 = cast<ConstantSDNode>(N0.getOperand(1))->getAPIntValue();
     APInt c0 = N1C->getAPIntValue();
     zeroExtendToMatch(c1, c0);
-    if (c1.eq(c0)) {
-      unsigned BitSize = N0.getScalarValueSizeInBits();
-      if (BitSize <= 64) {
-        APInt Mask = APInt::getAllOnesValue(64).lshr(64 + c0 - BitSize);
-        SDLoc DL(N);
-        return DAG.getNode(ISD::AND, DL, VT, N0.getOperand(0),
-                           DAG.getConstant(Mask, DL, VT));
-      }
+    if (c0.isSingleWord() && c1.eq(c0)) {
+      uint64_t OpWidth = N0.getScalarValueSizeInBits();
+      uint64_t MaskWidth = c0.ugt(OpWidth) ? 0 : OpWidth - c0.getZExtValue();
+      APInt Mask = APInt::getLowBitsSet(OpWidth, MaskWidth);
+      SDLoc DL(N);
+      return DAG.getNode(ISD::AND, DL, VT, N0.getOperand(0),
+                         DAG.getConstant(Mask, DL, VT));
     }
   }
 
