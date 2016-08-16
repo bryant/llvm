@@ -4948,7 +4948,8 @@ SDValue DAGCombiner::visitSRL(SDNode *N) {
       isa<ConstantSDNode>(N0.getOperand(1))) {
     APInt c1 = cast<ConstantSDNode>(N0.getOperand(1))->getAPIntValue();
     APInt c0 = N1C->getAPIntValue();
-    if (c0.isSingleWord() && c1.isSingleWord() && c1.eq(c0)) {
+    zeroExtendToMatch(c1, c0);
+    if (c1.eq(c0)) {
       uint64_t OpWidth = N0.getScalarValueSizeInBits();
       uint64_t MaskWidth = c0.ugt(OpWidth) ? 0 : OpWidth - c0.getZExtValue();
       APInt Mask = APInt::getLowBitsSet(OpWidth, MaskWidth);
