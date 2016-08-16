@@ -104,12 +104,12 @@ bool mov32r0Segs(MachineInstr &Def8,
       if (MBB.pred_size() > 1) {
         return false;
       }
-      Segs.push_back(make_pair(MBB.begin(), &Def8));
+      Segs.push_back(std::make_pair(&*MBB.begin(), &Def8));
       return mov32r0Segs(*(*MBB.pred_begin())->rbegin(), Segs, LI);
     }
     Ins = LI.getInstructionFromIndex(eflagseg->start);
   }
-  Segs.push_back(make_pair(Ins, &Def8));
+  Segs.push_back(std::make_pair(&*Ins, &Def8));
   return true;
 }
 
