@@ -4950,9 +4950,9 @@ SDValue DAGCombiner::visitSRL(SDNode *N) {
     APInt c0 = N1C->getAPIntValue();
     zeroExtendToMatch(c1, c0);
     if (c1.eq(c0)) {
-      uint64_t OpWidth = N0.getScalarValueSizeInBits();
-      uint64_t MaskWidth = c0.ugt(OpWidth) ? 0 : OpWidth - c0.getZExtValue();
-      APInt Mask = APInt::getLowBitsSet(OpWidth, MaskWidth);
+      uint64_t MaskWidth =
+          c0.ugt(OpSizeInBits) ? 0 : OpSizeInBits - c0.getZExtValue();
+      APInt Mask = APInt::getLowBitsSet(OpSizeInBits, MaskWidth);
       SDLoc DL(N);
       return DAG.getNode(ISD::AND, DL, VT, N0.getOperand(0),
                          DAG.getConstant(Mask, DL, VT));
