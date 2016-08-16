@@ -71,7 +71,7 @@ def sanitize(asm):
     return cfi_crap.sub("", asm)
 
 def llc(file, fn=None, extras=None):
-    cmd = "timeout 6 llc -O3 -o -".split() + [file] + (extras or [])
+    cmd = "llc -O3 -o -".split() + [file] + (extras or [])
     p = Popen(cmd, stdout=PIPE, stderr=PIPE)
     if p.wait() != 0:
         raise MalformedBitcode(p.stderr.read())
