@@ -203,7 +203,7 @@ struct ReAllocTool {
   MCPhysReg alloc(LiveInterval &Live, const BitVector *Except = nullptr,
                   const TargetRegisterClass *TRC = nullptr) const {
     const MCPhysReg *rv = allocNext(Live, Except, nullptr, TRC);
-    return rv ? 0 : *rv;
+    return rv ? *rv : 0;
   }
 
   // (re-)allocate a group of interfering intervals. brute force search. returns
