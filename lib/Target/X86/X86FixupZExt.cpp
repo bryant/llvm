@@ -165,8 +165,8 @@ struct ReAllocTool {
     return LRM->checkInterference(Live, PReg) != LiveRegMatrix::IK_Free;
   }
 
-  template <typename T, typename = is_iterable_of<LiveInterval *, T>>
-  bool interf(LiveInterval &Live, unsigned PReg, T &Evictees) const {
+  bool interf(LiveInterval &Live, unsigned PReg,
+              SmallVectorImpl<LiveInterval *> &Evictees) const {
     if (LRM->checkRegMaskInterference(Live, PReg) ||
         LRM->checkRegUnitInterference(Live, PReg)) {
       return true;
@@ -174,13 +174,10 @@ struct ReAllocTool {
     DenseSet<LiveInterval *> UniqueEv;
     for (MCRegUnitIterator regunit(PReg, TRI); regunit.isValid(); ++regunit) {
       LiveIntervalUnion::Query &q = LRM->query(Live, *regunit);
-      if (q.collectInterferingVRegs() > 0) {
-        for (LiveInterval *l : q.interferingVRegs()) {
-          UniqueEv.insert(l);
-        }
-      }
+      q.collectInterferingVRegs();
+      UniqueEv.insert(q.interferingVRegs().begin(), q.interferingVRegs().end());
     }
-    std::copy(UniqueEv.begin(), UniqueEv.end(), back_inserter(Evictees));
+    Evictees.append(UniqueEv.begin(), UniqueEv.end());
     return Evictees.size() > 0;
   }
 
@@ -282,7 +279,7 @@ struct ReAllocTool {
 
     // partition into groups interfering intervals; allocate group-by-group.
     while (!Ungrouped.empty()) {
-      vector<LiveInterval *> Group;
+      SmallVector<LiveInterval *, 8> Group;
       Group.push_back(Ungrouped.back());
       Ungrouped.pop_back();
       bool Done = false;
@@ -291,13 +288,11 @@ struct ReAllocTool {
             Ungrouped.begin(), Ungrouped.end(),
             [&](LiveInterval *h) { return !interferes(Group, *h, *MRI); });
         Done = it == Ungrouped.end();
-        std::copy(it, Ungrouped.end(), back_inserter(Group));
+        Group.append(it, Ungrouped.end());
         Ungrouped.erase(it, Ungrouped.end());
       }
       if (auto n = allocInterfIntervals(Group, Excepts)) {
-        for (pair<LiveInterval *, const MCPhysReg *> pair_ : *n) {
-          NewAssigns.insert(pair_);
-        }
+        NewAssigns.insert(n->begin(), n->end());
       } else {
         return nullptr;
       }
@@ -332,7 +327,7 @@ struct ReAllocTool {
   }
 
   bool reservePhysReg(MCPhysReg PReg, LiveInterval &Live) {
-    vector<LiveInterval *> Evictees;
+    SmallVector<LiveInterval *, 8> Evictees;
     if (!interf(Live, PReg, Evictees)) {
       DEBUG(dbgs() << "ReAllocTool: " << TRI->getName(PReg)
                    << " is already free.\n");
