@@ -699,27 +699,27 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
         }
       }
 
-      AllocaInst *AI;
-      Argument *Arg;
-      if ((AI = dyn_cast<AllocaInst>(
-               LI->getPointerOperand()->stripPointerCasts())) &&
-          (Arg = dyn_cast<Argument>(
-               SI->getPointerOperand()->stripPointerCasts())) &&
-          Arg->hasStructRetAttr() && Arg->hasNoAliasAttr() &&
-          Arg->getType() == AI->getType()) {
-        AI->replaceAllUsesWith(Arg);
+      if (AllocaInst *AI = dyn_cast<AllocaInst>(
+              LI->getPointerOperand()->stripPointerCasts())) {
+        if (Argument *Arg = dyn_cast<Argument>(
+                SI->getPointerOperand()->stripPointerCasts())) {
+          if (Arg->hasStructRetAttr() && Arg->hasNoAliasAttr() &&
+              Arg->getType() == AI->getType()) {
+            AI->replaceAllUsesWith(Arg);
 
-        MD->removeInstruction(SI);
-        SI->eraseFromParent();
+            MD->removeInstruction(SI);
+            SI->eraseFromParent();
 
-        MD->removeInstruction(LI);
-        LI->eraseFromParent();
+            MD->removeInstruction(LI);
+            LI->eraseFromParent();
 
-        MD->removeInstruction(AI);
-        AI->eraseFromParent();
+            MD->removeInstruction(AI);
+            AI->eraseFromParent();
 
-        ++NumMemCpyInstr;
-        return true;
+            ++NumMemCpyInstr;
+            return true;
+          }
+        }
       }
     }
   }
@@ -1251,21 +1251,22 @@ bool MemCpyOptPass::processMemCpy(MemCpyInst *M) {
         return true;
       }
 
-  AllocaInst *AI;
-  Argument *Arg;
-  if ((AI = dyn_cast<AllocaInst>(M->getSource())) &&
-      (Arg = dyn_cast<Argument>(M->getDest())) && Arg->hasStructRetAttr() &&
-      Arg->hasNoAliasAttr() && Arg->getType() == AI->getType()) {
-    AI->replaceAllUsesWith(Arg);
+  if (AllocaInst *AI = dyn_cast<AllocaInst>(M->getSource())) {
+    if (Argument *Arg = dyn_cast<Argument>(M->getDest())) {
+      if (Arg->hasStructRetAttr() && Arg->hasNoAliasAttr() &&
+          Arg->getType() == AI->getType()) {
+        AI->replaceAllUsesWith(Arg);
 
-    MD->removeInstruction(M);
-    M->eraseFromParent();
+        MD->removeInstruction(M);
+        M->eraseFromParent();
 
-    MD->removeInstruction(AI);
-    AI->eraseFromParent();
+        MD->removeInstruction(AI);
+        AI->eraseFromParent();
 
-    ++NumMemCpyInstr;
-    return true;
+        ++NumMemCpyInstr;
+        return true;
+      }
+    }
   }
 
   return false;
