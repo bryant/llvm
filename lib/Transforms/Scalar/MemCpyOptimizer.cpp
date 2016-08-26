@@ -1251,21 +1251,21 @@ bool MemCpyOptPass::processMemCpy(MemCpyInst *M) {
         return true;
       }
 
-  if (AllocaInst *AI = dyn_cast<AllocaInst>(M->getSource())) {
-    if (Argument *Arg = dyn_cast<Argument>(M->getDest())) {
-      if (Arg->hasStructRetAttr() && Arg->hasNoAliasAttr()) {
-        AI->replaceAllUsesWith(Arg);
+  AllocaInst *AI;
+  Argument *Arg;
+  if ((AI = dyn_cast<AllocaInst>(M->getSource())) &&
+      (Arg = dyn_cast<Argument>(M->getDest())) && Arg->hasStructRetAttr() &&
+      Arg->hasNoAliasAttr() && Arg->getType() == AI->getType()) {
+    AI->replaceAllUsesWith(Arg);
 
-        MD->removeInstruction(M);
-        M->eraseFromParent();
+    MD->removeInstruction(M);
+    M->eraseFromParent();
 
-        MD->removeInstruction(AI);
-        AI->eraseFromParent();
+    MD->removeInstruction(AI);
+    AI->eraseFromParent();
 
-        ++NumMemCpyInstr;
-        return true;
-      }
-    }
+    ++NumMemCpyInstr;
+    return true;
   }
 
   return false;
