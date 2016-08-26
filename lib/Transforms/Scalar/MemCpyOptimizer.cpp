@@ -698,6 +698,29 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
           return true;
         }
       }
+
+      AllocaInst *AI;
+      Argument *Arg;
+      if ((AI = dyn_cast<AllocaInst>(
+               LI->getPointerOperand()->stripPointerCasts())) &&
+          (Arg = dyn_cast<Argument>(
+               SI->getPointerOperand()->stripPointerCasts())) &&
+          Arg->hasStructRetAttr() && Arg->hasNoAliasAttr() &&
+          Arg->getType() == AI->getType()) {
+        AI->replaceAllUsesWith(Arg);
+
+        MD->removeInstruction(SI);
+        SI->eraseFromParent();
+
+        MD->removeInstruction(LI);
+        LI->eraseFromParent();
+
+        MD->removeInstruction(AI);
+        AI->eraseFromParent();
+
+        ++NumMemCpyInstr;
+        return true;
+      }
     }
   }
 
