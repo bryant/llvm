@@ -202,6 +202,53 @@ define void @test10(%opaque* noalias nocapture sret %x, i32 %y) {
   ret void
 }
 
+define void @elide_memcpy_to_noalias_sret(%struct.big* noalias nocapture sret,
+                                          %struct.big* nocapture readonly,
+                                          %struct.big* nocapture readonly) {
+; CHECK-LABEL: @elide_memcpy_to_noalias_sret
+; CHECK-NOT: memcpy
+  %4 = alloca %struct.big, align 4
+  %5 = bitcast %struct.big* %4 to i8*
+  call void @llvm.lifetime.start(i64 200, i8* %5)
+  br label %8
+
+; <label>:6:                                      ; preds = %8
+  %7 = bitcast %struct.big* %0 to i8*
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* %7, i8* nonnull %5, i64 200, i32 4, i1 false)
+  call void @llvm.lifetime.end(i64 200, i8* nonnull %5)
+  ret void
+
+; <label>:8:                                      ; preds = %8, %3
+  %9 = phi i64 [ 0, %3 ], [ %16, %8 ]
+  %10 = getelementptr inbounds %struct.big, %struct.big* %1, i64 0, i32 0, i64 %9
+  %11 = load i32, i32* %10, align 4
+  %12 = getelementptr inbounds %struct.big, %struct.big* %2, i64 0, i32 0, i64 %9
+  %13 = load i32, i32* %12, align 4
+  %14 = xor i32 %13, %11
+  %15 = getelementptr inbounds %struct.big, %struct.big* %4, i64 0, i32 0, i64 %9
+  store i32 %14, i32* %15, align 4
+  %16 = add nuw nsw i64 %9, 1
+  %17 = icmp eq i64 %16, 50
+  br i1 %17, label %6, label %8
+}
+
+define void @pr2218(i8* noalias sret %result) {
+; CHECK-LABEL: @pr2218
+; CHECK: call void @initialize(i8* noalias sret %result)
+; CHECK: ret void
+entry:
+  %temporary = alloca i8          ; <i8*> [#uses=3]
+  %pointless = alloca i8          ; <i8*> [#uses=1]
+  call void @initialize(i8* noalias sret %temporary)
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* %pointless, i8* %temporary, i64 1, i32 4, i1 false)
+  call void @llvm.memcpy.p0i8.p0i8.i64(i8* %result, i8* %temporary, i64 1, i32 4, i1 false)
+  ret void
+}
+
+declare void @initialize(i8* noalias sret)
+declare void @llvm.lifetime.start(i64, i8* nocapture)
+declare void @llvm.lifetime.end(i64, i8* nocapture)
+
 declare void @f1(%struct.big* nocapture sret)
 declare void @f2(%struct.big*)
 
