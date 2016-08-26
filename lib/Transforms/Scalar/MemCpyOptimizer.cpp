@@ -1177,6 +1177,8 @@ bool MemCpyOptPass::processMemCpy(MemCpyInst *M) {
   //      lifetime copies undefined data, and we can therefore eliminate the
   //      memcpy in favor of the data that was already at the destination.
   //   d) memcpy from a just-memset'd source can be turned into memset.
+  //   e) memcpy from an alloca to a noalias sret can be converted into direct
+  //      access to the sret.
   if (DepInfo.isClobber()) {
     if (CallInst *C = dyn_cast<CallInst>(DepInfo.getInst())) {
       if (performCallSlotOptzn(M, M->getDest(), M->getSource(),
@@ -1225,6 +1227,23 @@ bool MemCpyOptPass::processMemCpy(MemCpyInst *M) {
         ++NumCpyToSet;
         return true;
       }
+
+  if (AllocaInst *AI = dyn_cast<AllocaInst>(M->getSource())) {
+    if (Argument *Arg = dyn_cast<Argument>(M->getDest())) {
+      if (Arg->hasStructRetAttr() && Arg->hasNoAliasAttr()) {
+        AI->replaceAllUsesWith(Arg);
+
+        MD->removeInstruction(M);
+        M->eraseFromParent();
+
+        MD->removeInstruction(AI);
+        AI->eraseFromParent();
+
+        ++NumMemCpyInstr;
+        return true;
+      }
+    }
+  }
 
   return false;
 }
