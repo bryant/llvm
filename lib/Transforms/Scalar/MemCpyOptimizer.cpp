@@ -577,6 +577,11 @@ static bool moveUp(AliasAnalysis &AA, StoreInst *SI, Instruction *P) {
   return true;
 }
 
+static bool isSRetMemCpyLike(AllocaInst &AI, Argument &Arg) {
+  return Arg.hasStructRetAttr() && Arg.hasNoAliasAttr() &&
+         Arg.getType() == AI.getType();
+}
+
 bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
   if (!SI->isSimple()) return false;
 
@@ -711,10 +716,10 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
               LI->getPointerOperand()->stripPointerCasts())) {
         if (Argument *Arg = dyn_cast<Argument>(
                 SI->getPointerOperand()->stripPointerCasts())) {
-          if (Arg->hasStructRetAttr() && Arg->hasNoAliasAttr() &&
-              Arg->getType() == AI->getType()) {
-            if (MemoryDef *def = dyn_cast<MemoryDef>(ms->getMemoryAccess(SI))) {
-              processSRetDef(*def);
+          if (isSRetMemCpyLike(*AI, *Arg)) {
+            if (MemoryDef *Def =
+                    dyn_cast<MemoryDef>(MSSA->getMemoryAccess(SI))) {
+              processSRetDef(*Def);
             }
           }
         }
@@ -1250,12 +1255,11 @@ bool MemCpyOptPass::processMemCpy(MemCpyInst *M) {
       }
 
   if (AllocaInst *AI = dyn_cast<AllocaInst>(M->getSource())) {
-    if (Argument *Arg = dyn_cast<Argument>(M->getDest())) {
-      if (Arg->hasStructRetAttr() && Arg->hasNoAliasAttr() &&
-          Arg->getType() == AI->getType()) {
-        if (MemoryDef *def = dyn_cast<MemoryDef>(ms->getMemoryAccess(M))) {
-          processSRetDef(*def);
-        }
+    Argument *Arg;
+    if ((Arg = dyn_cast<Argument>(M->getDest())) &&
+        isSRetMemCpyLike(*AI, *Arg)) {
+      if (MemoryDef *Def = dyn_cast<MemoryDef>(MSSA->getMemoryAccess(M))) {
+        processSRetDef(*Def);
       }
     }
   }
