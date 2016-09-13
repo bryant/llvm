@@ -15,6 +15,7 @@
 #include "llvm/Transforms/Scalar/MemCpyOptimizer.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/ADT/DenseSet.h"
+#include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/ValueTracking.h"
@@ -34,6 +35,10 @@ STATISTIC(NumMemCpyInstr, "Number of memcpy instructions deleted");
 STATISTIC(NumMemSetInfer, "Number of memsets inferred");
 STATISTIC(NumMoveToCpy,   "Number of memmoves converted to memcpy");
 STATISTIC(NumCpyToSet,    "Number of memcpys converted to memset");
+
+static cl::opt<bool>
+    DisableSRetElision("no-sret-elision", cl::init(false), cl::Hidden,
+                       cl::desc("Disable elision of memcpy to sret."));
 
 static int64_t GetOffsetFromIndex(const GEPOperator *GEP, unsigned Idx,
                                   bool &VariableIdxFound,
@@ -318,6 +323,9 @@ namespace {
       AU.addRequired<MemoryDependenceWrapperPass>();
       AU.addRequired<AAResultsWrapperPass>();
       AU.addRequired<TargetLibraryInfoWrapperPass>();
+      AU.addRequired<MemorySSAWrapperPass>();
+      AU.addRequired<BranchProbabilityInfoWrapperPass>();
+      AU.addPreserved<BranchProbabilityInfoWrapperPass>();
       AU.addPreserved<GlobalsAAWrapperPass>();
       AU.addPreserved<MemoryDependenceWrapperPass>();
     }
@@ -705,19 +713,9 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
                 SI->getPointerOperand()->stripPointerCasts())) {
           if (Arg->hasStructRetAttr() && Arg->hasNoAliasAttr() &&
               Arg->getType() == AI->getType()) {
-            AI->replaceAllUsesWith(Arg);
-
-            MD->removeInstruction(SI);
-            SI->eraseFromParent();
-
-            MD->removeInstruction(LI);
-            LI->eraseFromParent();
-
-            MD->removeInstruction(AI);
-            AI->eraseFromParent();
-
-            ++NumMemCpyInstr;
-            return true;
+            if (MemoryDef *def = dyn_cast<MemoryDef>(ms->getMemoryAccess(SI))) {
+              processSRetDef(*def);
+            }
           }
         }
       }
@@ -1255,16 +1253,9 @@ bool MemCpyOptPass::processMemCpy(MemCpyInst *M) {
     if (Argument *Arg = dyn_cast<Argument>(M->getDest())) {
       if (Arg->hasStructRetAttr() && Arg->hasNoAliasAttr() &&
           Arg->getType() == AI->getType()) {
-        AI->replaceAllUsesWith(Arg);
-
-        MD->removeInstruction(M);
-        M->eraseFromParent();
-
-        MD->removeInstruction(AI);
-        AI->eraseFromParent();
-
-        ++NumMemCpyInstr;
-        return true;
+        if (MemoryDef *def = dyn_cast<MemoryDef>(ms->getMemoryAccess(M))) {
+          processSRetDef(*def);
+        }
       }
     }
   }
@@ -1373,6 +1364,25 @@ bool MemCpyOptPass::processByValArgument(CallSite CS, unsigned ArgNo) {
   return true;
 }
 
+bool MemCpyOptPass::processSRetDef(MemoryDef &def) {
+  // test for childmost-ness
+  for (MemoryDef *p : sret_memcpies) {
+    if (ms->dominates(p, &def)) {
+      p = &def;
+      // if A doms M and B doms M, then A/B doms B/A. thus, only one
+      // of A or B could be present in sret_memcpies. so bailing
+      // early.is safe.
+      return true;
+    } else if (ms->dominates(&def, p)) {
+      return false;
+    }
+  }
+
+  sret_memcpies.push_back(&def);
+  dbgs() << "added " << def << "\n";
+  return true;
+}
+
 /// Executes one iteration of MemCpyOptPass.
 bool MemCpyOptPass::iterateOnFunction(Function &F) {
   bool MadeChange = false;
@@ -1415,6 +1425,8 @@ PreservedAnalyses MemCpyOptPass::run(Function &F, FunctionAnalysisManager &AM) {
 
   auto &MD = AM.getResult<MemoryDependenceAnalysis>(F);
   auto &TLI = AM.getResult<TargetLibraryAnalysis>(F);
+  auto &bpi = AM.getResult<BranchProbabilityAnalysis>(F);
+  auto &ms = AM.getResult<MemorySSAAnalysis>(F).getMSSA();
 
   auto LookupAliasAnalysis = [&]() -> AliasAnalysis & {
     return AM.getResult<AAManager>(F);
@@ -1426,8 +1438,10 @@ PreservedAnalyses MemCpyOptPass::run(Function &F, FunctionAnalysisManager &AM) {
     return AM.getResult<DominatorTreeAnalysis>(F);
   };
 
-  bool MadeChange = runImpl(F, &MD, &TLI, LookupAliasAnalysis,
+  bool MadeChange = runImpl(F, &MD, &ms, &bpi, &TLI, LookupAliasAnalysis,
                             LookupAssumptionCache, LookupDomTree);
+
+
   if (!MadeChange)
     return PreservedAnalyses::all();
   PreservedAnalyses PA;
@@ -1437,13 +1451,15 @@ PreservedAnalyses MemCpyOptPass::run(Function &F, FunctionAnalysisManager &AM) {
 }
 
 bool MemCpyOptPass::runImpl(
-    Function &F, MemoryDependenceResults *MD_, TargetLibraryInfo *TLI_,
+    Function &F, MemoryDependenceResults *MD_, MemorySSA *ms_,
+    BranchProbabilityInfo *bpi, TargetLibraryInfo *TLI_,
     std::function<AliasAnalysis &()> LookupAliasAnalysis_,
     std::function<AssumptionCache &()> LookupAssumptionCache_,
     std::function<DominatorTree &()> LookupDomTree_) {
   bool MadeChange = false;
   MD = MD_;
   TLI = TLI_;
+  ms = ms_;
   LookupAliasAnalysis = std::move(LookupAliasAnalysis_);
   LookupAssumptionCache = std::move(LookupAssumptionCache_);
   LookupDomTree = std::move(LookupDomTree_);
@@ -1460,6 +1476,56 @@ bool MemCpyOptPass::runImpl(
     MadeChange = true;
   }
 
+  auto elide_memcpy = [&](MemoryDef &def) {
+    AllocaInst *a;
+    Argument *arg;
+    if (MemCpyInst *mc = dyn_cast<MemCpyInst>(def.getMemoryInst())) {
+      a = dyn_cast<AllocaInst>(mc->getSource());
+      arg = dyn_cast<Argument>(mc->getDest());
+    } else {
+      StoreInst *st = cast<StoreInst>(def.getMemoryInst());
+      LoadInst *LI = cast<LoadInst>(st->getOperand(0));
+      a = dyn_cast<AllocaInst>(LI->getPointerOperand()->stripPointerCasts());
+      arg = dyn_cast<Argument>(st->getPointerOperand()->stripPointerCasts());
+    }
+    a->replaceAllUsesWith(arg);
+    MD->removeInstruction(def.getMemoryInst());
+    def.getMemoryInst()->eraseFromParent();
+    MD->removeInstruction(a);
+    a->eraseFromParent();
+  };
+
+  if (!DisableSRetElision) {
+    dbgs() << "mssa: ";
+    ms->print(dbgs());
+    if (sret_memcpies.size() == 1) {
+      dbgs() << "winner by default: " << *sret_memcpies[0] << "\n";
+      elide_memcpy(*sret_memcpies[0]);
+    } else if (sret_memcpies.size() > 0) {
+      DenseMap<MemoryDef *, BranchProbability> hot;
+      for (MemoryDef *def : sret_memcpies) {
+        hot.try_emplace(def, BranchProbability::getZero());
+        hot[def] +=
+            bpi->getEdgeProbability(&F.getEntryBlock(), def->getBlock());
+      }
+
+      for (const auto &p : hot) {
+        dbgs() << "prob = " << p.second << ", " << *p.first << "\n";
+      }
+
+      auto &winner = *std::max_element(
+          hot.begin(), hot.end(),
+          [](const DenseMap<MemoryDef *, BranchProbability>::value_type &l,
+             const DenseMap<MemoryDef *, BranchProbability>::value_type &r) {
+            return l.second < r.second;
+          });
+      dbgs() << "winner: prob = " << winner.second << ", " << *winner.first
+             << "\n";
+      elide_memcpy(*winner.first);
+    }
+  }
+  sret_memcpies.clear();
+
   MD = nullptr;
   return MadeChange;
 }
@@ -1471,6 +1537,8 @@ bool MemCpyOptLegacyPass::runOnFunction(Function &F) {
 
   auto *MD = &getAnalysis<MemoryDependenceWrapperPass>().getMemDep();
   auto *TLI = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
+  auto *ms = &getAnalysis<MemorySSAWrapperPass>().getMSSA();
+  auto *bpi = &getAnalysis<BranchProbabilityInfoWrapperPass>().getBPI();
 
   auto LookupAliasAnalysis = [this]() -> AliasAnalysis & {
     return getAnalysis<AAResultsWrapperPass>().getAAResults();
@@ -1482,6 +1550,6 @@ bool MemCpyOptLegacyPass::runOnFunction(Function &F) {
     return getAnalysis<DominatorTreeWrapperPass>().getDomTree();
   };
 
-  return Impl.runImpl(F, MD, TLI, LookupAliasAnalysis, LookupAssumptionCache,
+  return Impl.runImpl(F, MD, ms, bpi, TLI, LookupAliasAnalysis, LookupAssumptionCache,
                       LookupDomTree);
 }

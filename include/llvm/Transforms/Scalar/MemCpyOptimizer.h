@@ -26,21 +26,25 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/PassManager.h"
+#include "llvm/Analysis/BranchProbabilityInfo.h"
+#include "llvm/Transforms/Utils/MemorySSA.h"
 
 namespace llvm {
 
 class MemCpyOptPass : public PassInfoMixin<MemCpyOptPass> {
   MemoryDependenceResults *MD = nullptr;
+  MemorySSA *ms = nullptr;
   TargetLibraryInfo *TLI = nullptr;
   std::function<AliasAnalysis &()> LookupAliasAnalysis;
   std::function<AssumptionCache &()> LookupAssumptionCache;
   std::function<DominatorTree &()> LookupDomTree;
+  SmallVector<MemoryDef*, 8> sret_memcpies;
 
 public:
   MemCpyOptPass() {}
   PreservedAnalyses run(Function &F, FunctionAnalysisManager &AM);
   // Glue for the old PM.
-  bool runImpl(Function &F, MemoryDependenceResults *MD_,
+  bool runImpl(Function &F, MemoryDependenceResults *MD_, MemorySSA*, BranchProbabilityInfo*,
                TargetLibraryInfo *TLI_,
                std::function<AliasAnalysis &()> LookupAliasAnalysis_,
                std::function<AssumptionCache &()> LookupAssumptionCache_,
@@ -58,6 +62,7 @@ private:
   bool processMemSetMemCpyDependence(MemCpyInst *M, MemSetInst *MDep);
   bool performMemCpyToMemSetOptzn(MemCpyInst *M, MemSetInst *MDep);
   bool processByValArgument(CallSite CS, unsigned ArgNo);
+  bool processSRetDef(MemoryDef &);
   Instruction *tryMergingIntoMemset(Instruction *I, Value *StartPtr,
                                     Value *ByteVal);
 
