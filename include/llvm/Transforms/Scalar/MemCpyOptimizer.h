@@ -38,7 +38,7 @@ class MemCpyOptPass : public PassInfoMixin<MemCpyOptPass> {
   std::function<AliasAnalysis &()> LookupAliasAnalysis;
   std::function<AssumptionCache &()> LookupAssumptionCache;
   std::function<DominatorTree &()> LookupDomTree;
-  SmallVector<MemoryDef*, 8> sret_memcpies;
+  SmallVector<MemoryDef*, 8> ElisionCands;
 
 public:
   MemCpyOptPass() {}

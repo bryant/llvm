@@ -1368,22 +1368,21 @@ bool MemCpyOptPass::processByValArgument(CallSite CS, unsigned ArgNo) {
   return true;
 }
 
-bool MemCpyOptPass::processSRetDef(MemoryDef &def) {
+bool MemCpyOptPass::processSRetDef(MemoryDef &Def) {
   // test for childmost-ness
-  for (MemoryDef *p : sret_memcpies) {
-    if (ms->dominates(p, &def)) {
-      p = &def;
-      // if A doms M and B doms M, then A/B doms B/A. thus, only one
-      // of A or B could be present in sret_memcpies. so bailing
-      // early.is safe.
+  for (MemoryDef *Other : ElisionCands) {
+    if (MSSA->dominates(Other, &Def)) {
+      Other = &Def;
+      // if Other doms Def and SomeOther doms Def, then Other/SomeOther doms
+      // SomeOther/Other. thus, only one of Other or SomeOther could be present
+      // in ElisionCands. so bailing early.is safe.
       return true;
-    } else if (ms->dominates(&def, p)) {
+    } else if (MSSA->dominates(&Def, Other)) {
       return false;
     }
   }
 
-  sret_memcpies.push_back(&def);
-  dbgs() << "added " << def << "\n";
+  ElisionCands.push_back(&Def);
   return true;
 }
 
@@ -1429,8 +1428,8 @@ PreservedAnalyses MemCpyOptPass::run(Function &F, FunctionAnalysisManager &AM) {
 
   auto &MD = AM.getResult<MemoryDependenceAnalysis>(F);
   auto &TLI = AM.getResult<TargetLibraryAnalysis>(F);
-  auto &bpi = AM.getResult<BranchProbabilityAnalysis>(F);
-  auto &ms = AM.getResult<MemorySSAAnalysis>(F).getMSSA();
+  auto &BPI = AM.getResult<BranchProbabilityAnalysis>(F);
+  auto &MSSA = AM.getResult<MemorySSAAnalysis>(F).getMSSA();
 
   auto LookupAliasAnalysis = [&]() -> AliasAnalysis & {
     return AM.getResult<AAManager>(F);
@@ -1442,7 +1441,7 @@ PreservedAnalyses MemCpyOptPass::run(Function &F, FunctionAnalysisManager &AM) {
     return AM.getResult<DominatorTreeAnalysis>(F);
   };
 
-  bool MadeChange = runImpl(F, &MD, &ms, &bpi, &TLI, LookupAliasAnalysis,
+  bool MadeChange = runImpl(F, &MD, &MSSA, &BPI, &TLI, LookupAliasAnalysis,
                             LookupAssumptionCache, LookupDomTree);
 
 
@@ -1456,14 +1455,14 @@ PreservedAnalyses MemCpyOptPass::run(Function &F, FunctionAnalysisManager &AM) {
 
 bool MemCpyOptPass::runImpl(
     Function &F, MemoryDependenceResults *MD_, MemorySSA *ms_,
-    BranchProbabilityInfo *bpi, TargetLibraryInfo *TLI_,
+    BranchProbabilityInfo *BPI, TargetLibraryInfo *TLI_,
     std::function<AliasAnalysis &()> LookupAliasAnalysis_,
     std::function<AssumptionCache &()> LookupAssumptionCache_,
     std::function<DominatorTree &()> LookupDomTree_) {
   bool MadeChange = false;
   MD = MD_;
   TLI = TLI_;
-  ms = ms_;
+  MSSA = ms_;
   LookupAliasAnalysis = std::move(LookupAliasAnalysis_);
   LookupAssumptionCache = std::move(LookupAssumptionCache_);
   LookupDomTree = std::move(LookupDomTree_);
@@ -1480,45 +1479,42 @@ bool MemCpyOptPass::runImpl(
     MadeChange = true;
   }
 
-  auto elide_memcpy = [&](MemoryDef &def) {
+  auto elide_memcpy = [&](MemoryDef &Def) {
     AllocaInst *a;
     Argument *arg;
-    if (MemCpyInst *mc = dyn_cast<MemCpyInst>(def.getMemoryInst())) {
+    if (MemCpyInst *mc = dyn_cast<MemCpyInst>(Def.getMemoryInst())) {
       a = dyn_cast<AllocaInst>(mc->getSource());
       arg = dyn_cast<Argument>(mc->getDest());
     } else {
-      StoreInst *st = cast<StoreInst>(def.getMemoryInst());
+      StoreInst *st = cast<StoreInst>(Def.getMemoryInst());
       LoadInst *LI = cast<LoadInst>(st->getOperand(0));
       a = dyn_cast<AllocaInst>(LI->getPointerOperand()->stripPointerCasts());
       arg = dyn_cast<Argument>(st->getPointerOperand()->stripPointerCasts());
     }
     a->replaceAllUsesWith(arg);
-    MD->removeInstruction(def.getMemoryInst());
-    def.getMemoryInst()->eraseFromParent();
+    MD->removeInstruction(Def.getMemoryInst());
+    Def.getMemoryInst()->eraseFromParent();
     MD->removeInstruction(a);
     a->eraseFromParent();
   };
 
   if (!DisableSRetElision) {
-    dbgs() << "mssa: ";
-    ms->print(dbgs());
-    if (sret_memcpies.size() == 1) {
-      dbgs() << "winner by default: " << *sret_memcpies[0] << "\n";
-      elide_memcpy(*sret_memcpies[0]);
-    } else if (sret_memcpies.size() > 0) {
-      DenseMap<MemoryDef *, BranchProbability> hot;
-      for (MemoryDef *def : sret_memcpies) {
-        hot.try_emplace(def, BranchProbability::getZero());
-        hot[def] +=
-            bpi->getEdgeProbability(&F.getEntryBlock(), def->getBlock());
+    if (ElisionCands.size() == 1) {
+      dbgs() << "winner by default: " << *ElisionCands[0] << "\n";
+      elide_memcpy(*ElisionCands[0]);
+    } else if (ElisionCands.size() > 0) {
+      DenseMap<MemoryDef *, BranchProbability> Hot;
+      for (MemoryDef *Def : ElisionCands) {
+        Hot.try_emplace(Def, BranchProbability::getZero()).first->second +=
+            BPI->getEdgeProbability(&F.getEntryBlock(), Def->getBlock());
       }
 
-      for (const auto &p : hot) {
+      for (const auto &p : Hot) {
         dbgs() << "prob = " << p.second << ", " << *p.first << "\n";
       }
 
       auto &winner = *std::max_element(
-          hot.begin(), hot.end(),
+          Hot.begin(), Hot.end(),
           [](const DenseMap<MemoryDef *, BranchProbability>::value_type &l,
              const DenseMap<MemoryDef *, BranchProbability>::value_type &r) {
             return l.second < r.second;
@@ -1528,7 +1524,7 @@ bool MemCpyOptPass::runImpl(
       elide_memcpy(*winner.first);
     }
   }
-  sret_memcpies.clear();
+  ElisionCands.clear();
 
   MD = nullptr;
   return MadeChange;
@@ -1541,8 +1537,8 @@ bool MemCpyOptLegacyPass::runOnFunction(Function &F) {
 
   auto *MD = &getAnalysis<MemoryDependenceWrapperPass>().getMemDep();
   auto *TLI = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
-  auto *ms = &getAnalysis<MemorySSAWrapperPass>().getMSSA();
-  auto *bpi = &getAnalysis<BranchProbabilityInfoWrapperPass>().getBPI();
+  auto *MSSA = &getAnalysis<MemorySSAWrapperPass>().getMSSA();
+  auto *BPI = &getAnalysis<BranchProbabilityInfoWrapperPass>().getBPI();
 
   auto LookupAliasAnalysis = [this]() -> AliasAnalysis & {
     return getAnalysis<AAResultsWrapperPass>().getAAResults();
@@ -1554,6 +1550,6 @@ bool MemCpyOptLegacyPass::runOnFunction(Function &F) {
     return getAnalysis<DominatorTreeWrapperPass>().getDomTree();
   };
 
-  return Impl.runImpl(F, MD, ms, bpi, TLI, LookupAliasAnalysis, LookupAssumptionCache,
-                      LookupDomTree);
+  return Impl.runImpl(F, MD, MSSA, BPI, TLI, LookupAliasAnalysis,
+                      LookupAssumptionCache, LookupDomTree);
 }
