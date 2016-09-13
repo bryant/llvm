@@ -1454,7 +1454,7 @@ PreservedAnalyses MemCpyOptPass::run(Function &F, FunctionAnalysisManager &AM) {
 }
 
 bool MemCpyOptPass::runImpl(
-    Function &F, MemoryDependenceResults *MD_, MemorySSA *ms_,
+    Function &F, MemoryDependenceResults *MD_, MemorySSA *MSSA_,
     BranchProbabilityInfo *BPI, TargetLibraryInfo *TLI_,
     std::function<AliasAnalysis &()> LookupAliasAnalysis_,
     std::function<AssumptionCache &()> LookupAssumptionCache_,
@@ -1462,7 +1462,7 @@ bool MemCpyOptPass::runImpl(
   bool MadeChange = false;
   MD = MD_;
   TLI = TLI_;
-  MSSA = ms_;
+  MSSA = MSSA_;
   LookupAliasAnalysis = std::move(LookupAliasAnalysis_);
   LookupAssumptionCache = std::move(LookupAssumptionCache_);
   LookupDomTree = std::move(LookupDomTree_);
@@ -1479,52 +1479,7 @@ bool MemCpyOptPass::runImpl(
     MadeChange = true;
   }
 
-  auto elide_memcpy = [&](MemoryDef &Def) {
-    AllocaInst *a;
-    Argument *arg;
-    if (MemCpyInst *mc = dyn_cast<MemCpyInst>(Def.getMemoryInst())) {
-      a = dyn_cast<AllocaInst>(mc->getSource());
-      arg = dyn_cast<Argument>(mc->getDest());
-    } else {
-      StoreInst *st = cast<StoreInst>(Def.getMemoryInst());
-      LoadInst *LI = cast<LoadInst>(st->getOperand(0));
-      a = dyn_cast<AllocaInst>(LI->getPointerOperand()->stripPointerCasts());
-      arg = dyn_cast<Argument>(st->getPointerOperand()->stripPointerCasts());
-    }
-    a->replaceAllUsesWith(arg);
-    MD->removeInstruction(Def.getMemoryInst());
-    Def.getMemoryInst()->eraseFromParent();
-    MD->removeInstruction(a);
-    a->eraseFromParent();
-  };
-
-  if (!DisableSRetElision) {
-    if (ElisionCands.size() == 1) {
-      dbgs() << "winner by default: " << *ElisionCands[0] << "\n";
-      elide_memcpy(*ElisionCands[0]);
-    } else if (ElisionCands.size() > 0) {
-      DenseMap<MemoryDef *, BranchProbability> Hot;
-      for (MemoryDef *Def : ElisionCands) {
-        Hot.try_emplace(Def, BranchProbability::getZero()).first->second +=
-            BPI->getEdgeProbability(&F.getEntryBlock(), Def->getBlock());
-      }
-
-      for (const auto &p : Hot) {
-        dbgs() << "prob = " << p.second << ", " << *p.first << "\n";
-      }
-
-      auto &winner = *std::max_element(
-          Hot.begin(), Hot.end(),
-          [](const DenseMap<MemoryDef *, BranchProbability>::value_type &l,
-             const DenseMap<MemoryDef *, BranchProbability>::value_type &r) {
-            return l.second < r.second;
-          });
-      dbgs() << "winner: prob = " << winner.second << ", " << *winner.first
-             << "\n";
-      elide_memcpy(*winner.first);
-    }
-  }
-  ElisionCands.clear();
+  elideSRetMemCpy();
 
   MD = nullptr;
   return MadeChange;
