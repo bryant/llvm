@@ -1424,6 +1424,52 @@ bool MemCpyOptPass::iterateOnFunction(Function &F) {
   return MadeChange;
 }
 
+bool elideSRetMemCpy(BranchProbability &BPI) {
+  auto elide = [&](Instruction *StoreOrMemCpy) {
+    AllocaInst *AI;
+    Argument *Arg;
+    if (MemCpyInst *mc = dyn_cast<MemCpyInst>(StoreOrMemCpy)) {
+      AI = dyn_cast<AllocaInst>(mc->getSource());
+      Arg = dyn_cast<Argument>(mc->getDest());
+    } else {
+      StoreInst *SI = cast<StoreInst>(StoreOrMemCpy);
+      LoadInst *LI = cast<LoadInst>(SI->getOperand(0));
+      AI = dyn_cast<AllocaInst>(LI->getPointerOperand()->stripPointerCasts());
+      Arg = dyn_cast<Argument>(SI->getPointerOperand()->stripPointerCasts());
+    }
+    DEBUG(dbgs() << "Eliding memcpy/store to sret " << *I << " from " << *AI
+                 << "\n");
+    AI->replaceAllUsesWith(Arg);
+    MD->removeInstruction(StoreOrMemCpy);
+    StoreOrMemCpy->eraseFromParent();
+    MD->removeInstruction(AI);
+    AI->eraseFromParent();
+  };
+
+  if (ElisionCands.size() == 1) {
+    elide(*ElisionCands[0]);
+  } else if (ElisionCands.size() > 0) {
+    DenseMap<MemoryDef *, BranchProbability> Hot;
+    for (MemoryDef *Def : ElisionCands) {
+      Hot.try_emplace(Def, BranchProbability::getZero()).first->second +=
+          BPI->getEdgeProbability(&F.getEntryBlock(), Def->getBlock());
+    }
+
+    DEBUG(for (const auto &p : Hot) {
+      dbgs() << "prob = " << p.second << ", " << p.first->getMemoryInst()
+             << "\n";
+    });
+
+    auto &winner = *std::max_element(
+        Hot.begin(), Hot.end(),
+        [](const DenseMap<MemoryDef *, BranchProbability>::value_type &l,
+           const DenseMap<MemoryDef *, BranchProbability>::value_type &r) {
+          return l.second < r.second;
+        });
+    elide(*winner.first);
+  }
+}
+
 PreservedAnalyses MemCpyOptPass::run(Function &F, FunctionAnalysisManager &AM) {
 
   auto &MD = AM.getResult<MemoryDependenceAnalysis>(F);
@@ -1479,7 +1525,10 @@ bool MemCpyOptPass::runImpl(
     MadeChange = true;
   }
 
-  elideSRetMemCpy();
+  if (!DisableSRetElision) {
+    elideSRetMemCpy(*BPI);
+  }
+  ElisionCands.clear();
 
   MD = nullptr;
   return MadeChange;
