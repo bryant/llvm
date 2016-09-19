@@ -33,7 +33,7 @@ namespace llvm {
 
 class MemCpyOptPass : public PassInfoMixin<MemCpyOptPass> {
   MemoryDependenceResults *MD = nullptr;
-  MemorySSA *ms = nullptr;
+  MemorySSA *MSSA = nullptr;
   TargetLibraryInfo *TLI = nullptr;
   std::function<AliasAnalysis &()> LookupAliasAnalysis;
   std::function<AssumptionCache &()> LookupAssumptionCache;

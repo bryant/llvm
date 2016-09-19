@@ -1368,8 +1368,9 @@ bool MemCpyOptPass::processByValArgument(CallSite CS, unsigned ArgNo) {
   return true;
 }
 
+/// Collects successor-most MemoryDefs that do not dominate each other.
 bool MemCpyOptPass::processSRetDef(MemoryDef &Def) {
-  // test for childmost-ness
+  // tests for dominance
   for (MemoryDef *Other : ElisionCands) {
     if (MSSA->dominates(Other, &Def)) {
       Other = &Def;
@@ -1378,10 +1379,10 @@ bool MemCpyOptPass::processSRetDef(MemoryDef &Def) {
       // in ElisionCands. so bailing early.is safe.
       return true;
     } else if (MSSA->dominates(&Def, Other)) {
+      // reject Def since it would be overwritten by Other.
       return false;
     }
   }
-
   ElisionCands.push_back(&Def);
   return true;
 }
@@ -1424,49 +1425,59 @@ bool MemCpyOptPass::iterateOnFunction(Function &F) {
   return MadeChange;
 }
 
-bool elideSRetMemCpy(BranchProbability &BPI) {
-  auto elide = [&](Instruction *StoreOrMemCpy) {
-    AllocaInst *AI;
-    Argument *Arg;
-    if (MemCpyInst *mc = dyn_cast<MemCpyInst>(StoreOrMemCpy)) {
-      AI = dyn_cast<AllocaInst>(mc->getSource());
-      Arg = dyn_cast<Argument>(mc->getDest());
-    } else {
-      StoreInst *SI = cast<StoreInst>(StoreOrMemCpy);
-      LoadInst *LI = cast<LoadInst>(SI->getOperand(0));
-      AI = dyn_cast<AllocaInst>(LI->getPointerOperand()->stripPointerCasts());
-      Arg = dyn_cast<Argument>(SI->getPointerOperand()->stripPointerCasts());
-    }
-    DEBUG(dbgs() << "Eliding memcpy/store to sret " << *I << " from " << *AI
-                 << "\n");
-    AI->replaceAllUsesWith(Arg);
-    MD->removeInstruction(StoreOrMemCpy);
-    StoreOrMemCpy->eraseFromParent();
-    MD->removeInstruction(AI);
-    AI->eraseFromParent();
+static Argument &extractSRet(MemoryDef &Def) {
+  if (MemCpyInst *M = dyn_cast<MemCpyInst>(Def->getMemoryInst())) {
+    return *cast<Argument>(M->getDest());
+  } else if (StoreInst *SI = cast<StoreInst>(Def->getMemoryInst())) {
+    return 
+        *cast<Argument>(SI->getPointerOperand()->stripPointerCasts());
+  }
+  llvm_unreachable("malformed sret-memcpy elision candidate");
+}
+
+static AllocaInst &extractAllocaInst(MemoryDef &Def) {
+  if (MemCpyInst *M = dyn_cast<MemCpyInst>(Def->getMemoryInst())) {
+    return *cast<AllocaInst>(M->getDest());
+    ;
+  } else if (StoreInst *SI = cast<StoreInst>(Def->getMemoryInst())) {
+      if (LoadInst *LI = cast<LoadInst>(SI->getOperand(0))) {
+    return 
+        *cast<AllocaInst>(SI->getPointerOperand()->stripPointerCasts());
+  }
+  llvm_unreachable("malformed sret-memcpy elision candidate");
+}
+
+/// Elides the alloca that is most likely to be memcpy-ed to sret.
+bool elideSRetMemCpy(Function &F, BranchProbabilityInfo & BPI) {
+  auto elide = [&](AllocaInst &AI, Argument &SRet) {
+    DEBUG(dbgs() << "Replacing alloca " << AI << " with sret\n");
+    AI.replaceAllUsesWith(SRet);
+    this->MD->removeInstruction(&AI);
+    AI.eraseFromParent();
   };
 
   if (ElisionCands.size() == 1) {
-    elide(*ElisionCands[0]);
+    elide(extractAllocaInst(*ElisionCands[0]), extractSRet(*ElisionCands[0]));
   } else if (ElisionCands.size() > 0) {
-    DenseMap<MemoryDef *, BranchProbability> Hot;
+    // compute each distinct alloca's likelihood of copying to sret
+    DenseMap<AllocaInst *, BranchProbability> Hot;
     for (MemoryDef *Def : ElisionCands) {
-      Hot.try_emplace(Def, BranchProbability::getZero()).first->second +=
+      AllocaInst *AI = &extractAllocaInst(*Def);
+      Hot.try_emplace(AI, BranchProbability::getZero()).first->second +=
           BPI->getEdgeProbability(&F.getEntryBlock(), Def->getBlock());
     }
 
-    DEBUG(for (const auto &p : Hot) {
-      dbgs() << "prob = " << p.second << ", " << p.first->getMemoryInst()
-             << "\n";
-    });
+    for (const auto &p : Hot) {
+      DEBUG(dbgs() << "prob = " << p.second << ", " << *p.first << "\n");
+    };
 
-    auto &winner = *std::max_element(
+    auto &MostFreq = *std::max_element(
         Hot.begin(), Hot.end(),
-        [](const DenseMap<MemoryDef *, BranchProbability>::value_type &l,
-           const DenseMap<MemoryDef *, BranchProbability>::value_type &r) {
+        [](const DenseMap<AllocaInst *, BranchProbability>::value_type &l,
+           const DenseMap<AllocaInst *, BranchProbability>::value_type &r) {
           return l.second < r.second;
         });
-    elide(*winner.first);
+    elide(*MostFreq.first, extractSRet(*ElisionCands[0]));
   }
 }
 
@@ -1526,7 +1537,7 @@ bool MemCpyOptPass::runImpl(
   }
 
   if (!DisableSRetElision) {
-    elideSRetMemCpy(*BPI);
+    elideSRetMemCpy(F, BPI);
   }
   ElisionCands.clear();
 
