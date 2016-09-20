@@ -321,6 +321,7 @@ namespace {
       AU.addRequired<TargetLibraryInfoWrapperPass>();
       AU.addPreserved<GlobalsAAWrapperPass>();
       AU.addPreserved<MemoryDependenceWrapperPass>();
+      AU.addPreserved<MemorySSAWrapperPass>();
     }
 
     // Helper functions
@@ -466,6 +467,7 @@ Instruction *MemCpyOptPass::tryMergingIntoMemset(Instruction *StartInst,
 
     // Zap all the stores.
     for (Instruction *SI : Range.TheStores) {
+      MSSA->removeMemoryAccess(MSSA->getMemoryAccess(SI));
       MD->removeInstruction(SI);
       SI->eraseFromParent();
     }
@@ -643,6 +645,8 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
           DEBUG(dbgs() << "Promoting " << *LI << " to " << *SI
                        << " => " << *M << "\n");
 
+          MSSA->removeMemoryAccess(MSSA->getMemoryAccess(SI));
+          MSSA->removeMemoryAccess(MSSA->getMemoryAccess(LI));
           MD->removeInstruction(SI);
           SI->eraseFromParent();
           MD->removeInstruction(LI);
@@ -692,6 +696,8 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
             DL.getTypeStoreSize(SI->getOperand(0)->getType()),
             findCommonAlignment(DL, SI, LI), C);
         if (changed) {
+          MSSA->removeMemoryAccess(MSSA->getMemoryAccess(SI));
+          MSSA->removeMemoryAccess(MSSA->getMemoryAccess(LI));
           MD->removeInstruction(SI);
           SI->eraseFromParent();
           MD->removeInstruction(LI);
@@ -732,6 +738,7 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
 
       DEBUG(dbgs() << "Promoting " << *SI << " to " << *M << "\n");
 
+      MSSA->removeMemoryAccess(MSSA->getMemoryAccess(SI));
       MD->removeInstruction(SI);
       SI->eraseFromParent();
       NumMemSetInfer++;
@@ -1023,6 +1030,7 @@ bool MemCpyOptPass::processMemCpyMemCpyDependence(MemCpyInst *M,
                          Align, M->isVolatile());
 
   // Remove the instruction we're replacing.
+  MSSA->removeMemoryAccess(MSSA->getMemoryAccess(M));
   MD->removeInstruction(M);
   M->eraseFromParent();
   ++NumMemCpyInstr;
@@ -1089,6 +1097,7 @@ bool MemCpyOptPass::processMemSetMemCpyDependence(MemCpyInst *MemCpy,
   Builder.CreateMemSet(Builder.CreateGEP(Dest, SrcSize), MemSet->getOperand(1),
                        MemsetLen, Align);
 
+  MSSA->removeMemoryAccess(MSSA->getMemoryAccess(MemSet));
   MD->removeInstruction(MemSet);
   MemSet->eraseFromParent();
   return true;
@@ -1141,6 +1150,7 @@ bool MemCpyOptPass::processMemCpy(MemCpyInst *M) {
 
   // If the source and destination of the memcpy are the same, then zap it.
   if (M->getSource() == M->getDest()) {
+    MSSA->removeMemoryAccess(MSSA->getMemoryAccess(M));
     MD->removeInstruction(M);
     M->eraseFromParent();
     return false;
@@ -1153,6 +1163,7 @@ bool MemCpyOptPass::processMemCpy(MemCpyInst *M) {
         IRBuilder<> Builder(M);
         Builder.CreateMemSet(M->getRawDest(), ByteVal, M->getLength(),
                              M->getAlignment(), false);
+        MSSA->removeMemoryAccess(MSSA->getMemoryAccess(M));
         MD->removeInstruction(M);
         M->eraseFromParent();
         ++NumCpyToSet;
@@ -1184,6 +1195,7 @@ bool MemCpyOptPass::processMemCpy(MemCpyInst *M) {
       if (performCallSlotOptzn(M, M->getDest(), M->getSource(),
                                CopySize->getZExtValue(), M->getAlignment(),
                                C)) {
+        MSSA->removeMemoryAccess(MSSA->getMemoryAccess(M));
         MD->removeInstruction(M);
         M->eraseFromParent();
         return true;
@@ -1212,6 +1224,7 @@ bool MemCpyOptPass::processMemCpy(MemCpyInst *M) {
     }
 
     if (hasUndefContents) {
+      MSSA->removeMemoryAccess(MSSA->getMemoryAccess(M));
       MD->removeInstruction(M);
       M->eraseFromParent();
       ++NumMemCpyInstr;
@@ -1222,6 +1235,7 @@ bool MemCpyOptPass::processMemCpy(MemCpyInst *M) {
   if (SrcDepInfo.isClobber())
     if (MemSetInst *MDep = dyn_cast<MemSetInst>(SrcDepInfo.getInst()))
       if (performMemCpyToMemSetOptzn(M, MDep)) {
+        MSSA->removeMemoryAccess(MSSA->getMemoryAccess(M));
         MD->removeInstruction(M);
         M->eraseFromParent();
         ++NumCpyToSet;
@@ -1393,6 +1407,7 @@ PreservedAnalyses MemCpyOptPass::run(Function &F, FunctionAnalysisManager &AM) {
   PreservedAnalyses PA;
   PA.preserve<GlobalsAA>();
   PA.preserve<MemoryDependenceAnalysis>();
+  PA.preserve<MemorySSAAnalysis>();
   return PA;
 }
 
