@@ -26,11 +26,13 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/PassManager.h"
+#include "llvm/Transforms/Utils/MemorySSA.h"
 
 namespace llvm {
 
 class MemCpyOptPass : public PassInfoMixin<MemCpyOptPass> {
   MemoryDependenceResults *MD = nullptr;
+  MemorySSA *MSSA = nullptr;
   TargetLibraryInfo *TLI = nullptr;
   std::function<AliasAnalysis &()> LookupAliasAnalysis;
   std::function<AssumptionCache &()> LookupAssumptionCache;
@@ -40,7 +42,7 @@ public:
   MemCpyOptPass() {}
   PreservedAnalyses run(Function &F, FunctionAnalysisManager &AM);
   // Glue for the old PM.
-  bool runImpl(Function &F, MemoryDependenceResults *MD_,
+  bool runImpl(Function &F, MemoryDependenceResults *MD_, MemorySSA *,
                TargetLibraryInfo *TLI_,
                std::function<AliasAnalysis &()> LookupAliasAnalysis_,
                std::function<AssumptionCache &()> LookupAssumptionCache_,

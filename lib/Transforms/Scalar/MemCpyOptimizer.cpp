@@ -316,6 +316,7 @@ namespace {
       AU.addRequired<AssumptionCacheTracker>();
       AU.addRequired<DominatorTreeWrapperPass>();
       AU.addRequired<MemoryDependenceWrapperPass>();
+      AU.addRequired<MemorySSAWrapperPass>();
       AU.addRequired<AAResultsWrapperPass>();
       AU.addRequired<TargetLibraryInfoWrapperPass>();
       AU.addPreserved<GlobalsAAWrapperPass>();
@@ -350,6 +351,7 @@ INITIALIZE_PASS_BEGIN(MemCpyOptLegacyPass, "memcpyopt", "MemCpy Optimization",
 INITIALIZE_PASS_DEPENDENCY(AssumptionCacheTracker)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(MemoryDependenceWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(MemorySSAWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(TargetLibraryInfoWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(GlobalsAAWrapperPass)
@@ -1371,6 +1373,7 @@ bool MemCpyOptPass::iterateOnFunction(Function &F) {
 PreservedAnalyses MemCpyOptPass::run(Function &F, FunctionAnalysisManager &AM) {
 
   auto &MD = AM.getResult<MemoryDependenceAnalysis>(F);
+  auto &MSSA = AM.getResult<MemorySSAAnalysis>(F).getMSSA();
   auto &TLI = AM.getResult<TargetLibraryAnalysis>(F);
 
   auto LookupAliasAnalysis = [&]() -> AliasAnalysis & {
@@ -1383,7 +1386,7 @@ PreservedAnalyses MemCpyOptPass::run(Function &F, FunctionAnalysisManager &AM) {
     return AM.getResult<DominatorTreeAnalysis>(F);
   };
 
-  bool MadeChange = runImpl(F, &MD, &TLI, LookupAliasAnalysis,
+  bool MadeChange = runImpl(F, &MD, &MSSA, &TLI, LookupAliasAnalysis,
                             LookupAssumptionCache, LookupDomTree);
   if (!MadeChange)
     return PreservedAnalyses::all();
@@ -1394,12 +1397,14 @@ PreservedAnalyses MemCpyOptPass::run(Function &F, FunctionAnalysisManager &AM) {
 }
 
 bool MemCpyOptPass::runImpl(
-    Function &F, MemoryDependenceResults *MD_, TargetLibraryInfo *TLI_,
+    Function &F, MemoryDependenceResults *MD_, MemorySSA *MSSA_,
+    TargetLibraryInfo *TLI_,
     std::function<AliasAnalysis &()> LookupAliasAnalysis_,
     std::function<AssumptionCache &()> LookupAssumptionCache_,
     std::function<DominatorTree &()> LookupDomTree_) {
   bool MadeChange = false;
   MD = MD_;
+  MSSA = MSSA_;
   TLI = TLI_;
   LookupAliasAnalysis = std::move(LookupAliasAnalysis_);
   LookupAssumptionCache = std::move(LookupAssumptionCache_);
@@ -1418,6 +1423,7 @@ bool MemCpyOptPass::runImpl(
   }
 
   MD = nullptr;
+  MSSA = nullptr;
   return MadeChange;
 }
 
@@ -1427,6 +1433,7 @@ bool MemCpyOptLegacyPass::runOnFunction(Function &F) {
     return false;
 
   auto *MD = &getAnalysis<MemoryDependenceWrapperPass>().getMemDep();
+  auto *MSSA = &getAnalysis<MemorySSAWrapperPass>().getMSSA();
   auto *TLI = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
 
   auto LookupAliasAnalysis = [this]() -> AliasAnalysis & {
@@ -1439,6 +1446,6 @@ bool MemCpyOptLegacyPass::runOnFunction(Function &F) {
     return getAnalysis<DominatorTreeWrapperPass>().getDomTree();
   };
 
-  return Impl.runImpl(F, MD, TLI, LookupAliasAnalysis, LookupAssumptionCache,
-                      LookupDomTree);
+  return Impl.runImpl(F, MD, MSSA, TLI, LookupAliasAnalysis,
+                      LookupAssumptionCache, LookupDomTree);
 }
