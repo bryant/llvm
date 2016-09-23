@@ -992,8 +992,32 @@ bool MemCpyOptPass::processMemCpyMemCpyDependence(MemCpyInst *M,
   MemDepResult SourceDep =
       MD->getPointerDependencyFrom(MemoryLocation::getForSource(MDep), false,
                                    M->getIterator(), M->getParent());
-  if (!SourceDep.isClobber() || SourceDep.getInst() != MDep)
-    return false;
+  dbgs() << "wew lad\n";
+  if (!SourceDep.isClobber() || SourceDep.getInst() != MDep) {
+    MemDepResult DestDep = MD->getPointerDependencyFrom(
+        MemoryLocation::getForDest(M), false, std::prev(M->getIterator()),
+        M->getParent(), M);
+    DominatorTree &DT = LookupDomTree();
+    dbgs() << "DestDep ? " << DestDep.isUnknown() << DestDep.isNonLocal() << DestDep.isNonFuncLocal() << DestDep.isDef() << DestDep.isClobber();
+    if (DestDep.getInst())
+        dbgs() << *DestDep.getInst() << "\n";
+    else dbgs() << "nope" << "\n";
+    if (DestDep.getInst() == nullptr || DT.dominates(MDep, DestDep.getInst())) {
+        dbgs() << "wew splice\n";
+      // move our memcpy up to just after mdep
+      MemCpyInst *n = cast<MemCpyInst>(M->clone());
+      n->insertAfter(MDep);
+      MSSA->removeMemoryAccess(MSSA->getMemoryAccess(M));
+      MD->removeInstruction(M);
+      M->removeFromParent();
+      M = n;
+      //M->moveBefore(*MDep->getParent(), std::next(MDep->getIterator()));
+      // refresh MemDep cache
+      //MD->removeInstruction(M);
+    } else {
+      return false;
+    }
+  }
 
   // If the dest of the second might alias the source of the first, then the
   // source and dest might overlap.  We still want to eliminate the intermediate
