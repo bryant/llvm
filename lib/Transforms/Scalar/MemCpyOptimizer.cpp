@@ -35,6 +35,10 @@ STATISTIC(NumMemSetInfer, "Number of memsets inferred");
 STATISTIC(NumMoveToCpy,   "Number of memmoves converted to memcpy");
 STATISTIC(NumCpyToSet,    "Number of memcpys converted to memset");
 
+static cl::opt<bool> MoveUpMC(
+    "move-up-memcpy", cl::Hidden, cl::init(false),
+    cl::desc("Tries to bypass intermediate junk between two memcpys."));
+
 static int64_t GetOffsetFromIndex(const GEPOperator *GEP, unsigned Idx,
                                   bool &VariableIdxFound,
                                   const DataLayout &DL) {
@@ -998,22 +1002,39 @@ bool MemCpyOptPass::processMemCpyMemCpyDependence(MemCpyInst *M,
         MemoryLocation::getForDest(M), false, std::prev(M->getIterator()),
         M->getParent(), M);
     DominatorTree &DT = LookupDomTree();
-    dbgs() << "DestDep ? " << DestDep.isUnknown() << DestDep.isNonLocal() << DestDep.isNonFuncLocal() << DestDep.isDef() << DestDep.isClobber();
-    if (DestDep.getInst())
-        dbgs() << *DestDep.getInst() << "\n";
-    else dbgs() << "nope" << "\n";
-    if (DestDep.getInst() == nullptr || DT.dominates(MDep, DestDep.getInst())) {
-        dbgs() << "wew splice\n";
+    if (MoveUpMC && (DestDep.getInst() == nullptr || DT.dominates(MDep, DestDep.getInst()))) {
+      dbgs() << "wew splice\n";
       // move our memcpy up to just after mdep
-      MemCpyInst *n = cast<MemCpyInst>(M->clone());
-      n->insertAfter(MDep);
-      MSSA->removeMemoryAccess(MSSA->getMemoryAccess(M));
-      MD->removeInstruction(M);
-      M->removeFromParent();
-      M = n;
-      //M->moveBefore(*MDep->getParent(), std::next(MDep->getIterator()));
-      // refresh MemDep cache
-      //MD->removeInstruction(M);
+      DenseSet<Instruction *> inrange, visited;
+      for (Instruction &i : make_range(MDep->getIterator(), M->getIterator())) {
+        inrange.insert(&i);
+      }
+      SmallVector<Instruction *, 8> tomove, stack{M};
+      while (!stack.empty()) {
+        SmallVector<Instruction*, 8> next;
+        Instruction *cur = stack.back();
+        for (Use &op : cur->operands()) {
+          if (Instruction *i = dyn_cast<Instruction>(op.get())) {
+            if (inrange.find(i) != inrange.end() && visited.find(i) == visited.end()) {
+                next.push_back(i);
+            }
+          }
+        }
+        if (next.empty()) {
+          // leaf node
+          tomove.push_back(cur);
+          visited.insert(cur);
+          stack.pop_back();
+        } else {
+          stack.append(next.begin(), next.end());
+        }
+      }
+
+      for (auto i : tomove) {
+        i->moveBefore(MDep);
+        // refresh MemDep cache
+        MD->removeInstruction(i);
+      }
     } else {
       return false;
     }
