@@ -35,7 +35,7 @@ STATISTIC(NumMemSetInfer, "Number of memsets inferred");
 STATISTIC(NumMoveToCpy,   "Number of memmoves converted to memcpy");
 STATISTIC(NumCpyToSet,    "Number of memcpys converted to memset");
 
-static cl::opt<bool> MoveUpMC(
+static cl::opt<bool> NoMoveUpMC(
     "move-up-memcpy", cl::Hidden, cl::init(false),
     cl::desc("Tries to bypass intermediate junk between two memcpys."));
 
@@ -1002,8 +1002,8 @@ bool MemCpyOptPass::processMemCpyMemCpyDependence(MemCpyInst *M,
         MemoryLocation::getForDest(M), false, std::prev(M->getIterator()),
         M->getParent(), M);
     DominatorTree &DT = LookupDomTree();
-    if (MoveUpMC && (DestDep.getInst() == nullptr ||
-                     DT.dominates(MDep, DestDep.getInst()))) {
+    if (!NoMoveUpMC && (DestDep.getInst() == nullptr ||
+                        DT.dominates(MDep, DestDep.getInst()))) {
       dbgs() << "wew splice\n";
       // move our memcpy up to just after mdep
       DenseSet<Instruction *> inrange, visited;
