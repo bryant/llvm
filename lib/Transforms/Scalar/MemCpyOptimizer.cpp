@@ -1002,7 +1002,8 @@ bool MemCpyOptPass::processMemCpyMemCpyDependence(MemCpyInst *M,
         MemoryLocation::getForDest(M), false, std::prev(M->getIterator()),
         M->getParent(), M);
     DominatorTree &DT = LookupDomTree();
-    if (MoveUpMC && (DestDep.getInst() == nullptr || DT.dominates(MDep, DestDep.getInst()))) {
+    if (MoveUpMC && (DestDep.getInst() == nullptr ||
+                     DT.dominates(MDep, DestDep.getInst()))) {
       dbgs() << "wew splice\n";
       // move our memcpy up to just after mdep
       DenseSet<Instruction *> inrange, visited;
@@ -1011,12 +1012,13 @@ bool MemCpyOptPass::processMemCpyMemCpyDependence(MemCpyInst *M,
       }
       SmallVector<Instruction *, 8> tomove, stack{M};
       while (!stack.empty()) {
-        SmallVector<Instruction*, 8> next;
+        SmallVector<Instruction *, 8> next;
         Instruction *cur = stack.back();
         for (Use &op : cur->operands()) {
           if (Instruction *i = dyn_cast<Instruction>(op.get())) {
-            if (inrange.find(i) != inrange.end() && visited.find(i) == visited.end()) {
-                next.push_back(i);
+            if (inrange.find(i) != inrange.end() &&
+                visited.find(i) == visited.end()) {
+              next.push_back(i);
             }
           }
         }
