@@ -1042,6 +1042,15 @@ bool MemCpyOptPass::processMemCpyMemCpyDependence(MemCpyInst *M,
     }
   }
 
+  // Bail early if `memcpy(a <- b); memcpy(b <- a)`
+  if (AA.isMustAlias(MemoryLocation::getForDest(M),
+                     MemoryLocation::getForSource(MDep))) {
+    MD->removeInstruction(M);
+    M->eraseFromParent();
+    ++NumMemCpyInstr;
+    return true;
+  }
+
   // If the dest of the second might alias the source of the first, then the
   // source and dest might overlap.  We still want to eliminate the intermediate
   // value, but we have to generate a memmove instead of memcpy.
