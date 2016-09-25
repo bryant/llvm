@@ -1003,7 +1003,7 @@ bool MemCpyOptPass::processMemCpyMemCpyDependence(MemCpyInst *M,
         M->getParent(), M);
     DominatorTree &DT = LookupDomTree();
     if (!NoMoveUpMC && (DestDep.getInst() == nullptr ||
-                        DT.dominates(MDep, DestDep.getInst()))) {
+                        DT.dominates(DestDep.getInst(), MDep))) {
       dbgs() << "wew splice\n";
       // move our memcpy up to just after mdep
       DenseSet<Instruction *> inrange, visited;
