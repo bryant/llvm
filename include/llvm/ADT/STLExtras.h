@@ -341,39 +341,34 @@ make_filter_range(RangeT &&Range, PredicateT Pred) {
                     FilterIteratorT(std::end(std::forward<RangeT>(Range))));
 }
 
-// forward declaration required by ZipShortest::operator!=
+// forward declarations required by ZipShortest/ZipFirst
 template <typename R, class UnaryPredicate>
 bool all_of(R &&range, UnaryPredicate &&P);
 
+template <size_t... I> struct index_sequence;
+
+template <class... Ts> struct index_sequence_for;
+
 namespace detail {
-template <unsigned N, unsigned... Ns> struct NatList {
-  using eval = typename NatList<N - 1, N - 1, Ns...>::eval;
-};
-
-template <unsigned... Ns> struct NatList<0, Ns...> {
-  using eval = NatList<Ns...>;
-};
-
 template <typename... Iters> class ZipFirst {
 public:
-  typedef typename NatList<sizeof...(Iters)>::eval nat_list;
   typedef std::input_iterator_tag iterator_category;
   typedef std::tuple<decltype(*std::declval<Iters>())...> value_type;
   std::tuple<Iters...> iterators;
 
 private:
-  template <unsigned... Ns> value_type deres(NatList<Ns...>) {
+  template <size_t... Ns> value_type deres(index_sequence<Ns...>) {
     return value_type(*std::get<Ns>(iterators)...);
   }
 
-  template <unsigned... Ns> decltype(iterators) tup_inc(NatList<Ns...>) {
+  template <size_t... Ns> decltype(iterators) tup_inc(index_sequence<Ns...>) {
     return std::tuple<Iters...>(std::next(std::get<Ns>(iterators))...);
   }
 
 public:
-  value_type operator*() { return deres(nat_list{}); }
+  value_type operator*() { return deres(index_sequence_for<Iters...>{}); }
 
-  void operator++() { iterators = tup_inc(nat_list{}); }
+  void operator++() { iterators = tup_inc(index_sequence_for<Iters...>{}); }
 
   bool operator!=(const ZipFirst<Iters...> &other) const {
     return std::get<0>(iterators) != std::get<0>(other.iterators);
@@ -382,8 +377,8 @@ public:
 };
 
 template <typename... Iters> class ZipShortest : public ZipFirst<Iters...> {
-  template <unsigned... Ns>
-  bool test(const ZipFirst<Iters...> &other, NatList<Ns...>) const {
+  template <size_t... Ns>
+  bool test(const ZipFirst<Iters...> &other, index_sequence<Ns...>) const {
     return all_of(std::initializer_list<bool>{std::get<Ns>(this->iterators) !=
                                               std::get<Ns>(other.iterators)...},
                   identity<bool>{});
@@ -391,7 +386,7 @@ template <typename... Iters> class ZipShortest : public ZipFirst<Iters...> {
 
 public:
   bool operator!=(const ZipFirst<Iters...> &other) const {
-    return test(other, typename ZipFirst<Iters...>::nat_list{});
+    return test(other, index_sequence_for<Iters...>{});
   }
   ZipShortest(Iters &&... ts)
       : ZipFirst<Iters...>(std::forward<Iters>(ts)...) {}
@@ -402,19 +397,18 @@ public:
   typedef ItType<decltype(std::begin(std::declval<Args>()))...> iterator;
 
 private:
-  typedef typename NatList<sizeof...(Args)>::eval nat_list;
   std::tuple<Args...> ts;
 
-  template <unsigned... Ns> iterator begin_impl(NatList<Ns...>) {
+  template <size_t... Ns> iterator begin_impl(index_sequence<Ns...>) {
     return iterator(std::begin(std::get<Ns>(ts))...);
   }
-  template <unsigned... Ns> iterator end_impl(NatList<Ns...>) {
+  template <size_t... Ns> iterator end_impl(index_sequence<Ns...>) {
     return iterator(std::end(std::get<Ns>(ts))...);
   }
 
 public:
-  iterator begin() { return begin_impl(nat_list{}); }
-  iterator end() { return end_impl(nat_list{}); }
+  iterator begin() { return begin_impl(index_sequence_for<Args...>{}); }
+  iterator end() { return end_impl(index_sequence_for<Args...>{}); }
   Zippy(Args &&... ts_) : ts(std::forward<Args>(ts_)...) {}
 };
 } // End detail namespace
