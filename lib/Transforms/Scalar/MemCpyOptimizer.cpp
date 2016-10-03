@@ -996,50 +996,77 @@ bool MemCpyOptPass::processMemCpyMemCpyDependence(MemCpyInst *M,
   MemDepResult SourceDep =
       MD->getPointerDependencyFrom(MemoryLocation::getForSource(MDep), false,
                                    M->getIterator(), M->getParent());
-  dbgs() << "wew lad\n";
-  if (!SourceDep.isClobber() || SourceDep.getInst() != MDep) {
-    MemDepResult DestDep = MD->getPointerDependencyFrom(
-        MemoryLocation::getForDest(M), false, std::prev(M->getIterator()),
-        M->getParent(), M);
-    DominatorTree &DT = LookupDomTree();
-    if (!NoMoveUpMC && (DestDep.getInst() == nullptr ||
-                        DT.dominates(DestDep.getInst(), MDep))) {
-      dbgs() << "wew splice\n";
-      // move our memcpy up to just after mdep
-      DenseSet<Instruction *> inrange, visited;
-      for (Instruction &i : make_range(MDep->getIterator(), M->getIterator())) {
-        inrange.insert(&i);
-      }
-      SmallVector<Instruction *, 8> tomove, stack{M};
-      while (!stack.empty()) {
-        SmallVector<Instruction *, 8> next;
-        Instruction *cur = stack.back();
-        for (Use &op : cur->operands()) {
-          if (Instruction *i = dyn_cast<Instruction>(op.get())) {
-            if (inrange.find(i) != inrange.end() &&
-                visited.find(i) == visited.end()) {
-              next.push_back(i);
-            }
+  MemDepResult MSourceDep = MD->getPointerDependencyFrom(
+      MemoryLocation::getForSource(M), false, M->getIterator(), M->getParent());
+  MemDepResult DestDep =
+      MD->getPointerDependencyFrom(MemoryLocation::getForDest(M), false,
+                                   M->getIterator(), M->getParent(), M);
+  DominatorTree &DT = LookupDomTree();
+
+  // Three cases:
+  // Case 1:
+  // memcpy(b <- a); ...; *b = 42; ...; memcpy(a <- b);
+  // => if a is never mod/refed in between the two memcpys
+  // ...; *a = 42; ...; memcpy(b <- a);
+  if (M->getDest() == MDep->getSource() && DestDep.getInst() == MDep) {
+    // TODO: figure out how to replace uses within a basic block range
+    DEBUG(dbgs() << "TODO: for case 1, figure out how to replace uses within "
+                    "bb range\n");
+    return false;
+  }
+
+  // Case 2:
+  // memcpy(b <- a); ...;  memcpy(c <- b);
+  // => if "..." doesn't mod/ref either c or b
+  // memcpy(c <- a); memcpy(b <- a); *a = 42;
+  else if (MSourceDep.getInst() == MDep &&
+           (!DestDep.getInst() || DT.dominates(DestDep.getInst(), MDep))) {
+    DEBUG(dbgs() << "case 2: " << *MDep << "\n");
+    // move our memcpy up to just after mdep
+    DenseSet<Instruction *> inrange, visited;
+    for (Instruction &i : make_range(MDep->getIterator(), M->getIterator())) {
+      inrange.insert(&i);
+    }
+    SmallVector<Instruction *, 8> tomove, stack{M};
+    while (!stack.empty()) {
+      SmallVector<Instruction *, 8> next;
+      Instruction *cur = stack.back();
+      for (Use &op : cur->operands()) {
+        if (Instruction *i = dyn_cast<Instruction>(op.get())) {
+          if (inrange.find(i) != inrange.end() &&
+              visited.find(i) == visited.end()) {
+            next.push_back(i);
           }
         }
-        if (next.empty()) {
-          // leaf node
-          tomove.push_back(cur);
-          visited.insert(cur);
-          stack.pop_back();
-        } else {
-          stack.append(next.begin(), next.end());
-        }
       }
-
-      for (auto i : tomove) {
-        i->moveBefore(MDep);
-        // refresh MemDep cache
-        MD->removeInstruction(i);
+      if (next.empty()) {
+        // leaf node
+        tomove.push_back(cur);
+        visited.insert(cur);
+        stack.pop_back();
+      } else {
+        stack.append(next.begin(), next.end());
       }
-    } else {
-      return false;
     }
+
+    for (auto i : tomove) {
+      i->moveBefore(MDep);
+      // refresh MemDep cache
+      MD->removeInstruction(i);
+    }
+  }
+
+  // TODO: Case 3:
+  // memcpy(b <- a); ...; memcpy(c <- b)
+  // => if "..." doesn't mod/ref b or a
+  // ...; memcpy(b <- a); memcpy(c <- b)
+  else if (MSourceDep.getInst() == MDep &&
+           (!SourceDep.getInst() || DT.dominates(SourceDep.getInst(), MDep))) {
+    DEBUG(dbgs() << "TODO: case 3.\n");
+    return false;
+  } else {
+    // none of the cases match; ignore.
+    return false;
   }
 
   // Bail early if `memcpy(a <- b); memcpy(b <- a)`
@@ -1249,10 +1276,7 @@ bool MemCpyOptPass::processMemCpy(MemCpyInst *M) {
   MemDepResult SrcDepInfo = MD->getPointerDependencyFrom(
       SrcLoc, true, M->getIterator(), M->getParent());
 
-  if (SrcDepInfo.isClobber()) {
-    if (MemCpyInst *MDep = dyn_cast<MemCpyInst>(SrcDepInfo.getInst()))
-      return processMemCpyMemCpyDependence(M, MDep);
-  } else if (SrcDepInfo.isDef()) {
+  if (SrcDepInfo.isDef()) {
     Instruction *I = SrcDepInfo.getInst();
     bool hasUndefContents = false;
 
@@ -1281,6 +1305,19 @@ bool MemCpyOptPass::processMemCpy(MemCpyInst *M) {
         ++NumCpyToSet;
         return true;
       }
+
+  // search upwards within bb for possible memcpy-memcpy dep
+  for (MemDepResult d = MD->getPointerDependencyFrom(
+           SrcLoc, false, M->getIterator(), M->getParent());
+       !d.isNonLocal() && d.getInst();
+       d = MD->getPointerDependencyFrom(
+           SrcLoc, false, d.getInst()->getIterator(), M->getParent(), M)) {
+    if (MemCpyInst *MDep = dyn_cast<MemCpyInst>(d.getInst())) {
+      if (MDep->getDest() == M->getSource()) {
+        return processMemCpyMemCpyDependence(M, MDep);
+      }
+    }
+  }
 
   return false;
 }
