@@ -1024,6 +1024,7 @@ bool MemCpyOptPass::processMemCpyMemCpyDependence(MemCpyInst *M,
     for (Instruction &i : make_range(MDep->getIterator(), M->getIterator())) {
       inrange.insert(&i);
     }
+    // identify dependencies of the memcpy that also need to moved upwards.
     SmallVector<Instruction *, 8> tomove, stack{M};
     while (!stack.empty()) {
       SmallVector<Instruction *, 8> next;
