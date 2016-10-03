@@ -1020,7 +1020,8 @@ bool MemCpyOptPass::processMemCpyMemCpyDependence(MemCpyInst *M,
   // => if "..." doesn't mod/ref either c or b
   // memcpy(c <- a); memcpy(b <- a); *a = 42;
   else if (MSourceDep.getInst() == MDep &&
-           (!DestDep.getInst() || DT.dominates(DestDep.getInst(), MDep))) {
+           (!DestDep.getInst() || DestDep.getInst() == MDep ||
+            DT.dominates(DestDep.getInst(), MDep))) {
     DEBUG(dbgs() << "case 2: " << *MDep << "\n");
     // move our memcpy up to just after mdep
     DenseSet<Instruction *> inrange, visited;
@@ -1061,11 +1062,13 @@ bool MemCpyOptPass::processMemCpyMemCpyDependence(MemCpyInst *M,
   // => if "..." doesn't mod/ref b or a
   // ...; memcpy(b <- a); memcpy(c <- b)
   else if (MSourceDep.getInst() == MDep &&
-           (!SourceDep.getInst() || DT.dominates(SourceDep.getInst(), MDep))) {
+           (!SourceDep.getInst() || SourceDep.getInst() == MDep ||
+            DT.dominates(SourceDep.getInst(), MDep))) {
     DEBUG(dbgs() << "TODO: case 3.\n");
     return false;
   } else {
     // none of the cases match; ignore.
+    dbgs() << "No matching case. Ignoring. " << *M << "\n" << *MDep << "\n";
     return false;
   }
 
