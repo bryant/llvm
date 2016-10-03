@@ -35,10 +35,6 @@ STATISTIC(NumMemSetInfer, "Number of memsets inferred");
 STATISTIC(NumMoveToCpy,   "Number of memmoves converted to memcpy");
 STATISTIC(NumCpyToSet,    "Number of memcpys converted to memset");
 
-static cl::opt<bool> NoMoveUpMC(
-    "no-move-up-memcpy", cl::Hidden, cl::init(false),
-    cl::desc("Tries to bypass intermediate junk between two memcpys."));
-
 static int64_t GetOffsetFromIndex(const GEPOperator *GEP, unsigned Idx,
                                   bool &VariableIdxFound,
                                   const DataLayout &DL) {
