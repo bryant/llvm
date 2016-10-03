@@ -1064,7 +1064,8 @@ bool MemCpyOptPass::processMemCpyMemCpyDependence(MemCpyInst *M,
     return false;
   } else {
     // none of the cases match; ignore.
-    dbgs() << "No matching case. Ignoring. " << *M << "\n" << *MDep << "\n";
+    DEBUG(dbgs() << "No matching case. Ignoring. " << *M << "\n"
+                 << *MDep << "\n");
     return false;
   }
 
