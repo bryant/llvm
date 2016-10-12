@@ -349,20 +349,6 @@ template <size_t... I> struct index_sequence;
 
 template <class... Ts> struct index_sequence_for;
 
-template <std::size_t N, std::size_t... I> struct build_index_impl;
-
-namespace detail {
-template <typename F, typename Tuple, std::size_t... I>
-auto apply_tuple_impl(F &&f, Tuple &&t, index_sequence<I...>)
-    -> decltype(std::forward<F>(f)(std::get<I>(std::forward<Tuple>(t))...));
-}
-
-template <typename F, typename Tuple>
-auto apply_tuple(F &&f, Tuple &&t) -> decltype(detail::apply_tuple_impl(
-    std::forward<F>(f), std::forward<Tuple>(t),
-    build_index_impl<
-        std::tuple_size<typename std::decay<Tuple>::type>::value>{}));
-
 namespace detail {
 template <typename... Iters> class ZipFirst {
 public:
@@ -370,18 +356,19 @@ public:
   typedef std::tuple<decltype(*std::declval<Iters>())...> value_type;
   std::tuple<Iters...> iterators;
 
-public:
-  value_type operator*() {
-    auto f = [](Iters &... args) { return value_type(*args...); };
-    return apply_tuple(f, iterators);
+private:
+  template <size_t... Ns> value_type deres(index_sequence<Ns...>) {
+    return value_type(*std::get<Ns>(iterators)...);
   }
 
-  void operator++() {
-    auto f = [](Iters &... args) {
-      return decltype(iterators)(std::next(args)...);
-    };
-    iterators = apply_tuple(f, iterators);
+  template <size_t... Ns> decltype(iterators) tup_inc(index_sequence<Ns...>) {
+    return std::tuple<Iters...>(std::next(std::get<Ns>(iterators))...);
   }
+
+public:
+  value_type operator*() { return deres(index_sequence_for<Iters...>{}); }
+
+  void operator++() { iterators = tup_inc(index_sequence_for<Iters...>{}); }
 
   bool operator!=(const ZipFirst<Iters...> &other) const {
     return std::get<0>(iterators) != std::get<0>(other.iterators);
@@ -412,15 +399,16 @@ public:
 private:
   std::tuple<Args...> ts;
 
+  template <size_t... Ns> iterator begin_impl(index_sequence<Ns...>) {
+    return iterator(std::begin(std::get<Ns>(ts))...);
+  }
+  template <size_t... Ns> iterator end_impl(index_sequence<Ns...>) {
+    return iterator(std::end(std::get<Ns>(ts))...);
+  }
+
 public:
-  iterator begin() {
-    auto f = [](Args &... args) { return iterator(std::begin(args)...); };
-    return apply_tuple(f, ts);
-  }
-  iterator end() {
-    auto f = [](Args &... args) { return iterator(std::end(args)...); };
-    return apply_tuple(f, ts);
-  }
+  iterator begin() { return begin_impl(index_sequence_for<Args...>{}); }
+  iterator end() { return end_impl(index_sequence_for<Args...>{}); }
   Zippy(Args &&... ts_) : ts(std::forward<Args>(ts_)...) {}
 };
 } // End detail namespace
