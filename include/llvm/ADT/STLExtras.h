@@ -341,7 +341,7 @@ make_filter_range(RangeT &&Range, PredicateT Pred) {
                     FilterIteratorT(std::end(std::forward<RangeT>(Range))));
 }
 
-// forward declarations required by ZipShortest/ZipFirst
+// forward declarations required by zip_shortest/zip_first
 template <typename R, class UnaryPredicate>
 bool all_of(R &&range, UnaryPredicate &&P);
 
@@ -350,7 +350,7 @@ template <size_t... I> struct index_sequence;
 template <class... Ts> struct index_sequence_for;
 
 namespace detail {
-template <typename... Iters> class ZipFirst {
+template <typename... Iters> class zip_first {
 public:
   typedef std::input_iterator_tag iterator_category;
   typedef std::tuple<decltype(*std::declval<Iters>())...> value_type;
@@ -370,29 +370,29 @@ public:
 
   void operator++() { iterators = tup_inc(index_sequence_for<Iters...>{}); }
 
-  bool operator!=(const ZipFirst<Iters...> &other) const {
+  bool operator!=(const zip_first<Iters...> &other) const {
     return std::get<0>(iterators) != std::get<0>(other.iterators);
   }
-  ZipFirst(Iters &&... ts) : iterators(std::forward<Iters>(ts)...) {}
+  zip_first(Iters &&... ts) : iterators(std::forward<Iters>(ts)...) {}
 };
 
-template <typename... Iters> class ZipShortest : public ZipFirst<Iters...> {
+template <typename... Iters> class zip_shortest : public zip_first<Iters...> {
   template <size_t... Ns>
-  bool test(const ZipFirst<Iters...> &other, index_sequence<Ns...>) const {
+  bool test(const zip_first<Iters...> &other, index_sequence<Ns...>) const {
     return all_of(std::initializer_list<bool>{std::get<Ns>(this->iterators) !=
                                               std::get<Ns>(other.iterators)...},
                   identity<bool>{});
   }
 
 public:
-  bool operator!=(const ZipFirst<Iters...> &other) const {
+  bool operator!=(const zip_first<Iters...> &other) const {
     return test(other, index_sequence_for<Iters...>{});
   }
-  ZipShortest(Iters &&... ts)
-      : ZipFirst<Iters...>(std::forward<Iters>(ts)...) {}
+  zip_shortest(Iters &&... ts)
+      : zip_first<Iters...>(std::forward<Iters>(ts)...) {}
 };
 
-template <template <typename...> class ItType, typename... Args> class Zippy {
+template <template <typename...> class ItType, typename... Args> class zippy {
 public:
   typedef ItType<decltype(std::begin(std::declval<Args>()))...> iterator;
 
@@ -409,24 +409,24 @@ private:
 public:
   iterator begin() { return begin_impl(index_sequence_for<Args...>{}); }
   iterator end() { return end_impl(index_sequence_for<Args...>{}); }
-  Zippy(Args &&... ts_) : ts(std::forward<Args>(ts_)...) {}
+  zippy(Args &&... ts_) : ts(std::forward<Args>(ts_)...) {}
 };
 } // End detail namespace
 
 /// zip iterator for two or more iteratable types.
 template <typename T, typename U, typename... Args>
-detail::Zippy<detail::ZipShortest, T, U, Args...> zip(T &&t, U &&u,
+detail::zippy<detail::zip_shortest, T, U, Args...> zip(T &&t, U &&u,
                                                       Args &&... args) {
-  return detail::Zippy<detail::ZipShortest, T, U, Args...>(
+  return detail::zippy<detail::zip_shortest, T, U, Args...>(
       std::forward<T>(t), std::forward<U>(u), std::forward<Args>(args)...);
 }
 
 /// zip iterator that, for the sake of efficiency, assumes the first iteratee to
 /// be the shortest.
 template <typename T, typename U, typename... Args>
-detail::Zippy<detail::ZipFirst, T, U, Args...> zip_first(T &&t, U &&u,
+detail::zippy<detail::zip_first, T, U, Args...> zip_first(T &&t, U &&u,
                                                          Args &&... args) {
-  return detail::Zippy<detail::ZipFirst, T, U, Args...>(
+  return detail::zippy<detail::zip_first, T, U, Args...>(
       std::forward<T>(t), std::forward<U>(u), std::forward<Args>(args)...);
 }
 
