@@ -4934,28 +4934,24 @@ SDValue DAGCombiner::visitSRL(SDNode *N) {
   }
 
   // fold (srl (shl x, c), c) -> (and x, cst2)
-  if (N0.getOpcode() == ISD::SHL && N0.getOperand(1) == N1 &&
-      isConstantOrConstantVector(N1, /* NoOpaques */ true)) {
-    SDLoc DL(N);
-    APInt AllBits = APInt::getAllOnesValue(N0.getScalarValueSizeInBits());
-    SDValue Mask =
-        DAG.getNode(ISD::SRL, DL, VT, DAG.getConstant(AllBits, DL, VT), N1);
-    AddToWorklist(Mask.getNode());
-    return DAG.getNode(ISD::AND, DL, VT, N0.getOperand(0), Mask);
-  }
+  if (N0.getOpcode() == ISD::SHL) {
+    bool fold = N0.getOperand(1) == N1 &&
+                isConstantOrConstantVector(N1, /* NoOpaques */ true);
 
-  if (N1C && N0.getOpcode() == ISD::SHL &&
-      isa<ConstantSDNode>(N0.getOperand(1))) {
-    APInt c1 = cast<ConstantSDNode>(N0.getOperand(1))->getAPIntValue();
-    APInt c0 = N1C->getAPIntValue();
-    zeroExtendToMatch(c1, c0);
-    if (c1.eq(c0)) {
-      uint64_t MaskWidth =
-          c0.ugt(OpSizeInBits) ? 0 : OpSizeInBits - c0.getZExtValue();
-      APInt Mask = APInt::getLowBitsSet(OpSizeInBits, MaskWidth);
+    if (!fold && isa<ConstantSDNode>(N0.getOperand(1))) {
+      APInt c1 = cast<ConstantSDNode>(N0.getOperand(1))->getAPIntValue();
+      APInt c0 = N1C->getAPIntValue();
+      zeroExtendToMatch(c1, c0);
+      fold = c1.eq(c0);
+    }
+
+    if (fold) {
       SDLoc DL(N);
-      return DAG.getNode(ISD::AND, DL, VT, N0.getOperand(0),
-                         DAG.getConstant(Mask, DL, VT));
+      APInt AllBits = APInt::getAllOnesValue(N0.getScalarValueSizeInBits());
+      SDValue Mask =
+          DAG.getNode(ISD::SRL, DL, VT, DAG.getConstant(AllBits, DL, VT), N1);
+      AddToWorklist(Mask.getNode());
+      return DAG.getNode(ISD::AND, DL, VT, N0.getOperand(0), Mask);
     }
   }
 
