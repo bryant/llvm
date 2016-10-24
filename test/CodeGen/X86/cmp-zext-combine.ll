@@ -3,7 +3,7 @@
 define i32 @nonzero16(i16) {
 ; CHECK-LABEL: nonzero16:
 ; CHECK:    xorl %eax, %eax
-; CHECK-NEXT:    testl %edi, %edi
+; CHECK-NEXT:    testw %di, %di
 ; CHECK-NEXT:    setne %al
 ; CHECK-NEXT:    retq
   %b = zext i16 %0 to i32
