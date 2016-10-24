@@ -1,6 +1,5 @@
 ; RUN: llc -march=x86-64 < %s | FileCheck %s
 
-; not so sure
 define i32 @nonzero16(i16) {
 ; CHECK-LABEL: nonzero16:
 ; CHECK-NEXT:    xorl %eax, %eax
