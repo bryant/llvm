@@ -2,7 +2,7 @@
 
 define i32 @nonzero16(i16) {
 ; CHECK-LABEL: nonzero16:
-; CHECK-NEXT:    xorl %eax, %eax
+; CHECK:    xorl %eax, %eax
 ; CHECK-NEXT:    testl %edi, %edi
 ; CHECK-NEXT:    setne %al
 ; CHECK-NEXT:    retq
@@ -15,7 +15,7 @@ define i32 @nonzero16(i16) {
 
 define i32 @nonzero32(i32) {
 ; CHECK-LABEL: nonzero32:
-; CHECK-NEXT:    xorl %eax, %eax
+; CHECK:    xorl %eax, %eax
 ; CHECK-NEXT:    testl %edi, %edi
 ; CHECK-NEXT:    setne %al
 ; CHECK-NEXT:    retq
@@ -28,7 +28,7 @@ define i32 @nonzero32(i32) {
 
 define i32 @nonzero64(i64) {
 ; CHECK-LABEL: nonzero64:
-; CHECK-NEXT:    xorl %eax, %eax
+; CHECK:    xorl %eax, %eax
 ; CHECK-NEXT:    testq %rdi, %rdi
 ; CHECK-NEXT:    setne %al
 ; CHECK-NEXT:    retq
