@@ -4944,6 +4944,19 @@ SDValue DAGCombiner::visitSRL(SDNode *N) {
     return DAG.getNode(ISD::AND, DL, VT, N0.getOperand(0), Mask);
   }
 
+  if (N1C && N0.getOpcode() == ISD::SHL &&
+      isa<ConstantSDNode>(N0.getOperand(1)) &&
+      cast<ConstantSDNode>(N0.getOperand(1))->getZExtValue() ==
+          N1C->getZExtValue()) {
+    unsigned BitSize = N0.getScalarValueSizeInBits();
+    if (BitSize <= 64) {
+      uint64_t ShAmt = N1C->getZExtValue() + 64 - BitSize;
+      SDLoc DL(N);
+      return DAG.getNode(ISD::AND, DL, VT, N0.getOperand(0),
+                         DAG.getConstant(~0ULL >> ShAmt, DL, VT));
+    }
+  }
+
   // fold (srl (anyextend x), c) -> (and (anyextend (srl x, c)), mask)
   if (N1C && N0.getOpcode() == ISD::ANY_EXTEND) {
     // Shifting in all undef bits?
