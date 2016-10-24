@@ -45,8 +45,7 @@ define <2 x i1> @icmp_ule_16x2(<2 x i64>) {
 
 define i1 @icmp_ult_8(i64) {
 ; CHECK-LABEL: @icmp_ult_8(
-; CHECK-NEXT:    [[C:%.*]] = shl nuw i64 %0, 8
-; CHECK-NEXT:    [[D:%.*]] = icmp ult i64 [[C]], 4095
+; CHECK-NEXT:    [[D:%.*]] = icmp ult i64 %0, 16
 ; CHECK-NEXT:    ret i1 [[D]]
 ;
   %c = shl nuw i64 %0, 8

@@ -1969,13 +1969,26 @@ Instruction *InstCombiner::foldICmpShlConstant(ICmpInst &Cmp,
 
   // When the shift is nuw and pred is >u or <=u, comparison only really happens
   // in the pre-shifted bits.
-  if (Shl->hasNoUnsignedWrap() &&
-      (Pred == ICmpInst::ICMP_UGT || Pred == ICmpInst::ICMP_ULE)) {
+  if (Shl->hasNoUnsignedWrap()) {
     Type *CTy = IntegerType::get(Cmp.getContext(), C->getBitWidth());
     if (X->getType()->isVectorTy())
       CTy = VectorType::get(CTy, X->getType()->getVectorNumElements());
-    Value *NewC = ConstantInt::get(CTy, C->lshr(*ShiftAmt));
-    return new ICmpInst(Pred, X, NewC);
+
+    APInt C_ = *C;
+    // If C is positive, pre-transform >=u/<u into >u/<=u.
+    if (C_.ugt(0)) {
+      if (Pred == ICmpInst::ICMP_UGE) {
+          C_ = C_ - 1;
+          Pred = ICmpInst::ICMP_UGT;
+      }
+      if (Pred == ICmpInst::ICMP_ULT) {
+          C_ = C_ - 1;
+          Pred = ICmpInst::ICMP_ULE;
+      }
+    }
+
+    if (Pred == ICmpInst::ICMP_UGT || Pred == ICmpInst::ICMP_ULE)
+      return new ICmpInst(Pred, X, ConstantInt::get(CTy, C_.lshr(*ShiftAmt)));
   }
 
   return nullptr;
