@@ -13,8 +13,7 @@ define i1 @icmp_ugt_32(i64) {
 
 define i1 @icmp_ule_64(i128) {
 ; CHECK-LABEL: @icmp_ule_64(
-; CHECK-NEXT:    [[C:%.*]] = shl nuw i128 %0, 64
-; CHECK-NEXT:    [[D:%.*]] = icmp ult i128 [[C]], 18446744073709551616
+; CHECK-NEXT:    [[D:%.*]] = icmp eq i128 %0, 0
 ; CHECK-NEXT:    ret i1 [[D]]
 ;
   %c = shl nuw i128 %0, 64
@@ -34,8 +33,7 @@ define i1 @icmp_ugt_16(i64) {
 
 define <2 x i1> @icmp_ule_16x2(<2 x i64>) {
 ; CHECK-LABEL: @icmp_ule_16x2(
-; CHECK-NEXT:    [[C:%.*]] = shl nuw <2 x i64> %0, <i64 16, i64 16>
-; CHECK-NEXT:    [[D:%.*]] = icmp ult <2 x i64> [[C]], <i64 65536, i64 65536>
+; CHECK-NEXT:    [[D:%.*]] = icmp eq <2 x i64> %0, zeroinitializer
 ; CHECK-NEXT:    ret <2 x i1> [[D]]
 ;
   %c = shl nuw <2 x i64> %0, <i64 16, i64 16>

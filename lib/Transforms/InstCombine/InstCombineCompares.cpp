@@ -1950,23 +1950,6 @@ Instruction *InstCombiner::foldICmpShlConstant(ICmpInst &Cmp,
                         And, Constant::getNullValue(And->getType()));
   }
 
-  // Transform (icmp pred iM (shl iM %v, N), C)
-  // -> (icmp pred i(M-N) (trunc %v iM to i(M-N)), (trunc (C>>N))
-  // Transform the shl to a trunc if (trunc (C>>N)) has no loss and M-N.
-  // This enables us to get rid of the shift in favor of a trunc which can be
-  // free on the target. It has the additional benefit of comparing to a
-  // smaller constant, which will be target friendly.
-  unsigned Amt = ShiftAmt->getLimitedValue(TypeBits - 1);
-  if (Shl->hasOneUse() && Amt != 0 && C->countTrailingZeros() >= Amt &&
-      DL.isLegalInteger(TypeBits - Amt)) {
-    Type *TruncTy = IntegerType::get(Cmp.getContext(), TypeBits - Amt);
-    if (X->getType()->isVectorTy())
-      TruncTy = VectorType::get(TruncTy, X->getType()->getVectorNumElements());
-    Constant *NewC =
-        ConstantInt::get(TruncTy, C->ashr(*ShiftAmt).trunc(TypeBits - Amt));
-    return new ICmpInst(Pred, Builder->CreateTrunc(X, TruncTy), NewC);
-  }
-
   // When the shift is nuw and pred is >u or <=u, comparison only really happens
   // in the pre-shifted bits.
   if (Shl->hasNoUnsignedWrap()) {
@@ -1989,6 +1972,23 @@ Instruction *InstCombiner::foldICmpShlConstant(ICmpInst &Cmp,
 
     if (Pred == ICmpInst::ICMP_UGT || Pred == ICmpInst::ICMP_ULE)
       return new ICmpInst(Pred, X, ConstantInt::get(CTy, C_.lshr(*ShiftAmt)));
+  }
+
+  // Transform (icmp pred iM (shl iM %v, N), C)
+  // -> (icmp pred i(M-N) (trunc %v iM to i(M-N)), (trunc (C>>N))
+  // Transform the shl to a trunc if (trunc (C>>N)) has no loss and M-N.
+  // This enables us to get rid of the shift in favor of a trunc which can be
+  // free on the target. It has the additional benefit of comparing to a
+  // smaller constant, which will be target friendly.
+  unsigned Amt = ShiftAmt->getLimitedValue(TypeBits - 1);
+  if (Shl->hasOneUse() && Amt != 0 && C->countTrailingZeros() >= Amt &&
+      DL.isLegalInteger(TypeBits - Amt)) {
+    Type *TruncTy = IntegerType::get(Cmp.getContext(), TypeBits - Amt);
+    if (X->getType()->isVectorTy())
+      TruncTy = VectorType::get(TruncTy, X->getType()->getVectorNumElements());
+    Constant *NewC =
+        ConstantInt::get(TruncTy, C->ashr(*ShiftAmt).trunc(TypeBits - Amt));
+    return new ICmpInst(Pred, Builder->CreateTrunc(X, TruncTy), NewC);
   }
 
   return nullptr;
