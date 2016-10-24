@@ -1967,15 +1967,13 @@ Instruction *InstCombiner::foldICmpShlConstant(ICmpInst &Cmp,
     return new ICmpInst(Pred, Builder->CreateTrunc(X, TruncTy), NewC);
   }
 
-  // if C is N 1's and pred is unsigned and non-equality, then:
-  // (icmp pred (shl X, c0), C) => (icmp pred (lshr (shl X, c0), N), 0)
-  // with the expectation that the double shifts would be later simplified.
-  int32_t mask_width = (*C + 1).exactLogBase2();  // -1 if non-pow2
-  if (mask_width > 0 && Cmp.isRelational() && Cmp.isUnsigned()) {
-    Value *ShiftedRight = Builder->CreateLShr(
-        Shl, ConstantInt::get(Shl->getOperand(1)->getType(), mask_width));
-    return new ICmpInst(Pred, ShiftedRight,
-                        ConstantInt::getNullValue(X->getType()));
+  // when the shift is nuw and pred is >u or <=, then comparison only really
+  // happens in the pre-shifted bits.
+  if (Shl->hasNoUnsignedWrap() &&
+      (Pred == ICmpInst::ICMP_UGT || Pred == ICmpInst::ICMP_ULE)) {
+    Type *CTy = IntegerType::get(Cmp.getContext(), C->getBitWidth());
+    Value *NewC = ConstantInt::get(CTy, C->lshr(*ShiftAmt));
+    return new ICmpInst(Pred, X, NewC);
   }
 
   return nullptr;
