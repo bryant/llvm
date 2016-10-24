@@ -1967,8 +1967,8 @@ Instruction *InstCombiner::foldICmpShlConstant(ICmpInst &Cmp,
     return new ICmpInst(Pred, Builder->CreateTrunc(X, TruncTy), NewC);
   }
 
-  // when the shift is nuw and pred is >u or <=, then comparison only really
-  // happens in the pre-shifted bits.
+  // When the shift is nuw and pred is >u or <=u, comparison only really happens
+  // in the pre-shifted bits.
   if (Shl->hasNoUnsignedWrap() &&
       (Pred == ICmpInst::ICMP_UGT || Pred == ICmpInst::ICMP_ULE)) {
     Type *CTy = IntegerType::get(Cmp.getContext(), C->getBitWidth());
