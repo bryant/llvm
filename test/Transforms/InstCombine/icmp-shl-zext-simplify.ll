@@ -31,7 +31,7 @@ define i1 @icmp_ugt_16(i64) {
   ret i1 %d
 }
 
-define <2 x i1> @icmp_ule_i64x2(<2 x i64>) {
+define <2 x i1> @icmp_ule_16x2(<2 x i64>) {
 ; CHECK-LABEL: @icmp_ule_i64x2(
 ; CHECK-NEXT:    [[D:%.*]] = icmp eq <2 x i64> %0, zeroinitializer
 ; CHECK-NEXT:    ret <2 x i1> [[D]]
