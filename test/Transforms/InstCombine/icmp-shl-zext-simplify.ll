@@ -1,73 +1,34 @@
 ; RUN: opt %s -instcombine -S | FileCheck %s
 
-define i32 @icmp_ugt_16(i16) {
-; CHECK-LABEL: @icmp_ugt_16
-; CHECK-NEXT: icmp ne i16 %0, 0
-; CHECK-NEXT: zext
-; CHECK-NEXT: ret
-  %b = zext i16 %0 to i64
-  %c = shl i64 %b, 16
-  %d = icmp ugt i64 %c, 65535
-  %rv = zext i1 %d to i32
-  ret i32 %rv
-}
-
-define i32 @icmp_ule_16(i16) {
-; CHECK-LABEL: @icmp_ule_16
-; CHECK-NEXT: icmp eq i16 %0, 0
-; CHECK-NEXT: zext
-; CHECK-NEXT: ret
-  %b = zext i16 %0 to i64
-  %c = shl i64 %b, 16
-  %d = icmp ule i64 %c, 65535
-  %rv = zext i1 %d to i32
-  ret i32 %rv
-}
-
-define i32 @icmp_ugt_32(i32) {
+define i1 @icmp_ugt_32(i64) {
 ; CHECK-LABEL: @icmp_ugt_32
 ; CHECK-NEXT: icmp ne i32 %0, 0
-; CHECK-NEXT: zext
 ; CHECK-NEXT: ret
-  %b = zext i32 %0 to i64
-  %c = shl i64 %b, 32
+  %c = shl nuw i64 %0, 32
   %d = icmp ugt i64 %c, 4294967295
-  %rv = zext i1 %d to i32
-  ret i32 %rv
+  ret i1 %d
 }
 
-define i32 @icmp_ule_32(i32) {
-; CHECK-LABEL: @icmp_ule_32
-; CHECK-NEXT: icmp eq i32 %0, 0
-; CHECK-NEXT: zext
-; CHECK-NEXT: ret
-  %b = zext i32 %0 to i64
-  %c = shl i64 %b, 32
-  %d = icmp ule i64 %c, 4294967295
-  %rv = zext i1 %d to i32
-  ret i32 %rv
-}
-
-define i32 @icmp_ugt_64(i64) {
-; CHECK-LABEL: @icmp_ugt_64
-; CHECK-NEXT: icmp ne i64 %0, 0
-; CHECK-NEXT: zext
-; CHECK-NEXT: ret
-  %b = zext i64 %0 to i128
-  %c = shl i128 %b, 64
-  %d = icmp ugt i128 %c, 18446744073709551615
-  %rv = zext i1 %d to i32
-  ret i32 %rv
-}
-
-define i32 @icmp_ule_64(i64) {
+define i1 @icmp_ule_64(i128) {
 ; CHECK-LABEL: @icmp_ule_64
 ; CHECK-NEXT: icmp eq i64 %0, 0
-; CHECK-NEXT: zext
 ; CHECK-NEXT: ret
-  %b = zext i64 %0 to i128
-  %c = shl i128 %b, 64
+  %c = shl nuw i128 %0, 64
   %d = icmp ule i128 %c, 18446744073709551615
-  %rv = zext i1 %d to i32
-  ret i32 %rv
+  ret i1 %d
+}
+
+define i1 @icmp_ugt_16(i64) {
+; CHECK-LABEL: @icmp_ugt_16
+; CHECK-NEXT: icmp ugt i16 %0, 15
+; CHECK-NEXT: ret
+  %c = shl nuw i64 %0, 16
+  %d = icmp ugt i64 %c, 1048575 ; 0x0f_ffff
+  ret i1 %d
+}
+
+define <2 x i1> @icmp_ule_i64x2(<2 x i64>) {
+  %c = shl nuw <2 x i64> %0, <i64 16, i64 16>
+  %d = icmp ule <2 x i64> %c, <i64 65535, i64 65535>
+  ret <2 x i1> %d
 }
