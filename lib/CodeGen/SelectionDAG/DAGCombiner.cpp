@@ -4934,24 +4934,19 @@ SDValue DAGCombiner::visitSRL(SDNode *N) {
   }
 
   // fold (srl (shl x, c), c) -> (and x, cst2)
-  if (N0.getOpcode() == ISD::SHL) {
-    bool fold = N0.getOperand(1) == N1 &&
-                isConstantOrConstantVector(N1, /* NoOpaques */ true);
-
-    if (!fold && isa<ConstantSDNode>(N0.getOperand(1))) {
-      APInt c1 = cast<ConstantSDNode>(N0.getOperand(1))->getAPIntValue();
-      APInt c0 = N1C->getAPIntValue();
-      zeroExtendToMatch(c1, c0);
-      fold = c1.eq(c0);
-    }
-
-    if (fold) {
-      SDLoc DL(N);
-      APInt AllBits = APInt::getAllOnesValue(N0.getScalarValueSizeInBits());
-      SDValue Mask =
-          DAG.getNode(ISD::SRL, DL, VT, DAG.getConstant(AllBits, DL, VT), N1);
-      AddToWorklist(Mask.getNode());
-      return DAG.getNode(ISD::AND, DL, VT, N0.getOperand(0), Mask);
+  if (N0.getOpcode() == ISD::SHL && N1C) {
+    if (ConstantSDNode *N01C = isConstOrConstSplat(N0.getOperand(1))) {
+      APInt C1 = N01C->getAPIntValue();
+      APInt C0 = N1C->getAPIntValue();
+      zeroExtendToMatch(C1, C0);
+      if (C1.eq(C0)) {
+        SDLoc DL(N);
+        APInt AllBits = APInt::getAllOnesValue(N0.getScalarValueSizeInBits());
+        SDValue Mask =
+            DAG.getNode(ISD::SRL, DL, VT, DAG.getConstant(AllBits, DL, VT), N1);
+        AddToWorklist(Mask.getNode());
+        return DAG.getNode(ISD::AND, DL, VT, N0.getOperand(0), Mask);
+      }
     }
   }
 
