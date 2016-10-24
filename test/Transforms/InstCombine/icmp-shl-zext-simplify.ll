@@ -3,8 +3,7 @@
 
 define i1 @icmp_ugt_32(i64) {
 ; CHECK-LABEL: @icmp_ugt_32(
-; CHECK-NEXT:    [[C:%.*]] = shl nuw i64 %0, 32
-; CHECK-NEXT:    [[D:%.*]] = icmp ugt i64 [[C]], 4294967295
+; CHECK-NEXT:    [[D:%.*]] = icmp ne i64 %0, 0
 ; CHECK-NEXT:    ret i1 [[D]]
 ;
   %c = shl nuw i64 %0, 32
@@ -25,8 +24,7 @@ define i1 @icmp_ule_64(i128) {
 
 define i1 @icmp_ugt_16(i64) {
 ; CHECK-LABEL: @icmp_ugt_16(
-; CHECK-NEXT:    [[C:%.*]] = shl nuw i64 %0, 16
-; CHECK-NEXT:    [[D:%.*]] = icmp ugt i64 [[C]], 1048575
+; CHECK-NEXT:    [[D:%.*]] = icmp ugt i64 %0, 15
 ; CHECK-NEXT:    ret i1 [[D]]
 ;
   %c = shl nuw i64 %0, 16
@@ -58,8 +56,7 @@ define i1 @icmp_ult_8(i64) {
 
 define <2 x i1> @icmp_uge_8x2(<2 x i16>) {
 ; CHECK-LABEL: @icmp_uge_8x2(
-; CHECK-NEXT:    [[C:%.*]] = shl nuw <2 x i16> %0, <i16 8, i16 8>
-; CHECK-NEXT:    [[D:%.*]] = icmp ugt <2 x i16> [[C]], <i16 4094, i16 4094>
+; CHECK-NEXT:    [[D:%.*]] = icmp ugt <2 x i16> %0, <i16 15, i16 15>
 ; CHECK-NEXT:    ret <2 x i1> [[D]]
 ;
   %c = shl nuw <2 x i16> %0, <i16 8, i16 8>
@@ -69,8 +66,7 @@ define <2 x i1> @icmp_uge_8x2(<2 x i16>) {
 
 define <2 x i1> @icmp_ugt_16x2(<2 x i32>) {
 ; CHECK-LABEL: @icmp_ugt_16x2(
-; CHECK-NEXT:    [[C:%.*]] = shl nuw <2 x i32> %0, <i32 16, i32 16>
-; CHECK-NEXT:    [[D:%.*]] = icmp ugt <2 x i32> [[C]], <i32 1048575, i32 1048575>
+; CHECK-NEXT:    [[D:%.*]] = icmp ugt <2 x i32> %0, <i32 15, i32 15>
 ; CHECK-NEXT:    ret <2 x i1> [[D]]
 ;
   %c = shl nuw <2 x i32> %0, <i32 16, i32 16>

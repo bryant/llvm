@@ -1972,6 +1972,8 @@ Instruction *InstCombiner::foldICmpShlConstant(ICmpInst &Cmp,
   if (Shl->hasNoUnsignedWrap() &&
       (Pred == ICmpInst::ICMP_UGT || Pred == ICmpInst::ICMP_ULE)) {
     Type *CTy = IntegerType::get(Cmp.getContext(), C->getBitWidth());
+    if (X->getType()->isVectorTy())
+      CTy = VectorType::get(CTy, X->getType()->getVectorNumElements());
     Value *NewC = ConstantInt::get(CTy, C->lshr(*ShiftAmt));
     return new ICmpInst(Pred, X, NewC);
   }
