@@ -1950,24 +1950,19 @@ Instruction *InstCombiner::foldICmpShlConstant(ICmpInst &Cmp,
                         And, Constant::getNullValue(And->getType()));
   }
 
-  // When the shift is nuw and pred is >u or <=u, comparison only really happens
-  // in the pre-shifted bits.
+  // When the shift is nuw and pred is >u (for all C) or <u (for non-zero C),
+  // comparison only really happens in the pre-shifted bits. This also holds for
+  // <=u and >u, but the latter two are canonicalized into the former.
   if (Shl->hasNoUnsignedWrap()) {
     Type *CTy = IntegerType::get(Cmp.getContext(), C->getBitWidth());
     if (X->getType()->isVectorTy())
       CTy = VectorType::get(CTy, X->getType()->getVectorNumElements());
 
-    APInt C_ = *C;
-    // If C is positive, pre-transform >=u/<u into >u/<=u.
-    if (C_.ugt(0) &&
-        (Pred == ICmpInst::ICMP_UGE || Pred == ICmpInst::ICMP_ULT)) {
-      C_ = C_ - 1;
-      Pred =
-          Pred == ICmpInst::ICMP_UGE ? ICmpInst::ICMP_UGT : ICmpInst::ICMP_ULE;
-    }
-
-    if (Pred == ICmpInst::ICMP_UGT || Pred == ICmpInst::ICMP_ULE)
-      return new ICmpInst(Pred, X, ConstantInt::get(CTy, C_.lshr(*ShiftAmt)));
+    if (C->ugt(0) && Pred == ICmpInst::ICMP_ULT)
+      return new ICmpInst(ICmpInst::ICMP_ULE, X,
+                          ConstantInt::get(CTy, (*C - 1).lshr(*ShiftAmt)));
+    else if (Pred == ICmpInst::ICMP_UGT)
+      return new ICmpInst(Pred, X, ConstantInt::get(CTy, C->lshr(*ShiftAmt)));
   }
 
   // Transform (icmp pred iM (shl iM %v, N), C)
