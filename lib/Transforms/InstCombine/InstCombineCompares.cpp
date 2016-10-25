@@ -1959,15 +1959,11 @@ Instruction *InstCombiner::foldICmpShlConstant(ICmpInst &Cmp,
 
     APInt C_ = *C;
     // If C is positive, pre-transform >=u/<u into >u/<=u.
-    if (C_.ugt(0)) {
-      if (Pred == ICmpInst::ICMP_UGE) {
-          C_ = C_ - 1;
-          Pred = ICmpInst::ICMP_UGT;
-      }
-      if (Pred == ICmpInst::ICMP_ULT) {
-          C_ = C_ - 1;
-          Pred = ICmpInst::ICMP_ULE;
-      }
+    if (C_.ugt(0) &&
+        (Pred == ICmpInst::ICMP_UGE || Pred == ICmpInst::ICMP_ULT)) {
+      C_ = C_ - 1;
+      Pred =
+          Pred == ICmpInst::ICMP_UGE ? ICmpInst::ICMP_UGT : ICmpInst::ICMP_ULE;
     }
 
     if (Pred == ICmpInst::ICMP_UGT || Pred == ICmpInst::ICMP_ULE)
