@@ -1208,6 +1208,7 @@ define i1 @icmp_shl16(i32 %x) {
   ret i1 %cmp
 }
 
+; D25952: Don't create illegal types like i15 in InstCombine
 define i1 @icmp_shl17(i32 %x) {
 ; CHECK-LABEL: @icmp_shl17(
 ; CHECK-NEXT:    [[SHL:%.*]] = shl i32 %x, 17
