@@ -34,7 +34,6 @@ define i1 @icmp_ugt_16(i64) {
   ret i1 %d
 }
 
-; FIXME: InstCombine ought not to emit the potentially illegal i48.
 define <2 x i1> @icmp_ule_16x2(<2 x i64>) {
 ; CHECK-LABEL: @icmp_ule_16x2(
 ; CHECK-NEXT:    [[C:%.*]] = shl nuw <2 x i64> %0, <i64 16, i64 16>
