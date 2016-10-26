@@ -1953,8 +1953,9 @@ Instruction *InstCombiner::foldICmpShlConstant(ICmpInst &Cmp,
   // When the shift is nuw and pred is >u (for all C) or <u (for non-zero C),
   // comparison only really happens in the pre-shifted bits. This also holds for
   // <=u and >u, but the latter two are canonicalized into the former.
-  if (Shl->hasNoUnsignedWrap() && (Pred == ICmpInst::ICMP_UGT ||
-                                   (C->ugt(0) && Pred == ICmpInst::ICMP_ULT))) {
+  if (Shl->hasNoUnsignedWrap() &&
+      // Assumes that "<u 0" icmps have been eliminated by earlier passes.
+      (Pred == ICmpInst::ICMP_UGT || Pred == ICmpInst::ICMP_ULT)) {
     Type *CTy = IntegerType::get(Cmp.getContext(), C->getBitWidth());
     if (X->getType()->isVectorTy())
       CTy = VectorType::get(CTy, X->getType()->getVectorNumElements());
