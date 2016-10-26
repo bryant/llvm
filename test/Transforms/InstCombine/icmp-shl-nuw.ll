@@ -41,6 +41,26 @@ define <2 x i1> @icmp_ule_16x2(<2 x i64>) {
   ret <2 x i1> %d
 }
 
+define <2 x i1> @icmp_ule_16x2_nonzero(<2 x i64>) {
+; CHECK-LABEL: @icmp_ule_16x2_nonzero(
+; CHECK-NEXT:    [[D:%.*]] = icmp ult <2 x i64> %0, <i64 4, i64 4>
+; CHECK-NEXT:    ret <2 x i1> [[D]]
+;
+  %c = shl nuw <2 x i64> %0, <i64 16, i64 16>
+  %d = icmp ule <2 x i64> %c, <i64 196608, i64 196608>  ; 0x03_0000
+  ret <2 x i1> %d
+}
+
+define <2 x i1> @icmp_ule_16x2_non_pow2_shift(<2 x i64>) {
+; CHECK-LABEL: @icmp_ule_16x2_non_pow2_shift(
+; CHECK-NEXT:    [[D:%.*]] = icmp ult <2 x i64> %0, <i64 4, i64 4>
+; CHECK-NEXT:    ret <2 x i1> [[D]]
+;
+  %c = shl nuw <2 x i64> %0, <i64 12, i64 12>
+  %d = icmp ule <2 x i64> %c, <i64 12288, i64 12288>  ; 0x3000
+  ret <2 x i1> %d
+}
+
 define i1 @icmp_ult_8(i64) {
 ; CHECK-LABEL: @icmp_ult_8(
 ; CHECK-NEXT:    [[D:%.*]] = icmp ult i64 %0, 16
