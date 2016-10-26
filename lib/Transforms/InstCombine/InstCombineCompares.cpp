@@ -1959,6 +1959,9 @@ Instruction *InstCombiner::foldICmpShlConstant(ICmpInst &Cmp,
     Type *CTy = IntegerType::get(Cmp.getContext(), C->getBitWidth());
     if (X->getType()->isVectorTy())
       CTy = VectorType::get(CTy, X->getType()->getVectorNumElements());
+    // (X << S) <=u C = X <=u (C >> S)
+    // (X << S) <u (C + 1) = X <u (C >> S) + 1 if C < - 1
+    // (X << S) <u C = X <u ((C - 1) >> S) + 1 if C > 0
     APInt ShiftedC = Pred == ICmpInst::ICMP_ULT ? (*C - 1).lshr(*ShiftAmt) + 1
                                                 : C->lshr(*ShiftAmt);
     return new ICmpInst(Pred, X, ConstantInt::get(CTy, ShiftC));
