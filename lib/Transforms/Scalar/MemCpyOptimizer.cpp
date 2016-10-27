@@ -390,6 +390,15 @@ INITIALIZE_PASS_DEPENDENCY(GlobalsAAWrapperPass)
 INITIALIZE_PASS_END(MemCpyOptMemSSALegacyPass, "memcpyopt-mssa",
                     "MemCpy Optimization (Memory SSA)", false, false)
 
+void MemCpyOptPass::eraseInstruction(Instruction *I) {
+  assert(MD);
+  MD->removeInstruction(I);
+  if (UseMemorySSA)
+    if (MemoryAccess *MA = MSSA->getMemoryAccess(I))
+      MSSA->removeMemoryAccess(MA);
+  I->eraseFromParent();
+}
+
 /// When scanning forward over instructions, we look for some other patterns to
 /// fold away. In particular, this looks for stores to neighboring locations of
 /// memory. If it sees enough consecutive ones, it attempts to merge them
@@ -498,8 +507,7 @@ Instruction *MemCpyOptPass::tryMergingIntoMemset(Instruction *StartInst,
 
     // Zap all the stores.
     for (Instruction *SI : Range.TheStores) {
-      MD->removeInstruction(SI);
-      SI->eraseFromParent();
+      eraseInstruction(SI);
     }
     ++NumMemSetInfer;
   }
@@ -675,10 +683,8 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
           DEBUG(dbgs() << "Promoting " << *LI << " to " << *SI
                        << " => " << *M << "\n");
 
-          MD->removeInstruction(SI);
-          SI->eraseFromParent();
-          MD->removeInstruction(LI);
-          LI->eraseFromParent();
+          eraseInstruction(SI);
+          eraseInstruction(LI);
           ++NumMemCpyInstr;
 
           // Make sure we do not invalidate the iterator.
@@ -724,10 +730,8 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
             DL.getTypeStoreSize(SI->getOperand(0)->getType()),
             findCommonAlignment(DL, SI, LI), C);
         if (changed) {
-          MD->removeInstruction(SI);
-          SI->eraseFromParent();
-          MD->removeInstruction(LI);
-          LI->eraseFromParent();
+          eraseInstruction(SI);
+          eraseInstruction(LI);
           ++NumMemCpyInstr;
           return true;
         }
@@ -764,8 +768,7 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
 
       DEBUG(dbgs() << "Promoting " << *SI << " to " << *M << "\n");
 
-      MD->removeInstruction(SI);
-      SI->eraseFromParent();
+      eraseInstruction(SI);
       NumMemSetInfer++;
 
       // Make sure we do not invalidate the iterator.
@@ -1052,8 +1055,7 @@ bool MemCpyOptPass::processMemCpyMemCpyDependence(MemCpyInst *M,
                          Align, M->isVolatile());
 
   // Remove the instruction we're replacing.
-  MD->removeInstruction(M);
-  M->eraseFromParent();
+  eraseInstruction(M);
   ++NumMemCpyInstr;
   return true;
 }
@@ -1118,8 +1120,7 @@ bool MemCpyOptPass::processMemSetMemCpyDependence(MemCpyInst *MemCpy,
   Builder.CreateMemSet(Builder.CreateGEP(Dest, SrcSize), MemSet->getOperand(1),
                        MemsetLen, Align);
 
-  MD->removeInstruction(MemSet);
-  MemSet->eraseFromParent();
+  eraseInstruction(MemSet);
   return true;
 }
 
@@ -1170,8 +1171,7 @@ bool MemCpyOptPass::processMemCpy(MemCpyInst *M) {
 
   // If the source and destination of the memcpy are the same, then zap it.
   if (M->getSource() == M->getDest()) {
-    MD->removeInstruction(M);
-    M->eraseFromParent();
+    eraseInstruction(M);
     return false;
   }
 
@@ -1182,8 +1182,7 @@ bool MemCpyOptPass::processMemCpy(MemCpyInst *M) {
         IRBuilder<> Builder(M);
         Builder.CreateMemSet(M->getRawDest(), ByteVal, M->getLength(),
                              M->getAlignment(), false);
-        MD->removeInstruction(M);
-        M->eraseFromParent();
+        eraseInstruction(M);
         ++NumCpyToSet;
         return true;
       }
@@ -1213,8 +1212,7 @@ bool MemCpyOptPass::processMemCpy(MemCpyInst *M) {
       if (performCallSlotOptzn(M, M->getDest(), M->getSource(),
                                CopySize->getZExtValue(), M->getAlignment(),
                                C)) {
-        MD->removeInstruction(M);
-        M->eraseFromParent();
+        eraseInstruction(M);
         ++NumMemCpyInstr;
         return true;
       }
@@ -1242,8 +1240,7 @@ bool MemCpyOptPass::processMemCpy(MemCpyInst *M) {
     }
 
     if (hasUndefContents) {
-      MD->removeInstruction(M);
-      M->eraseFromParent();
+      eraseInstruction(M);
       ++NumMemCpyInstr;
       return true;
     }
@@ -1252,8 +1249,7 @@ bool MemCpyOptPass::processMemCpy(MemCpyInst *M) {
   if (SrcDepInfo.isClobber())
     if (MemSetInst *MDep = dyn_cast<MemSetInst>(SrcDepInfo.getInst()))
       if (performMemCpyToMemSetOptzn(M, MDep)) {
-        MD->removeInstruction(M);
-        M->eraseFromParent();
+        eraseInstruction(M);
         ++NumCpyToSet;
         return true;
       }
