@@ -944,10 +944,7 @@ bool MemCpyOptPass::performCallSlotOptzn(Instruction *cpy, Value *cpyDest,
                          LLVMContext::MD_invariant_group};
   combineMetadata(C, cpy, KnownIDs);
 
-  // Remove the memcpy.
-  MD->removeInstruction(cpy);
-  ++NumMemCpyInstr;
-
+  // memcpy removal left to caller.
   return true;
 }
 
@@ -1184,6 +1181,7 @@ bool MemCpyOptPass::processMemCpy(MemCpyInst *M) {
                                C)) {
         MD->removeInstruction(M);
         M->eraseFromParent();
+        ++NumMemCpyInstr;
         return true;
       }
     }
