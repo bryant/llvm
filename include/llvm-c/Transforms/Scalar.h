@@ -89,6 +89,9 @@ void LLVMAddLoopUnswitchPass(LLVMPassManagerRef PM);
 /** See llvm::createMemCpyOptPass function. */
 void LLVMAddMemCpyOptPass(LLVMPassManagerRef PM);
 
+/** See llvm::createMemCpyOptPass function. */
+void LLVMAddMemCpyMemSSAOptPass(LLVMPassManagerRef PM);
+
 /** See llvm::createPartiallyInlineLibCallsPass function. */
 void LLVMAddPartiallyInlineLibCallsPass(LLVMPassManagerRef PM);
 

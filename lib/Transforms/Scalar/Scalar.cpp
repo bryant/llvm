@@ -68,6 +68,7 @@ void llvm::initializeScalarOpts(PassRegistry &Registry) {
   initializeLowerExpectIntrinsicPass(Registry);
   initializeLowerGuardIntrinsicLegacyPassPass(Registry);
   initializeMemCpyOptLegacyPassPass(Registry);
+  initializeMemCpyOptMemSSALegacyPassPass(Registry);
   initializeMergedLoadStoreMotionLegacyPassPass(Registry);
   initializeNaryReassociateLegacyPassPass(Registry);
   initializePartiallyInlineLibCallsLegacyPassPass(Registry);
@@ -179,7 +180,11 @@ void LLVMAddLoopUnswitchPass(LLVMPassManagerRef PM) {
 }
 
 void LLVMAddMemCpyOptPass(LLVMPassManagerRef PM) {
-  unwrap(PM)->add(createMemCpyOptPass());
+  unwrap(PM)->add(createMemCpyOptPass(false));
+}
+
+void LLVMAddMemCpyOptMemSSAPass(LLVMPassManagerRef PM) {
+  unwrap(PM)->add(createMemCpyOptPass(true));
 }
 
 void LLVMAddPartiallyInlineLibCallsPass(LLVMPassManagerRef PM) {

@@ -25,6 +25,7 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Utils/Local.h"
+#include "llvm/Transforms/Utils/MemorySSA.h"
 #include <algorithm>
 using namespace llvm;
 
@@ -299,12 +300,17 @@ void MemsetRanges::addRange(int64_t Start, int64_t Size, Value *Ptr,
 //===----------------------------------------------------------------------===//
 
 namespace {
-  class MemCpyOptLegacyPass : public FunctionPass {
+  template <bool UseMSSA>
+  class MemCpyOptLegacyCommon : public FunctionPass {
     MemCpyOptPass Impl;
   public:
     static char ID; // Pass identification, replacement for typeid
-    MemCpyOptLegacyPass() : FunctionPass(ID) {
-      initializeMemCpyOptLegacyPassPass(*PassRegistry::getPassRegistry());
+    MemCpyOptLegacyCommon() : FunctionPass(ID), Impl(UseMSSA) {
+      if (UseMSSA)
+        initializeMemCpyOptMemSSALegacyPassPass(
+            *PassRegistry::getPassRegistry());
+      else
+        initializeMemCpyOptLegacyPassPass(*PassRegistry::getPassRegistry());
     }
 
     bool runOnFunction(Function &F) override;
@@ -320,6 +326,11 @@ namespace {
       AU.addRequired<TargetLibraryInfoWrapperPass>();
       AU.addPreserved<GlobalsAAWrapperPass>();
       AU.addPreserved<MemoryDependenceWrapperPass>();
+
+      if (UseMSSA) {
+        AU.addRequired<MemorySSAWrapperPass>();
+        AU.addPreserved<MemorySSAWrapperPass>();
+      }
     }
 
     // Helper functions
@@ -339,11 +350,19 @@ namespace {
     bool iterateOnFunction(Function &F);
   };
 
-  char MemCpyOptLegacyPass::ID = 0;
+  template<> char MemCpyOptLegacyCommon<false>::ID = 0;
+  template<> char MemCpyOptLegacyCommon<true>::ID = 0;
 }
 
+using MemCpyOptLegacyPass = MemCpyOptLegacyCommon<false>;
+using MemCpyOptMemSSALegacyPass = MemCpyOptLegacyCommon<true>;
+
 /// The public interface to this file...
-FunctionPass *llvm::createMemCpyOptPass() { return new MemCpyOptLegacyPass(); }
+FunctionPass *llvm::createMemCpyOptPass(bool UseMSSA) {
+  if (UseMSSA)
+    return new MemCpyOptMemSSALegacyPass();
+  return new MemCpyOptLegacyPass();
+}
 
 INITIALIZE_PASS_BEGIN(MemCpyOptLegacyPass, "memcpyopt", "MemCpy Optimization",
                       false, false)
@@ -355,6 +374,18 @@ INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(GlobalsAAWrapperPass)
 INITIALIZE_PASS_END(MemCpyOptLegacyPass, "memcpyopt", "MemCpy Optimization",
                     false, false)
+
+INITIALIZE_PASS_BEGIN(MemCpyOptMemSSALegacyPass, "memcpyopt-mssa",
+                      "MemCpy Optimization (Memory SSA)", false, false)
+INITIALIZE_PASS_DEPENDENCY(AssumptionCacheTracker)
+INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(MemorySSAWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(MemoryDependenceWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(TargetLibraryInfoWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(GlobalsAAWrapperPass)
+INITIALIZE_PASS_END(MemCpyOptMemSSALegacyPass, "memcpyopt-mssa",
+                    "MemCpy Optimization (Memory SSA)", false, false)
 
 /// When scanning forward over instructions, we look for some other patterns to
 /// fold away. In particular, this looks for stores to neighboring locations of
@@ -1368,6 +1399,8 @@ bool MemCpyOptPass::iterateOnFunction(Function &F) {
 
 PreservedAnalyses MemCpyOptPass::run(Function &F, FunctionAnalysisManager &AM) {
 
+  auto *MSSA =
+      UseMemorySSA ? &AM.getResult<MemorySSAAnalysis>(F).getMSSA() : nullptr;
   auto &MD = AM.getResult<MemoryDependenceAnalysis>(F);
   auto &TLI = AM.getResult<TargetLibraryAnalysis>(F);
 
@@ -1381,22 +1414,28 @@ PreservedAnalyses MemCpyOptPass::run(Function &F, FunctionAnalysisManager &AM) {
     return AM.getResult<DominatorTreeAnalysis>(F);
   };
 
-  bool MadeChange = runImpl(F, &MD, &TLI, LookupAliasAnalysis,
+  bool MadeChange = runImpl(F, MSSA, &MD, &TLI, LookupAliasAnalysis,
                             LookupAssumptionCache, LookupDomTree);
   if (!MadeChange)
     return PreservedAnalyses::all();
   PreservedAnalyses PA;
   PA.preserve<GlobalsAA>();
   PA.preserve<MemoryDependenceAnalysis>();
+
+  if (UseMemorySSA)
+    PA.preserve<MemorySSAAnalysis>();
+
   return PA;
 }
 
 bool MemCpyOptPass::runImpl(
-    Function &F, MemoryDependenceResults *MD_, TargetLibraryInfo *TLI_,
+    Function &F, MemorySSA *MSSA_, MemoryDependenceResults *MD_,
+    TargetLibraryInfo *TLI_,
     std::function<AliasAnalysis &()> LookupAliasAnalysis_,
     std::function<AssumptionCache &()> LookupAssumptionCache_,
     std::function<DominatorTree &()> LookupDomTree_) {
   bool MadeChange = false;
+  MSSA = MSSA_;
   MD = MD_;
   TLI = TLI_;
   LookupAliasAnalysis = std::move(LookupAliasAnalysis_);
@@ -1416,14 +1455,18 @@ bool MemCpyOptPass::runImpl(
   }
 
   MD = nullptr;
+  MSSA = nullptr;
   return MadeChange;
 }
 
 /// This is the main transformation entry point for a function.
-bool MemCpyOptLegacyPass::runOnFunction(Function &F) {
+template <bool UseMSSA>
+bool MemCpyOptLegacyCommon<UseMSSA>::runOnFunction(Function &F) {
   if (skipFunction(F))
     return false;
 
+  auto *MSSA =
+      UseMSSA ? &getAnalysis<MemorySSAWrapperPass>().getMSSA() : nullptr;
   auto *MD = &getAnalysis<MemoryDependenceWrapperPass>().getMemDep();
   auto *TLI = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
 
@@ -1437,6 +1480,6 @@ bool MemCpyOptLegacyPass::runOnFunction(Function &F) {
     return getAnalysis<DominatorTreeWrapperPass>().getDomTree();
   };
 
-  return Impl.runImpl(F, MD, TLI, LookupAliasAnalysis, LookupAssumptionCache,
-                      LookupDomTree);
+  return Impl.runImpl(F, MSSA, MD, TLI, LookupAliasAnalysis,
+                      LookupAssumptionCache, LookupDomTree);
 }

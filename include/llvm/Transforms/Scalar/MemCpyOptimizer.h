@@ -29,7 +29,11 @@
 
 namespace llvm {
 
+class MemorySSA;
+
 class MemCpyOptPass : public PassInfoMixin<MemCpyOptPass> {
+  bool UseMemorySSA;
+  MemorySSA *MSSA = nullptr;
   MemoryDependenceResults *MD = nullptr;
   TargetLibraryInfo *TLI = nullptr;
   std::function<AliasAnalysis &()> LookupAliasAnalysis;
@@ -37,10 +41,10 @@ class MemCpyOptPass : public PassInfoMixin<MemCpyOptPass> {
   std::function<DominatorTree &()> LookupDomTree;
 
 public:
-  MemCpyOptPass() {}
+  MemCpyOptPass(bool UseMSSA) : UseMemorySSA(UseMSSA) {}
   PreservedAnalyses run(Function &F, FunctionAnalysisManager &AM);
   // Glue for the old PM.
-  bool runImpl(Function &F, MemoryDependenceResults *MD_,
+  bool runImpl(Function &F, MemorySSA *MSSA_, MemoryDependenceResults *MD_,
                TargetLibraryInfo *TLI_,
                std::function<AliasAnalysis &()> LookupAliasAnalysis_,
                std::function<AssumptionCache &()> LookupAssumptionCache_,

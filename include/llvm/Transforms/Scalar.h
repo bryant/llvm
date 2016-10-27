@@ -351,7 +351,7 @@ FunctionPass *createMergedLoadStoreMotionPass();
 // MemCpyOpt - This pass performs optimizations related to eliminating memcpy
 // calls and/or combining multiple stores into memset's.
 //
-FunctionPass *createMemCpyOptPass();
+FunctionPass *createMemCpyOptPass(bool = false);
 
 //===----------------------------------------------------------------------===//
 //
