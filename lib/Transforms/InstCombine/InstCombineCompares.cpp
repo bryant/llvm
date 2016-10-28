@@ -1954,14 +1954,17 @@ Instruction *InstCombiner::foldICmpShlConstant(ICmpInst &Cmp,
   // comparison only really happens in the pre-shifted bits. This also holds for
   // <=u and >u, but the latter two are canonicalized into the former.
   if (Shl->hasNoUnsignedWrap() &&
-      // Assumes that "<u 0" icmps have been eliminated by earlier passes.
       (Pred == ICmpInst::ICMP_UGT || Pred == ICmpInst::ICMP_ULT)) {
     Type *CTy = IntegerType::get(Cmp.getContext(), C->getBitWidth());
     if (X->getType()->isVectorTy())
       CTy = VectorType::get(CTy, X->getType()->getVectorNumElements());
-    // (X << S) <=u C = X <=u (C >> S)
-    // (X << S) <u (C + 1) = X <u (C >> S) + 1 if C < - 1
-    // (X << S) <u C = X <u ((C - 1) >> S) + 1 if C > 0
+    // Derivation for the ult case:
+    // (X << S) <=u C is equiv to X <=u (C >> S) for all C
+    // (X << S) <u (C + 1) is equiv to X <u (C >> S) + 1 if C <u ~0u
+    // (X << S) <u C is equiv to X <u ((C - 1) >> S) + 1 if C >u 0
+    assert((Pred != ICmpInst::ICMP_ULT || C->ugt(0)) &&
+           "Encountered `ult 0` that should have been eliminated by "
+           "InstSimplify.");
     APInt ShiftedC = Pred == ICmpInst::ICMP_ULT ? (*C - 1).lshr(*ShiftAmt) + 1
                                                 : C->lshr(*ShiftAmt);
     return new ICmpInst(Pred, X, ConstantInt::get(CTy, ShiftC));
