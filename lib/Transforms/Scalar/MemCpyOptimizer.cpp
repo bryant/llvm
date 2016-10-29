@@ -559,11 +559,16 @@ static unsigned findCommonAlignment(const DataLayout &DL, const StoreInst *SI,
   return std::min(StoreAlign, LoadAlign);
 }
 
-// This method try to lift a store instruction before position P.
+// This method try to lift a store instruction before position demarcated by
+// memory instruction P.
 // It will lift the store and its argument + that anything that
 // may alias with these.
 // The method returns true if it was successful.
-static bool moveUp(AliasAnalysis &AA, StoreInst *SI, Instruction *P) {
+static bool moveUp(AliasAnalysis &AA, StoreInst *SI, Instruction *P,
+                   MemorySSA *MSSA = nullptr) {
+  MemoryDef *PAcc =
+      MSSA ? dyn_cast_or_null<MemoryDef>(MSSA->getMemoryAccess(P)) : nullptr;
+  assert((!MSSA || PAcc) && "P must be a memory def-ing instruction.");
   // If the store alias this position, early bail out.
   MemoryLocation StoreLoc = MemoryLocation::get(SI);
   if (AA.getModRefInfo(P, StoreLoc) != MRI_NoModRef)
@@ -577,7 +582,7 @@ static bool moveUp(AliasAnalysis &AA, StoreInst *SI, Instruction *P) {
       Args.insert(Ptr);
 
   // Instruction to lift before P.
-  SmallVector<Instruction*, 8> ToLift;
+  SmallVector<Instruction *, 8> ToLift{SI};
 
   // Memory locations of lifted instructions.
   SmallVector<MemoryLocation, 8> MemLocs;
@@ -638,6 +643,11 @@ static bool moveUp(AliasAnalysis &AA, StoreInst *SI, Instruction *P) {
   for (auto *I : reverse(ToLift)) {
     DEBUG(dbgs() << "Lifting " << *I << " before " << *P << "\n");
     I->moveBefore(P);
+    if (MSSA) {
+      if (MemoryUseOrDef *A = MSSA->getMemoryAccess(I)) {
+        MSSA->spliceMemoryAccessAbove(PAcc, A);
+      }
+    }
   }
 
   return true;
