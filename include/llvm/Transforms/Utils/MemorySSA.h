@@ -563,12 +563,12 @@ public:
   /// must be non-null.
   /// Note: If a MemoryAccess already exists for I, this function will make it
   /// inaccessible and it *must* have removeMemoryAccess called on it.
-  MemoryAccess *createMemoryAccessBefore(Instruction *I,
-                                         MemoryAccess *Definition,
-                                         MemoryAccess *InsertPt);
-  MemoryAccess *createMemoryAccessAfter(Instruction *I,
-                                        MemoryAccess *Definition,
-                                        MemoryAccess *InsertPt);
+  MemoryUseOrDef *createMemoryAccessBefore(Instruction *I,
+                                           MemoryAccess *Definition,
+                                           MemoryAccess *InsertPt);
+  MemoryUseOrDef *createMemoryAccessAfter(Instruction *I,
+                                          MemoryAccess *Definition,
+                                          MemoryAccess *InsertPt);
 
   /// \brief Remove a MemoryAccess from MemorySSA, including updating all
   /// definitions and uses.

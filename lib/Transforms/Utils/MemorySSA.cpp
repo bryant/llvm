@@ -1589,9 +1589,10 @@ MemoryAccess *MemorySSA::createMemoryAccessInBB(Instruction *I,
   BlockNumberingValid.erase(BB);
   return NewAccess;
 }
-MemoryAccess *MemorySSA::createMemoryAccessBefore(Instruction *I,
-                                                  MemoryAccess *Definition,
-                                                  MemoryAccess *InsertPt) {
+
+MemoryUseOrDef *MemorySSA::createMemoryAccessBefore(Instruction *I,
+                                                    MemoryAccess *Definition,
+                                                    MemoryAccess *InsertPt) {
   assert(I->getParent() == InsertPt->getBlock() &&
          "New and old access must be in the same block");
   MemoryUseOrDef *NewAccess = createDefinedAccess(I, Definition);
@@ -1601,9 +1602,9 @@ MemoryAccess *MemorySSA::createMemoryAccessBefore(Instruction *I,
   return NewAccess;
 }
 
-MemoryAccess *MemorySSA::createMemoryAccessAfter(Instruction *I,
-                                                 MemoryAccess *Definition,
-                                                 MemoryAccess *InsertPt) {
+MemoryUseOrDef *MemorySSA::createMemoryAccessAfter(Instruction *I,
+                                                   MemoryAccess *Definition,
+                                                   MemoryAccess *InsertPt) {
   assert(I->getParent() == InsertPt->getBlock() &&
          "New and old access must be in the same block");
   MemoryUseOrDef *NewAccess = createDefinedAccess(I, Definition);
