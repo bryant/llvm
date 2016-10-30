@@ -1592,7 +1592,7 @@ MemoryAccess *MemorySSA::createMemoryAccessInBB(Instruction *I,
 
 MemoryUseOrDef *MemorySSA::createMemoryAccessBefore(Instruction *I,
                                                     MemoryAccess *Definition,
-                                                    MemoryAccess *InsertPt) {
+                                                    MemoryUseOrDef *InsertPt) {
   assert(I->getParent() == InsertPt->getBlock() &&
          "New and old access must be in the same block");
   MemoryUseOrDef *NewAccess = createDefinedAccess(I, Definition);

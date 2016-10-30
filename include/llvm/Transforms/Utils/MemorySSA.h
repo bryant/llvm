@@ -565,7 +565,7 @@ public:
   /// inaccessible and it *must* have removeMemoryAccess called on it.
   MemoryUseOrDef *createMemoryAccessBefore(Instruction *I,
                                            MemoryAccess *Definition,
-                                           MemoryAccess *InsertPt);
+                                           MemoryUseOrDef *InsertPt);
   MemoryUseOrDef *createMemoryAccessAfter(Instruction *I,
                                           MemoryAccess *Definition,
                                           MemoryAccess *InsertPt);
