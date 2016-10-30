@@ -1898,12 +1898,12 @@ void MemorySSA::verifyDefUses(Function &F) const {
   }
 }
 
-MemoryAccess *MemorySSA::getMemoryAccess(const Value *I) const {
-  return ValueToMemoryAccess.lookup(I);
+MemoryUseOrDef *MemorySSA::getMemoryAccess(const Instruction *I) const {
+  return cast_or_null<MemoryUseOrDef>(ValueToMemoryAccess.lookup(I));
 }
 
 MemoryPhi *MemorySSA::getMemoryAccess(const BasicBlock *BB) const {
-  return cast_or_null<MemoryPhi>(getMemoryAccess((const Value *)BB));
+  return cast_or_null<MemoryPhi>(ValueToMemoryAccess.lookup(cast<Value>(BB)));
 }
 
 /// Perform a local numbering on blocks so that instruction ordering can be

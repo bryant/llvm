@@ -500,7 +500,7 @@ public:
   /// access associated with it. If passed a basic block gets the memory phi
   /// node that exists for that block, if there is one. Otherwise, this will get
   /// a MemoryUseOrDef.
-  MemoryAccess *getMemoryAccess(const Value *) const;
+  MemoryUseOrDef *getMemoryAccess(const Instruction *) const;
   MemoryPhi *getMemoryAccess(const BasicBlock *BB) const;
 
   void dump() const;
