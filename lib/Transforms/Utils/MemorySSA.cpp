@@ -1889,10 +1889,8 @@ void MemorySSA::verifyDefUses(Function &F) const {
     }
 
     for (Instruction &I : B) {
-      if (MemoryAccess *MA = getMemoryAccess(&I)) {
-        assert(isa<MemoryUseOrDef>(MA) &&
-               "Found a phi node not attached to a bb");
-        verifyUseInDefs(cast<MemoryUseOrDef>(MA)->getDefiningAccess(), MA);
+      if (MemoryUseOrDef *MA = getMemoryAccess(&I)) {
+        verifyUseInDefs(MA->getDefiningAccess(), MA);
       }
     }
   }
