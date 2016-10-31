@@ -670,6 +670,7 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
   // Load to store forwarding can be interpreted as memcpy.
   if (LoadInst *LI = dyn_cast<LoadInst>(SI->getOperand(0))) {
     if (LI->isSimple() && LI->hasOneUse() &&
+        // TODO: non-local
         LI->getParent() == SI->getParent()) {
 
       auto *T = LI->getType();
@@ -694,7 +695,7 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
         // position if nothing alias the store memory after this and the store
         // destination is not in the range.
         if (P && P != SI) {
-          if (!moveUp(AA, SI, P))
+          if (!moveUp(AA, SI, P, MSSA))
             P = nullptr;
         }
 
@@ -721,6 +722,8 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
             M = Builder.CreateMemCpy(SI->getPointerOperand(),
                                      LI->getPointerOperand(), Size,
                                      Align, SI->isVolatile());
+          if (UseMemorySSA)
+            replaceMemoryAccess(*MSSA, SI, M);
 
           DEBUG(dbgs() << "Promoting " << *LI << " to " << *SI
                        << " => " << *M << "\n");
@@ -738,10 +741,17 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
       // Detect cases where we're performing call slot forwarding, but
       // happen to be using a load-store pair to implement it, rather than
       // a memcpy.
-      MemDepResult ldep = MD->getDependency(LI);
       CallInst *C = nullptr;
-      if (ldep.isClobber() && !isa<MemCpyInst>(ldep.getInst()))
-        C = dyn_cast<CallInst>(ldep.getInst());
+      if (UseMemorySSA) {
+        if (MemoryUseOrDef *LoadClob = dyn_cast_or_null<MemoryUseOrDef>(
+                MSSA->getWalker()->getClobberingMemoryAccess(
+                    MSSA->getMemoryAccess(LI))))
+          C = dyn_cast_or_null<CallInst>(LoadClob->getMemoryInst());
+      } else {
+        MemDepResult ldep = MD->getDependency(LI);
+        if (ldep.isClobber() && !isa<MemCpyInst>(ldep.getInst()))
+          C = dyn_cast<CallInst>(ldep.getInst());
+      }
 
       if (C) {
         // Check that nothing touches the dest of the "copy" between
@@ -807,6 +817,8 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
       IRBuilder<> Builder(SI);
       auto *M = Builder.CreateMemSet(SI->getPointerOperand(), ByteVal,
                                      Size, Align, SI->isVolatile());
+      if (UseMemorySSA)
+        replaceMemoryAccess(*MSSA, SI, M);
 
       DEBUG(dbgs() << "Promoting " << *SI << " to " << *M << "\n");
 
