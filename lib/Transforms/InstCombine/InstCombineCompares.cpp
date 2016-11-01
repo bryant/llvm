@@ -1950,9 +1950,9 @@ Instruction *InstCombiner::foldICmpShlConstant(ICmpInst &Cmp,
                         And, Constant::getNullValue(And->getType()));
   }
 
-  // When the shift is nuw and pred is >u (for all C) or <u (for non-zero C),
-  // comparison only really happens in the pre-shifted bits. This also holds for
-  // <=u and >u, but the latter two are canonicalized into the former.
+  // When the shift is nuw and pred is >u or <=u, comparison only really happens
+  // in the pre-shifted bits. Since InstSimplify canoncalizes <=u into <u, the
+  // <=u case can be further converted to match <u (see below).
   if (Shl->hasNoUnsignedWrap() &&
       (Pred == ICmpInst::ICMP_UGT || Pred == ICmpInst::ICMP_ULT)) {
     Type *CTy = IntegerType::get(Cmp.getContext(), C->getBitWidth());
