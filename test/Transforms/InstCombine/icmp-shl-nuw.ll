@@ -51,8 +51,8 @@ define <2 x i1> @icmp_ule_16x2_nonzero(<2 x i64>) {
   ret <2 x i1> %d
 }
 
-define <2 x i1> @icmp_ule_16x2_non_pow2_shift(<2 x i64>) {
-; CHECK-LABEL: @icmp_ule_16x2_non_pow2_shift(
+define <2 x i1> @icmp_ule_12x2(<2 x i64>) {
+; CHECK-LABEL: @icmp_ule_12x2(
 ; CHECK-NEXT:    [[D:%.*]] = icmp ult <2 x i64> %0, <i64 4, i64 4>
 ; CHECK-NEXT:    ret <2 x i1> [[D]]
 ;
