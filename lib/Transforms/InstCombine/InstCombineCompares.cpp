@@ -1955,9 +1955,6 @@ Instruction *InstCombiner::foldICmpShlConstant(ICmpInst &Cmp,
   // <=u case can be further converted to match <u (see below).
   if (Shl->hasNoUnsignedWrap() &&
       (Pred == ICmpInst::ICMP_UGT || Pred == ICmpInst::ICMP_ULT)) {
-    Type *CTy = IntegerType::get(Cmp.getContext(), C->getBitWidth());
-    if (X->getType()->isVectorTy())
-      CTy = VectorType::get(CTy, X->getType()->getVectorNumElements());
     // Derivation for the ult case:
     // (X << S) <=u C is equiv to X <=u (C >> S) for all C
     // (X << S) <u (C + 1) is equiv to X <u (C >> S) + 1 if C <u ~0u
@@ -1967,7 +1964,7 @@ Instruction *InstCombiner::foldICmpShlConstant(ICmpInst &Cmp,
            "InstSimplify.");
     APInt ShiftedC = Pred == ICmpInst::ICMP_ULT ? (*C - 1).lshr(*ShiftAmt) + 1
                                                 : C->lshr(*ShiftAmt);
-    return new ICmpInst(Pred, X, ConstantInt::get(CTy, ShiftedC));
+    return new ICmpInst(Pred, X, ConstantInt::get(X->getType(), ShiftedC));
   }
 
   // Transform (icmp pred iM (shl iM %v, N), C)
