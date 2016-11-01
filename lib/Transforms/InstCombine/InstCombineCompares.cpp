@@ -1967,7 +1967,7 @@ Instruction *InstCombiner::foldICmpShlConstant(ICmpInst &Cmp,
            "InstSimplify.");
     APInt ShiftedC = Pred == ICmpInst::ICMP_ULT ? (*C - 1).lshr(*ShiftAmt) + 1
                                                 : C->lshr(*ShiftAmt);
-    return new ICmpInst(Pred, X, ConstantInt::get(CTy, ShiftC));
+    return new ICmpInst(Pred, X, ConstantInt::get(CTy, ShiftedC));
   }
 
   // Transform (icmp pred iM (shl iM %v, N), C)
