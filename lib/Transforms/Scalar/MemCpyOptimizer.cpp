@@ -1362,6 +1362,98 @@ bool MemCpyOptPass::processMemCpy(MemCpyInst *M) {
   return false;
 }
 
+bool MemCpyOptPass::processMemCpyMSSA(MemCpyInst *M) {
+  if (M->isVolatile())
+    return false;
+
+  if (M->getSource() == M->getDest()) {
+    eraseInstruction(M);
+    return false;
+  }
+
+  // If copying from a constant, try to turn the memcpy into a memset.
+  if (GlobalVariable *GV = dyn_cast<GlobalVariable>(M->getSource()))
+    if (GV->isConstant() && GV->hasDefinitiveInitializer())
+      if (Value *ByteVal = isBytewiseValue(GV->getInitializer())) {
+        IRBuilder<> Builder(M);
+        auto *MemSet = Builder.CreateMemSet(
+            M->getRawDest(), ByteVal, M->getLength(), M->getAlignment(), false);
+        replaceMemoryAccess(*MSSA, M, MemSet);
+        eraseInstruction(M);
+        ++NumCpyToSet;
+        return true;
+      }
+
+  MemoryAccess *DestClob = MSSA->getWalker()->getClobberingMemoryAccess(M);
+
+  if (auto *MUD = dyn_cast<MemoryUseOrDef>(DestClob))
+    if (auto *MDep = dyn_cast_or_null<MemSetInst>(MUD->getMemoryInst()))
+      if (processMemSetMemCpyDependence(M, MDep))
+        return true;
+
+  // The optimizations after this point require the memcpy size.
+  ConstantInt *CopySize = dyn_cast<ConstantInt>(M->getLength());
+  if (!CopySize)
+    return false;
+
+  MemoryUseOrDef *MAcc = MSSA->getMemoryAccess(M);
+  MemoryAccess *SrcClob = getCMA(MSSA, MAcc, MemoryLocation::getForSource(M));
+
+  if (auto *MUD = dyn_cast<MemoryUseOrDef>(SrcClob)) {
+    if (auto *C = dyn_cast_or_null<CallInst>(MUD->getMemoryInst())) {
+      if (performCallSlotOptzn(M, M->getDest(), M->getSource(),
+                               CopySize->getZExtValue(), M->getAlignment(),
+                               C)) {
+        eraseInstruction(M);
+        ++NumMemCpyInstr;
+        return true;
+      }
+    }
+
+    if (auto *MDep = dyn_cast_or_null<MemCpyInst>(MUD->getMemoryInst()))
+      if (processMemCpyMemCpyDependence(M, MDep))
+        return true;
+
+    if (auto *MDep = dyn_cast_or_null<MemSetInst>(MUD->getMemoryInst()))
+      if (performMemCpyToMemSetOptzn(M, MDep))
+        return true;
+
+    const DataLayout &DL = M->getParent()->getModule()->getDataLayout();
+    // TODO: test these.
+    bool hasUndefContents =
+        MSSA->isLiveOnEntryDef(MUD) &&
+        isa<AllocaInst>(GetUnderlyingObject(M->getRawSource(), DL));
+
+    // Both MUD and and lifetime_start (if one exists for M's source) dominate
+    // MAcc. The only way for lifetime_start to imply undef contents is if it
+    // resides between MUD and MAcc.
+    for (MemoryUseOrDef *L =
+             dyn_cast_or_null<MemoryUseOrDef>(MAcc->getDefiningAccess());
+         L && L != MUD;
+         L = dyn_cast_or_null<MemoryUseOrDef>(L->getDefiningAccess())) {
+      if (auto *II = dyn_cast_or_null<IntrinsicInst>(L->getMemoryInst())) {
+        if (II->getIntrinsicID() == Intrinsic::lifetime_start &&
+            II->getArgOperand(1)->stripPointerCasts() == M->getSource()) {
+          if (ConstantInt *LTSize =
+                  dyn_cast<ConstantInt>(II->getArgOperand(0))) {
+            hasUndefContents |=
+                LTSize->getZExtValue() >= CopySize->getZExtValue();
+            break;
+          }
+        }
+      }
+    }
+
+    if (hasUndefContents) {
+      eraseInstruction(M);
+      ++NumMemCpyInstr;
+      return true;
+    }
+  }
+
+  return false;
+}
+
 /// Transforms memmove calls to memcpy calls when the src/dst are guaranteed
 /// not to alias.
 bool MemCpyOptPass::processMemMove(MemMoveInst *M) {
@@ -1499,7 +1591,8 @@ bool MemCpyOptPass::iterateOnFunction(Function &F) {
       else if (MemSetInst *M = dyn_cast<MemSetInst>(I))
         RepeatInstruction = processMemSet(M, BI);
       else if (MemCpyInst *M = dyn_cast<MemCpyInst>(I))
-        RepeatInstruction = processMemCpy(M);
+        RepeatInstruction =
+            UseMemorySSA ? processMemCpyMSSA(M) : processMemCpy(M);
       else if (MemMoveInst *M = dyn_cast<MemMoveInst>(I))
         RepeatInstruction = processMemMove(M);
       else if (auto CS = CallSite(I)) {
