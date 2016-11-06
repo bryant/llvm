@@ -31,6 +31,9 @@ using namespace llvm;
 
 #define DEBUG_TYPE "memcpyopt"
 
+static cl::opt<bool> MCOMSSA("mco-mssa", cl::init(false), cl::Hidden,
+                             cl::desc("Force MemCpyOpt to use MemorySSA"));
+
 STATISTIC(NumMemCpyInstr, "Number of memcpy instructions deleted");
 STATISTIC(NumMemSetInfer, "Number of memsets inferred");
 STATISTIC(NumMoveToCpy,   "Number of memmoves converted to memcpy");
@@ -359,7 +362,7 @@ using MemCpyOptMemSSALegacyPass = MemCpyOptLegacyCommon<true>;
 
 /// The public interface to this file...
 FunctionPass *llvm::createMemCpyOptPass(bool UseMSSA) {
-  if (UseMSSA)
+  if (UseMSSA || MCOMSSA)
     return new MemCpyOptMemSSALegacyPass();
   return new MemCpyOptLegacyPass();
 }
