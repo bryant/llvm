@@ -164,6 +164,9 @@ struct MemsetRange {
   /// range.
   Value *StartPtr;
 
+  /// StartPtrUser - The insertion point for the resulting memset.
+  Instruction *StartPtrUser;
+
   /// Alignment - The known alignment of the first store.
   unsigned Alignment;
 
@@ -276,6 +279,7 @@ void MemsetRanges::addRange(int64_t Start, int64_t Size, Value *Ptr,
     R.Start        = Start;
     R.End          = End;
     R.StartPtr     = Ptr;
+    R.StartPtrUser = Inst;
     R.Alignment    = Alignment;
     R.TheStores.push_back(Inst);
     return;
@@ -298,6 +302,7 @@ void MemsetRanges::addRange(int64_t Start, int64_t Size, Value *Ptr,
   if (Start < I->Start) {
     I->Start = Start;
     I->StartPtr = Ptr;
+    I->StartPtrUser = Inst;
     I->Alignment = Alignment;
   }
 
@@ -448,6 +453,7 @@ Instruction *MemCpyOptPass::tryMergingIntoMemset(Instruction *StartInst,
 
   BasicBlock::iterator BI(StartInst);
   for (++BI; !isa<TerminatorInst>(BI); ++BI) {
+    // TODO: walk along bb AccessList instead.
     if (!isa<StoreInst>(BI) && !isa<MemSetInst>(BI)) {
       // If the instruction is readnone, ignore it, otherwise bail out.  We
       // don't even allow readonly here because we don't want something like:
@@ -498,11 +504,6 @@ Instruction *MemCpyOptPass::tryMergingIntoMemset(Instruction *StartInst,
   // interesting as a small compile-time optimization.
   Ranges.addInst(0, StartInst);
 
-  // If we create any memsets, we put it right before the first instruction that
-  // isn't part of the memset block.  This ensure that the memset is dominated
-  // by any addressing instruction needed by the start of the block.
-  IRBuilder<> Builder(&*BI);
-
   // Now that we have full information about ranges, loop over the ranges and
   // emit memset's for anything big enough to be worthwhile.
   Instruction *AMemSet = nullptr;
@@ -526,8 +527,16 @@ Instruction *MemCpyOptPass::tryMergingIntoMemset(Instruction *StartInst,
       Alignment = DL.getABITypeAlignment(EltType);
     }
 
-    AMemSet =
-      Builder.CreateMemSet(StartPtr, ByteVal, Range.End-Range.Start, Alignment);
+    // Insert memset just before the store in this range that uses
+    // Range.StartPtr.
+    IRBuilder<> Builder(Range.StartPtrUser);
+    AMemSet = Builder.CreateMemSet(StartPtr, ByteVal, Range.End - Range.Start,
+                                   Alignment);
+
+    if (UseMemorySSA) {
+      replaceMemoryAccess(*MSSA, Range.StartPtrUser, AMemSet);
+      MSSA->removeMemoryAccess(MSSA->getMemoryAccess(Range.StartPtrUser));
+    }
 
     DEBUG(dbgs() << "Replace stores:\n";
           for (Instruction *SI : Range.TheStores)
