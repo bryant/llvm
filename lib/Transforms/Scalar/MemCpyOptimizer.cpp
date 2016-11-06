@@ -1400,16 +1400,26 @@ bool MemCpyOptPass::processByValArgument(CallSite CS, unsigned ArgNo) {
   Value *ByValArg = CS.getArgument(ArgNo);
   Type *ByValTy = cast<PointerType>(ByValArg->getType())->getElementType();
   uint64_t ByValSize = DL.getTypeAllocSize(ByValTy);
-  MemDepResult DepInfo = MD->getPointerDependencyFrom(
-      MemoryLocation(ByValArg, ByValSize), true,
-      CS.getInstruction()->getIterator(), CS.getInstruction()->getParent());
-  if (!DepInfo.isClobber())
-    return false;
+  MemoryLocation ByValLoc(ByValArg, ByValSize);
+  MemCpyInst *MDep = nullptr;
+
+  if (UseMemorySSA) {
+    if (MemoryUseOrDef *MUD = MSSA->getMemoryAccess(CS.getInstruction()))
+      if (auto *ByValClob =
+              dyn_cast<MemoryUseOrDef>(getCMA(MSSA, MUD, ByValLoc)))
+        MDep = dyn_cast_or_null<MemCpyInst>(ByValClob->getMemoryInst());
+  } else {
+    MemDepResult DepInfo = MD->getPointerDependencyFrom(
+        ByValLoc, true, CS.getInstruction()->getIterator(),
+        CS.getInstruction()->getParent());
+    if (!DepInfo.isClobber())
+      return false;
+    MDep = dyn_cast<MemCpyInst>(DepInfo.getInst());
+  }
 
   // If the byval argument isn't fed by a memcpy, ignore it.  If it is fed by
   // a memcpy, see if we can byval from the source of the memcpy instead of the
   // result.
-  MemCpyInst *MDep = dyn_cast<MemCpyInst>(DepInfo.getInst());
   if (!MDep || MDep->isVolatile() ||
       ByValArg->stripPointerCasts() != MDep->getDest())
     return false;
@@ -1442,11 +1452,19 @@ bool MemCpyOptPass::processByValArgument(CallSite CS, unsigned ArgNo) {
   //
   // NOTE: This is conservative, it will stop on any read from the source loc,
   // not just the defining memcpy.
-  MemDepResult SourceDep = MD->getPointerDependencyFrom(
-      MemoryLocation::getForSource(MDep), false,
-      CS.getInstruction()->getIterator(), MDep->getParent());
-  if (!SourceDep.isClobber() || SourceDep.getInst() != MDep)
-    return false;
+  if (UseMemorySSA) {
+    MemoryUseOrDef *Dep = MSSA->getMemoryAccess(MDep);
+    auto *Clob = getCMA(MSSA, MSSA->getMemoryAccess(CS.getInstruction()),
+                        MemoryLocation::getForSource(MDep));
+    if (Clob != Dep && MSSA->dominates(Dep, Clob))
+      return false;
+  } else {
+    MemDepResult SourceDep = MD->getPointerDependencyFrom(
+        MemoryLocation::getForSource(MDep), false,
+        CS.getInstruction()->getIterator(), MDep->getParent());
+    if (!SourceDep.isClobber() || SourceDep.getInst() != MDep)
+      return false;
+  }
 
   Value *TmpCast = MDep->getSource();
   if (MDep->getSource()->getType() != ByValArg->getType())
