@@ -1096,11 +1096,20 @@ bool MemCpyOptPass::processMemCpyMemCpyDependence(MemCpyInst *M,
   //
   // NOTE: This is conservative, it will stop on any read from the source loc,
   // not just the defining memcpy.
-  MemDepResult SourceDep =
-      MD->getPointerDependencyFrom(MemoryLocation::getForSource(MDep), false,
-                                   M->getIterator(), M->getParent());
-  if (!SourceDep.isClobber() || SourceDep.getInst() != MDep)
-    return false;
+  if (UseMemorySSA) {
+    MemoryUseOrDef *MAcc = MSSA->getMemoryAccess(M);
+    MemoryUseOrDef *DepAcc = MSSA->getMemoryAccess(MDep);
+    MemoryAccess *DepClob =
+        getCMA(MSSA, MAcc, MemoryLocation::getForSource(MDep));
+    if (DepClob != DepAcc && MSSA->dominates(DepAcc, DepClob))
+      return false;
+  } else {
+    MemDepResult SourceDep =
+        MD->getPointerDependencyFrom(MemoryLocation::getForSource(MDep), false,
+                                     M->getIterator(), M->getParent());
+    if (!SourceDep.isClobber() || SourceDep.getInst() != MDep)
+      return false;
+  }
 
   // If the dest of the second might alias the source of the first, then the
   // source and dest might overlap.  We still want to eliminate the intermediate
@@ -1120,12 +1129,14 @@ bool MemCpyOptPass::processMemCpyMemCpyDependence(MemCpyInst *M,
   unsigned Align = std::min(MDep->getAlignment(), M->getAlignment());
 
   IRBuilder<> Builder(M);
-  if (UseMemMove)
-    Builder.CreateMemMove(M->getRawDest(), MDep->getRawSource(), M->getLength(),
-                          Align, M->isVolatile());
-  else
-    Builder.CreateMemCpy(M->getRawDest(), MDep->getRawSource(), M->getLength(),
-                         Align, M->isVolatile());
+  auto *New =
+      UseMemMove
+          ? Builder.CreateMemMove(M->getRawDest(), MDep->getRawSource(),
+                                  M->getLength(), Align, M->isVolatile())
+          : Builder.CreateMemCpy(M->getRawDest(), MDep->getRawSource(),
+                                 M->getLength(), Align, M->isVolatile());
+  if (UseMemorySSA)
+    replaceMemoryAccess(*MSSA, M, New);
 
   // Remove the instruction we're replacing.
   eraseInstruction(M);
