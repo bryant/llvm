@@ -1153,8 +1153,8 @@ bool MemCpyOptPass::processMemCpyMemCpyDependence(MemCpyInst *M,
 /// \endcode
 /// into:
 /// \code
-///   memcpy(dst, src, src_size);
 ///   memset(dst + src_size, c, dst_size <= src_size ? 0 : dst_size - src_size);
+///   memcpy(dst, src, src_size);
 /// \endcode
 bool MemCpyOptPass::processMemSetMemCpyDependence(MemCpyInst *MemCpy,
                                                   MemSetInst *MemSet) {
@@ -1163,11 +1163,29 @@ bool MemCpyOptPass::processMemSetMemCpyDependence(MemCpyInst *MemCpy,
     return false;
 
   // Check that there are no other dependencies on the memset destination.
-  MemDepResult DstDepInfo =
-      MD->getPointerDependencyFrom(MemoryLocation::getForDest(MemSet), false,
-                                   MemCpy->getIterator(), MemCpy->getParent());
-  if (DstDepInfo.getInst() != MemSet)
-    return false;
+  if (UseMemorySSA) {
+    MemoryUseOrDef *MSAcc = MSSA->getMemoryAccess(MemSet);
+    MemoryUseOrDef *MemCpyAcc = MSSA->getMemoryAccess(MemCpy);
+    assert(MSSA->dominates(MSAcc, MemCpyAcc));
+
+    // TODO: non-local
+    if (MemCpy->getParent() != MemSet->getParent())
+      return false;
+
+    AliasAnalysis &AA = LookupAliasAnalysis();
+    using It = MemorySSA::AccessList::iterator;
+    for (const auto &Acc : make_range(std::next(It(MSAcc)), It(MemCpyAcc))) {
+      if (AA.getModRefInfo(cast<MemoryUseOrDef>(Acc).getMemoryInst(),
+                           MemoryLocation::getForDest(MemSet)) != MRI_NoModRef)
+        return false;
+    }
+  } else {
+    MemDepResult DstDepInfo = MD->getPointerDependencyFrom(
+        MemoryLocation::getForDest(MemSet), false, MemCpy->getIterator(),
+        MemCpy->getParent());
+    if (DstDepInfo.getInst() != MemSet)
+      return false;
+  }
 
   // Use the same i8* dest as the memcpy, killing the memset dest if different.
   Value *Dest = MemCpy->getRawDest();
@@ -1184,7 +1202,8 @@ bool MemCpyOptPass::processMemSetMemCpyDependence(MemCpyInst *MemCpy,
     if (ConstantInt *SrcSizeC = dyn_cast<ConstantInt>(SrcSize))
       Align = MinAlign(SrcSizeC->getZExtValue(), DestAlign);
 
-  IRBuilder<> Builder(MemCpy);
+  // MSSA replacement requires new memset to be inserted next to old.
+  IRBuilder<> Builder(MemSet);
 
   // If the sizes have different types, zext the smaller one.
   if (DestSize->getType() != SrcSize->getType()) {
@@ -1199,8 +1218,10 @@ bool MemCpyOptPass::processMemSetMemCpyDependence(MemCpyInst *MemCpy,
       Builder.CreateSelect(Builder.CreateICmpULE(DestSize, SrcSize),
                            ConstantInt::getNullValue(DestSize->getType()),
                            Builder.CreateSub(DestSize, SrcSize));
-  Builder.CreateMemSet(Builder.CreateGEP(Dest, SrcSize), MemSet->getOperand(1),
-                       MemsetLen, Align);
+  auto *M = Builder.CreateMemSet(Builder.CreateGEP(Dest, SrcSize),
+                                 MemSet->getOperand(1), MemsetLen, Align);
+  if (UseMemorySSA)
+    replaceMemoryAccess(*MSSA, MemSet, M);
 
   eraseInstruction(MemSet);
   return true;
