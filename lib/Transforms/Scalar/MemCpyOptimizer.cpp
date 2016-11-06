@@ -399,6 +399,18 @@ void MemCpyOptPass::eraseInstruction(Instruction *I) {
   I->eraseFromParent();
 }
 
+static MemoryUseOrDef *replaceMemoryAccess(MemorySSA &MSSA, Instruction *Old,
+                                           Instruction *New) {
+  MemoryUseOrDef *OldAcc = MSSA.getMemoryAccess(Old);
+  MemoryUseOrDef *NewAcc =
+      MSSA.createMemoryAccessBefore(New, OldAcc->getDefiningAccess(), OldAcc);
+  assert((isa<MemoryUse>(OldAcc) && isa<MemoryUse>(NewAcc)) ||
+         (isa<MemoryDef>(OldAcc) && isa<MemoryDef>(NewAcc)) &&
+             "Must replace with equivalent MSSA access type.");
+  OldAcc->replaceAllUsesWith(NewAcc);
+  return NewAcc;
+}
+
 /// When scanning forward over instructions, we look for some other patterns to
 /// fold away. In particular, this looks for stores to neighboring locations of
 /// memory. If it sees enough consecutive ones, it attempts to merge them
