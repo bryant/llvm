@@ -1258,8 +1258,13 @@ bool MemCpyOptPass::performMemCpyToMemSetOptzn(MemCpyInst *MemCpy,
     return false;
 
   IRBuilder<> Builder(MemCpy);
-  Builder.CreateMemSet(MemCpy->getRawDest(), MemSet->getOperand(1),
-                       CopySize, MemCpy->getAlignment());
+  auto *MemSetNew =
+      Builder.CreateMemSet(MemCpy->getRawDest(), MemSet->getOperand(1),
+                           CopySize, MemCpy->getAlignment());
+  if (UseMemorySSA)
+    replaceMemoryAccess(*MSSA, MemCpy, MemSetNew);
+  eraseInstruction(MemCpy);
+  ++NumCpyToSet;
   return true;
 }
 
@@ -1351,11 +1356,8 @@ bool MemCpyOptPass::processMemCpy(MemCpyInst *M) {
 
   if (SrcDepInfo.isClobber())
     if (MemSetInst *MDep = dyn_cast<MemSetInst>(SrcDepInfo.getInst()))
-      if (performMemCpyToMemSetOptzn(M, MDep)) {
-        eraseInstruction(M);
-        ++NumCpyToSet;
-        return true;
-      }
+      if (performMemCpyToMemSetOptzn(M, MDep))
+          return true;
 
   return false;
 }
