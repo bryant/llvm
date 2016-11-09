@@ -123,6 +123,13 @@ static bool IsPointerOffset(Value *Ptr1, Value *Ptr2, int64_t &Offset,
   return true;
 }
 
+// \brief Locates the nearest MemoryAccess that clobbers \p MemLoc and strictly
+// dominates \p StartAbove
+static MemoryAccess *getCMA(MemorySSA *MSSA, MemoryUseOrDef *StartAbove,
+                            const MemoryLocation &MemLoc) {
+  MemoryAccess *Start = StartAbove->getDefiningAccess();
+  return MSSA->getWalker()->getClobberingMemoryAccess(Start, MemLoc);
+}
 
 /// Represents a range of memset'd bytes with the ByteVal value.
 /// This allows us to analyze stores like:
