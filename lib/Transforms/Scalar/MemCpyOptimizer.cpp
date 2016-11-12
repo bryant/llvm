@@ -743,10 +743,12 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
       // a memcpy.
       CallInst *C = nullptr;
       if (UseMemorySSA) {
-        if (MemoryUseOrDef *LoadClob = dyn_cast_or_null<MemoryUseOrDef>(
+        if (MemoryUseOrDef *LoadClob = dyn_cast<MemoryUseOrDef>(
                 MSSA->getWalker()->getClobberingMemoryAccess(
                     MSSA->getMemoryAccess(LI))))
-          C = dyn_cast_or_null<CallInst>(LoadClob->getMemoryInst());
+          // performCallSlotOptzn expects same block. TODO: non-local
+          if (LoadClob->getBlock() == SI->getParent())
+            C = dyn_cast_or_null<CallInst>(LoadClob->getMemoryInst());
       } else {
         MemDepResult ldep = MD->getDependency(LI);
         if (ldep.isClobber() && !isa<MemCpyInst>(ldep.getInst()))
