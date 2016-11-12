@@ -417,18 +417,20 @@ INITIALIZE_PASS_END(MemCpyOptMemSSALegacyPass, "memcpyopt-mssa",
 
 void MemCpyOptPass::eraseInstruction(Instruction *I) {
   assert(MD);
+  DEBUG(dbgs() << "Erasing instruction " << *I << "\n");
   MD->removeInstruction(I);
   if (UseMemorySSA)
     if (MemoryAccess *MA = MSSA->getMemoryAccess(I))
       MSSA->removeMemoryAccess(MA);
   I->eraseFromParent();
   if (UseMemorySSA)
-    DEBUG(MSSA->verifyMemorySSA());
+    DEBUG(dbgs() << "Asserting well-formedness after erasure\n";
+          MSSA->verifyMemorySSA());
 }
 
 static MemoryUseOrDef *replaceMemoryAccess(MemorySSA &MSSA, Instruction *Old,
                                            Instruction *New) {
-  DEBUG(MSSA.print(dbgs()));
+  DEBUG(dbgs() << "replacing " << *Old << " with " << *New; MSSA.print(dbgs()));
   MemoryUseOrDef *OldAcc = MSSA.getMemoryAccess(Old);
   MemoryUseOrDef *NewAcc =
       MSSA.createMemoryAccessBefore(New, OldAcc->getDefiningAccess(), OldAcc);
@@ -436,7 +438,7 @@ static MemoryUseOrDef *replaceMemoryAccess(MemorySSA &MSSA, Instruction *Old,
          (isa<MemoryDef>(OldAcc) && isa<MemoryDef>(NewAcc)) &&
              "Must replace with equivalent MSSA access type.");
   OldAcc->replaceAllUsesWith(NewAcc);
-  DEBUG(MSSA.print(dbgs()));
+  DEBUG(dbgs() << "after replacement:"; MSSA.print(dbgs()));
   return NewAcc;
 }
 
