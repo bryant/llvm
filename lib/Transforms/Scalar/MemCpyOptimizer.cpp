@@ -1386,10 +1386,12 @@ bool MemCpyOptPass::processMemCpyMSSA(MemCpyInst *M) {
 
   MemoryAccess *DestClob = MSSA->getWalker()->getClobberingMemoryAccess(M);
 
-  if (auto *MUD = dyn_cast<MemoryUseOrDef>(DestClob))
-    if (auto *MDep = dyn_cast_or_null<MemSetInst>(MUD->getMemoryInst()))
-      if (processMemSetMemCpyDependence(M, MDep))
-        return true;
+  // TODO: non-local
+  if (DestClob->getBlock() == M->getParent())
+    if (auto *MUD = dyn_cast<MemoryUseOrDef>(DestClob))
+      if (auto *MDep = dyn_cast_or_null<MemSetInst>(MUD->getMemoryInst()))
+        if (processMemSetMemCpyDependence(M, MDep))
+          return true;
 
   // The optimizations after this point require the memcpy size.
   ConstantInt *CopySize = dyn_cast<ConstantInt>(M->getLength());
@@ -1399,9 +1401,11 @@ bool MemCpyOptPass::processMemCpyMSSA(MemCpyInst *M) {
   MemoryUseOrDef *MAcc = MSSA->getMemoryAccess(M);
   MemoryAccess *SrcClob = getCMA(MSSA, MAcc, MemoryLocation::getForSource(M));
 
+  // TODO: non-local
   if (auto *MUD = dyn_cast<MemoryUseOrDef>(SrcClob)) {
     if (auto *C = dyn_cast_or_null<CallInst>(MUD->getMemoryInst())) {
-      if (performCallSlotOptzn(M, M->getDest(), M->getSource(),
+      if (C->getParent() == M->getParent() &&
+          performCallSlotOptzn(M, M->getDest(), M->getSource(),
                                CopySize->getZExtValue(), M->getAlignment(),
                                C)) {
         eraseInstruction(M);
