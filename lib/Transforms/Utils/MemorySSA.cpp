@@ -235,7 +235,7 @@ static bool instructionClobbersQuery(MemoryDef *MD,
   }
 
   ImmutableCallSite UseCS(UseInst);
-  if (UseCS) {
+  if (UseCS && UseLoc == MemoryLocation()) {
     ModRefInfo I = AA.getModRefInfo(DefInst, UseCS);
     return I != MRI_NoModRef;
   }
