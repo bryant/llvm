@@ -23,7 +23,9 @@ define void @test1(i8* %P, i8* %Q) nounwind  {
 ; CHECK-NEXT:    [[MEMTMP:%.*]] = alloca %0, align 16
 ; CHECK-NEXT:    [[R:%.*]] = bitcast %0* [[MEMTMP]] to i8*
 ; CHECK-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i32(i8* [[R]], i8* %P, i32 32, i32 16, i1 false)
-; CHECK-NEXT:    [[I:%.*]] = call {
+; CHECK-NEXT:    [[I:%.*]] = call {}* @llvm.invariant.start.p0i8(i64 32, i8* %P)
+; CHECK-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i32(i8* %Q, i8* [[R]], i32 32, i32 16, i1 false)
+; CHECK-NEXT:    ret void
 ;
   %memtmp = alloca %0, align 16
   %R = bitcast %0* %memtmp to i8*
@@ -39,7 +41,9 @@ define void @test1(i8* %P, i8* %Q) nounwind  {
 define void @test2(i8* %dst1, i8* %dst2, i8 %c) {
 ; CHECK-LABEL: @test2(
 ; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* %dst1, i8 %c, i64 128, i32 1, i1 false)
-; CHECK-NEXT:    [[I:%.*]] = call {
+; CHECK-NEXT:    [[I:%.*]] = call {}* @llvm.invariant.start.p0i8(i64 32, i8* %dst1)
+; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* %dst2, i8 %c, i64 128, i32 8, i1 false)
+; CHECK-NEXT:    ret void
 ;
   call void @llvm.memset.p0i8.i64(i8* %dst1, i8 %c, i64 128, i32 1, i1 false)
   %i = call {}* @llvm.invariant.start.p0i8(i64 32, i8* %dst1)
