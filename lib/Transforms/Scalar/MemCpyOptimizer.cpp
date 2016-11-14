@@ -679,7 +679,7 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
   // Load to store forwarding can be interpreted as memcpy.
   if (LoadInst *LI = dyn_cast<LoadInst>(SI->getOperand(0))) {
     if (LI->isSimple() && LI->hasOneUse() &&
-        // TODO: non-local
+        // TODO: Make non-local if LI doms SI and SI post-doms LI.
         LI->getParent() == SI->getParent()) {
 
       MemoryUse *LUse =
@@ -763,7 +763,8 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
       if (UseMemorySSA) {
         if (MemoryUseOrDef *LoadClob = dyn_cast<MemoryUseOrDef>(
                 MSSA->getWalker()->getClobberingMemoryAccess(LUse)))
-          // performCallSlotOptzn expects same block. TODO: non-local
+          // TODO: This funnels to performCallSlotOptzn, whose transform is
+          // valid as long as LI doms SI and SI post-doms LI.
           if (LoadClob->getBlock() == SI->getParent())
             C = dyn_cast_or_null<CallInst>(LoadClob->getMemoryInst());
       } else {
@@ -1387,7 +1388,7 @@ bool MemCpyOptPass::processMemCpyMSSA(MemCpyInst *M) {
   MemoryAccess *DestClob =
       getCMA(MSSA, MSSA->getMemoryAccess(M), MemoryLocation::getForDest(M));
 
-  // TODO: non-local
+  // TODO: This can be made non-local if M post-doms MDep
   if (DestClob->getBlock() == M->getParent())
     if (auto *MUD = dyn_cast<MemoryUseOrDef>(DestClob))
       if (auto *MDep = dyn_cast_or_null<MemSetInst>(MUD->getMemoryInst()))
@@ -1402,9 +1403,9 @@ bool MemCpyOptPass::processMemCpyMSSA(MemCpyInst *M) {
   MemoryUseOrDef *MAcc = MSSA->getMemoryAccess(M);
   MemoryAccess *SrcClob = getCMA(MSSA, MAcc, MemoryLocation::getForSource(M));
 
-  // TODO: non-local
   if (auto *MUD = dyn_cast<MemoryUseOrDef>(SrcClob)) {
     if (auto *C = dyn_cast_or_null<CallInst>(MUD->getMemoryInst())) {
+      // TODO: Can be made non-local if M post-doms C
       if (C->getParent() == M->getParent() &&
           performCallSlotOptzn(M, M->getDest(), M->getSource(),
                                CopySize->getZExtValue(), M->getAlignment(),
@@ -1415,6 +1416,8 @@ bool MemCpyOptPass::processMemCpyMSSA(MemCpyInst *M) {
       }
     }
 
+    // Non-local permitted since processMemCpyMemCpyDependence modifies M only
+    // and getCMA ensures that MDep doms M.
     if (auto *MDep = dyn_cast_or_null<MemCpyInst>(MUD->getMemoryInst()))
       if (processMemCpyMemCpyDependence(M, MDep))
         return true;
