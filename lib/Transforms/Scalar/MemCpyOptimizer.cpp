@@ -424,7 +424,7 @@ void MemCpyOptPass::eraseInstruction(Instruction *I) {
       MSSA->removeMemoryAccess(MA);
   I->eraseFromParent();
   if (UseMemorySSA)
-    DEBUG(dbgs() << "Asserting well-formedness after erasure\n";
+    DEBUG(dbgs() << "Asserting well-formedness after erasure\n"; MSSA->print(dbgs());
           MSSA->verifyMemorySSA());
 }
 
@@ -514,6 +514,7 @@ Instruction *MemCpyOptPass::tryMergingIntoMemset(Instruction *StartInst,
   // emit memset's for anything big enough to be worthwhile.
   Instruction *AMemSet = nullptr;
   for (const MemsetRange &Range : Ranges) {
+      DEBUG(dbgs() << "memset range: " << *Range.TheStores.front() << "\n");
 
     if (Range.TheStores.size() == 1) continue;
 
@@ -1165,6 +1166,7 @@ bool MemCpyOptPass::processMemCpyMemCpyDependence(MemCpyInst *M,
 /// \endcode
 bool MemCpyOptPass::processMemSetMemCpyDependence(MemCpyInst *MemCpy,
                                                   MemSetInst *MemSet) {
+    DEBUG(dbgs() << "processMemSetMemCpyDependence: " << *MemCpy << "\n\t" << *MemSet << "\n");
   // We can only transform memset/memcpy with the same destination.
   if (MemSet->getDest() != MemCpy->getDest())
     return false;
@@ -1182,6 +1184,11 @@ bool MemCpyOptPass::processMemSetMemCpyDependence(MemCpyInst *MemCpy,
     AliasAnalysis &AA = LookupAliasAnalysis();
     using It = MemorySSA::AccessList::iterator;
     for (const auto &Acc : make_range(std::next(It(MSAcc)), It(MemCpyAcc))) {
+      DEBUG(
+          dbgs() << "Does " << Acc << " modref " << *MemSet->getDest() << " ? "
+                 << AA.getModRefInfo(cast<MemoryUseOrDef>(Acc).getMemoryInst(),
+                                     MemoryLocation::getForDest(MemSet))
+                 << "\n");
       if (AA.getModRefInfo(cast<MemoryUseOrDef>(Acc).getMemoryInst(),
                            MemoryLocation::getForDest(MemSet)) != MRI_NoModRef)
         return false;
@@ -1268,6 +1275,7 @@ bool MemCpyOptPass::performMemCpyToMemSetOptzn(MemCpyInst *MemCpy,
   auto *MemSetNew =
       Builder.CreateMemSet(MemCpy->getRawDest(), MemSet->getOperand(1),
                            CopySize, MemCpy->getAlignment());
+  DEBUG(dbgs() << "performMemCpyToMemSetOptzn converted " << *MemCpy << " to " << *MemSetNew << "\n");
   if (UseMemorySSA)
     replaceMemoryAccess(*MSSA, MemCpy, MemSetNew);
   eraseInstruction(MemCpy);
@@ -1391,6 +1399,8 @@ bool MemCpyOptPass::processMemCpyMSSA(MemCpyInst *M) {
         return true;
       }
 
+  DEBUG(dbgs() << "get clobber on dest of " << *MSSA->getMemoryAccess(M)
+               << "\n");
   MemoryAccess *DestClob =
       getCMA(MSSA, MSSA->getMemoryAccess(M), MemoryLocation::getForDest(M));
 
@@ -1406,8 +1416,13 @@ bool MemCpyOptPass::processMemCpyMSSA(MemCpyInst *M) {
   if (!CopySize)
     return false;
 
+  DEBUG(dbgs() << "get clobber on src of " << *MSSA->getMemoryAccess(M) << "\n");
   MemoryUseOrDef *MAcc = MSSA->getMemoryAccess(M);
   MemoryAccess *SrcClob = getCMA(MSSA, MAcc, MemoryLocation::getForSource(M));
+  DEBUG(dbgs() << "just for fun, clobber of src is "
+               << *MSSA->getWalker()->getClobberingMemoryAccess(
+                      MAcc, MemoryLocation::getForSource(M))
+               << "\n");
 
   if (auto *MUD = dyn_cast<MemoryUseOrDef>(SrcClob)) {
     if (auto *C = dyn_cast_or_null<CallInst>(MUD->getMemoryInst())) {
@@ -1681,6 +1696,8 @@ bool MemCpyOptPass::runImpl(
   if (!TLI->has(LibFunc::memset) || !TLI->has(LibFunc::memcpy))
     return false;
 
+  if (MSSA)
+  DEBUG(dbgs() << "before memcpyopt-mssa:"; MSSA->print(dbgs()));
   while (1) {
     if (!iterateOnFunction(F))
       break;
