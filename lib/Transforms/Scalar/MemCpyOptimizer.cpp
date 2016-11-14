@@ -1384,7 +1384,8 @@ bool MemCpyOptPass::processMemCpyMSSA(MemCpyInst *M) {
         return true;
       }
 
-  MemoryAccess *DestClob = MSSA->getWalker()->getClobberingMemoryAccess(M);
+  MemoryAccess *DestClob =
+      getCMA(MSSA, MSSA->getMemoryAccess(M), MemoryLocation::getForDest(M));
 
   // TODO: non-local
   if (DestClob->getBlock() == M->getParent())
