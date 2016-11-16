@@ -673,17 +673,17 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
         // TODO: non-local
         LI->getParent() == SI->getParent()) {
 
+      MemoryUse *LUse =
+          UseMemorySSA ? cast<MemoryUse>(MSSA->getMemoryAccess(LI)) : nullptr;
       auto *T = LI->getType();
       if (T->isAggregateType()) {
         AliasAnalysis &AA = LookupAliasAnalysis();
         MemoryLocation LoadLoc = MemoryLocation::get(LI);
         Instruction *P = nullptr;
-        MemoryUse *LUse = nullptr;
 
         if (UseMemorySSA) {
-          LUse = MSSA->getMemoryAccess(LI);
-          if (auto *LClob =
-                  <MemoryDef>(getCMA(MSSA, MSSA->getMemoryAccess(SI), LoadLoc)))
+          if (auto *LClob = dyn_cast<MemoryDef>(
+                  getCMA(MSSA, MSSA->getMemoryAccess(SI), LoadLoc)))
             P = MSSA->dominates(LUse, LClob) ? LClob->getMemoryInst() : SI;
         } else {
           // We use alias analysis to check if an instruction may store to
