@@ -1097,11 +1097,9 @@ bool MemCpyOptPass::processMemCpyMemCpyDependence(MemCpyInst *M,
   // NOTE: This is conservative, it will stop on any read from the source loc,
   // not just the defining memcpy.
   if (UseMemorySSA) {
-    MemoryUseOrDef *MAcc = MSSA->getMemoryAccess(M);
     MemoryUseOrDef *DepAcc = MSSA->getMemoryAccess(MDep);
-    MemoryAccess *DepClob =
-        getCMA(MSSA, MAcc, MemoryLocation::getForSource(MDep));
-    if (DepClob != DepAcc && MSSA->dominates(DepAcc, DepClob))
+    if (getCMABetween(MemoryLocation::getForSource(MDep), DepAcc,
+                      MSSA->getMemoryAccess(M), MSSA) != DepAcc)
       return false;
   } else {
     MemDepResult SourceDep =
