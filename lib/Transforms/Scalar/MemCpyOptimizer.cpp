@@ -678,12 +678,13 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
         AliasAnalysis &AA = LookupAliasAnalysis();
         MemoryLocation LoadLoc = MemoryLocation::get(LI);
         Instruction *P = nullptr;
+        MemoryUse *LUse = nullptr;
 
         if (UseMemorySSA) {
-          if (auto *LClob = <MemoryDef>(getCMA(MSSA, SI, LoadLoc)))
-            P = MSSA->dominates(MSSA->getMemoryAccess(LI), LClob)
-                    ? LClob->getMemoryInst()
-                    : SI;
+          LUse = MSSA->getMemoryAccess(LI);
+          if (auto *LClob =
+                  <MemoryDef>(getCMA(MSSA, MSSA->getMemoryAccess(SI), LoadLoc)))
+            P = MSSA->dominates(LUse, LClob) ? LClob->getMemoryInst() : SI;
         } else {
           // We use alias analysis to check if an instruction may store to
           // the memory we load from in between the load and the store. If
@@ -752,8 +753,7 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
       CallInst *C = nullptr;
       if (UseMemorySSA) {
         if (MemoryUseOrDef *LoadClob = dyn_cast<MemoryUseOrDef>(
-                MSSA->getWalker()->getClobberingMemoryAccess(
-                    MSSA->getMemoryAccess(LI))))
+                MSSA->getWalker()->getClobberingMemoryAccess(LUse)))
           // performCallSlotOptzn expects same block. TODO: non-local
           if (LoadClob->getBlock() == SI->getParent())
             C = dyn_cast_or_null<CallInst>(LoadClob->getMemoryInst());
