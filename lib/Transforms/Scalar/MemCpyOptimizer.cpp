@@ -1454,9 +1454,8 @@ bool MemCpyOptPass::processByValArgument(CallSite CS, unsigned ArgNo) {
   // not just the defining memcpy.
   if (UseMemorySSA) {
     MemoryUseOrDef *Dep = MSSA->getMemoryAccess(MDep);
-    auto *Clob = getCMA(MSSA, MSSA->getMemoryAccess(CS.getInstruction()),
-                        MemoryLocation::getForSource(MDep));
-    if (Clob != Dep && MSSA->dominates(Dep, Clob))
+    if (getCMABetween(MemoryLocation::getForSource(MDep), Dep,
+                      MSSA->getMemoryAccess(CS.getInstruction()), MSSA) != Dep)
       return false;
   } else {
     MemDepResult SourceDep = MD->getPointerDependencyFrom(
