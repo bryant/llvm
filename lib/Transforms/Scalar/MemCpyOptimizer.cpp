@@ -677,16 +677,24 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
       if (T->isAggregateType()) {
         AliasAnalysis &AA = LookupAliasAnalysis();
         MemoryLocation LoadLoc = MemoryLocation::get(LI);
+        Instruction *P = nullptr;
 
-        // We use alias analysis to check if an instruction may store to
-        // the memory we load from in between the load and the store. If
-        // such an instruction is found, we try to promote there instead
-        // of at the store position.
-        Instruction *P = SI;
-        for (auto &I : make_range(++LI->getIterator(), SI->getIterator())) {
-          if (AA.getModRefInfo(&I, LoadLoc) & MRI_Mod) {
-            P = &I;
-            break;
+        if (UseMemorySSA) {
+          if (auto *LClob = <MemoryDef>(getCMA(MSSA, SI, LoadLoc)))
+            P = MSSA->dominates(MSSA->getMemoryAccess(LI), LClob)
+                    ? LClob->getMemoryInst()
+                    : SI;
+        } else {
+          // We use alias analysis to check if an instruction may store to
+          // the memory we load from in between the load and the store. If
+          // such an instruction is found, we try to promote there instead
+          // of at the store position.
+          P = SI;
+          for (auto &I : make_range(++LI->getIterator(), SI->getIterator())) {
+            if (AA.getModRefInfo(&I, LoadLoc) & MRI_Mod) {
+              P = &I;
+              break;
+            }
           }
         }
 
