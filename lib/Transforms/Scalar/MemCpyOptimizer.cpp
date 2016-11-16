@@ -1407,7 +1407,9 @@ bool MemCpyOptPass::processByValArgument(CallSite CS, unsigned ArgNo) {
     if (MemoryUseOrDef *MUD = MSSA->getMemoryAccess(CS.getInstruction()))
       if (auto *ByValClob =
               dyn_cast<MemoryUseOrDef>(getCMA(MSSA, MUD, ByValLoc)))
-        MDep = dyn_cast_or_null<MemCpyInst>(ByValClob->getMemoryInst());
+        // TODO: Non-local: It's sufficient for MDep to dominate CS.
+        if (ByValClob->getBlock() == CS.getParent())
+          MDep = dyn_cast_or_null<MemCpyInst>(ByValClob->getMemoryInst());
   } else {
     MemDepResult DepInfo = MD->getPointerDependencyFrom(
         ByValLoc, true, CS.getInstruction()->getIterator(),
