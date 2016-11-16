@@ -18,6 +18,14 @@ define void @test() {
 ; CHECK-NEXT:    call void @foo(i8* [[PTR1]])
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @test(
+; MCO-MSSA-NEXT:    [[PTR1:%.*]] = alloca i8
+; MCO-MSSA-NEXT:    [[PTR2:%.*]] = alloca i8
+; MCO-MSSA-NEXT:    call void @foo(i8* [[PTR2]])
+; MCO-MSSA-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i32(i8* [[PTR1]], i8* [[PTR2]], i32 1, i32 1, i1 false)
+; MCO-MSSA-NEXT:    call void @foo(i8* [[PTR1]])
+; MCO-MSSA-NEXT:    ret void
+;
   %ptr1 = alloca i8
   %ptr2 = alloca i8
   call void @foo(i8* %ptr2)

@@ -23,6 +23,16 @@ define void @test1() nounwind uwtable ssp {
 ; CHECK-NEXT:    call void @otherf(i32* [[GEP2]])
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @test1(
+; MCO-MSSA-NEXT:    [[X:%.*]] = alloca [101 x i32], align 16
+; MCO-MSSA-NEXT:    [[BC:%.*]] = bitcast [101 x i32]* [[X]] to i8*
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[BC]], i8 0, i64 400, i32 16, i1 false)
+; MCO-MSSA-NEXT:    [[GEP1:%.*]] = getelementptr inbounds [101 x i32], [101 x i32]* [[X]], i32 0, i32 100
+; MCO-MSSA-NEXT:    store atomic i32 0, i32* [[GEP1]] unordered, align 4
+; MCO-MSSA-NEXT:    [[GEP2:%.*]] = getelementptr inbounds [101 x i32], [101 x i32]* [[X]], i32 0, i32 0
+; MCO-MSSA-NEXT:    call void @otherf(i32* [[GEP2]])
+; MCO-MSSA-NEXT:    ret void
+;
   %x = alloca [101 x i32], align 16
   %bc = bitcast [101 x i32]* %x to i8*
   call void @llvm.memset.p0i8.i64(i8* %bc, i8 0, i64 400, i32 16, i1 false)
@@ -42,6 +52,14 @@ define void @test2() nounwind uwtable ssp {
 ; CHECK-NEXT:    store atomic i32 0, i32* @x unordered, align 4
 ; CHECK-NEXT:    call void @otherf(i32* nocapture [[NEW]])
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @test2(
+; MCO-MSSA-NEXT:    [[OLD:%.*]] = alloca i32
+; MCO-MSSA-NEXT:    [[NEW:%.*]] = alloca i32
+; MCO-MSSA-NEXT:    call void @otherf(i32* nocapture [[NEW]])
+; MCO-MSSA-NEXT:    store atomic i32 0, i32* @x unordered, align 4
+; MCO-MSSA-NEXT:    call void @otherf(i32* nocapture [[NEW]])
+; MCO-MSSA-NEXT:    ret void
 ;
   %old = alloca i32
   %new = alloca i32

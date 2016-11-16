@@ -30,6 +30,22 @@ define i32 @foo() nounwind {
 ; CHECK-NEXT:    [[RET:%.*]] = load i32, i32* [[GEP1]]
 ; CHECK-NEXT:    ret i32 [[RET]]
 ;
+; MCO-MSSA-LABEL: @foo(
+; MCO-MSSA-NEXT:    [[X:%.*]] = alloca %struct1, align 8
+; MCO-MSSA-NEXT:    [[Y:%.*]] = alloca %struct2, align 8
+; MCO-MSSA-NEXT:    call void @bar(%struct1* sret [[X]]) #0
+; MCO-MSSA-NEXT:    [[GEPN1:%.*]] = getelementptr inbounds %struct2, %struct2* [[Y]], i32 0, i32 0, i32 0
+; MCO-MSSA-NEXT:    store i32 0, i32* [[GEPN1]], align 8
+; MCO-MSSA-NEXT:    [[GEPN2:%.*]] = getelementptr inbounds %struct2, %struct2* [[Y]], i32 0, i32 0, i32 1
+; MCO-MSSA-NEXT:    store i32 0, i32* [[GEPN2]], align 4
+; MCO-MSSA-NEXT:    [[BIT1:%.*]] = bitcast %struct1* [[X]] to i64*
+; MCO-MSSA-NEXT:    [[BIT2:%.*]] = bitcast %struct2* [[Y]] to i64*
+; MCO-MSSA-NEXT:    [[LOAD:%.*]] = load i64, i64* [[BIT1]], align 8
+; MCO-MSSA-NEXT:    store i64 [[LOAD]], i64* [[BIT2]], align 8
+; MCO-MSSA-NEXT:    [[GEP1:%.*]] = getelementptr %struct2, %struct2* [[Y]], i32 0, i32 0, i32 0
+; MCO-MSSA-NEXT:    [[RET:%.*]] = load i32, i32* [[GEP1]]
+; MCO-MSSA-NEXT:    ret i32 [[RET]]
+;
   %x = alloca %struct1, align 8
   %y = alloca %struct2, align 8
   call void @bar(%struct1* sret %x) nounwind

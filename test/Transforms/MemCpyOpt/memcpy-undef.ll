@@ -19,6 +19,16 @@ define i32 @test1(%struct.foo* nocapture %foobie) nounwind noinline ssp uwtable 
 ; CHECK-NEXT:    store i32 20, i32* [[TMP4]], align 4
 ; CHECK-NEXT:    ret i32 undef
 ;
+; MCO-MSSA-LABEL: @test1(
+; MCO-MSSA-NEXT:    [[BLETCH_SROA_1:%.*]] = alloca [7 x i8], align 1
+; MCO-MSSA-NEXT:    [[TMP1:%.*]] = getelementptr inbounds %struct.foo, %struct.foo* %foobie, i64 0, i32 0
+; MCO-MSSA-NEXT:    store i8 98, i8* [[TMP1]], align 4
+; MCO-MSSA-NEXT:    [[TMP2:%.*]] = getelementptr inbounds %struct.foo, %struct.foo* %foobie, i64 0, i32 1, i64 0
+; MCO-MSSA-NEXT:    [[TMP3:%.*]] = getelementptr inbounds [7 x i8], [7 x i8]* [[BLETCH_SROA_1]], i64 0, i64 0
+; MCO-MSSA-NEXT:    [[TMP4:%.*]] = getelementptr inbounds %struct.foo, %struct.foo* %foobie, i64 0, i32 2
+; MCO-MSSA-NEXT:    store i32 20, i32* [[TMP4]], align 4
+; MCO-MSSA-NEXT:    ret i32 undef
+;
   %bletch.sroa.1 = alloca [7 x i8], align 1
   %1 = getelementptr inbounds %struct.foo, %struct.foo* %foobie, i64 0, i32 0
   store i8 98, i8* %1, align 4
@@ -36,6 +46,10 @@ define void @test2(i8* sret noalias nocapture %out, i8* %in) nounwind noinline s
 ; CHECK-NEXT:    call void @llvm.lifetime.start(i64 8, i8* %in)
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @test2(
+; MCO-MSSA-NEXT:    call void @llvm.lifetime.start(i64 8, i8* %in)
+; MCO-MSSA-NEXT:    ret void
+;
   call void @llvm.lifetime.start(i64 8, i8* %in)
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %out, i8* %in, i64 8, i32 1, i1 false)
   ret void
@@ -47,6 +61,11 @@ define void @test3(i8* sret noalias nocapture %out, i8* %in) nounwind noinline s
 ; CHECK-NEXT:    call void @llvm.lifetime.start(i64 4, i8* %in)
 ; CHECK-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* %out, i8* %in, i64 8, i32 1, i1 false)
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @test3(
+; MCO-MSSA-NEXT:    call void @llvm.lifetime.start(i64 4, i8* %in)
+; MCO-MSSA-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* %out, i8* %in, i64 8, i32 1, i1 false)
+; MCO-MSSA-NEXT:    ret void
 ;
   call void @llvm.lifetime.start(i64 4, i8* %in)
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %out, i8* %in, i64 8, i32 1, i1 false)

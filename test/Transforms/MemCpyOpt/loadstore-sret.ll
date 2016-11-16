@@ -17,6 +17,14 @@ define void @_Z3foov(%"class.std::auto_ptr"* noalias nocapture sret %agg.result)
 ; CHECK-NEXT:    [[TMP_I_I4:%.*]] = getelementptr inbounds %"class.std::auto_ptr", %"class.std::auto_ptr"* %agg.result, i64 0, i32 0
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @_Z3foov(
+; MCO-MSSA-NEXT:  _ZNSt8auto_ptrIiED1Ev.exit:
+; MCO-MSSA-NEXT:    [[TEMP_LVALUE:%.*]] = alloca %"class.std::auto_ptr", align 8
+; MCO-MSSA-NEXT:    call void @_Z3barv(%"class.std::auto_ptr"* sret %agg.result)
+; MCO-MSSA-NEXT:    [[TMP_I_I:%.*]] = getelementptr inbounds %"class.std::auto_ptr", %"class.std::auto_ptr"* [[TEMP_LVALUE]], i64 0, i32 0
+; MCO-MSSA-NEXT:    [[TMP_I_I4:%.*]] = getelementptr inbounds %"class.std::auto_ptr", %"class.std::auto_ptr"* %agg.result, i64 0, i32 0
+; MCO-MSSA-NEXT:    ret void
+;
 _ZNSt8auto_ptrIiED1Ev.exit:
   %temp.lvalue = alloca %"class.std::auto_ptr", align 8
   call void @_Z3barv(%"class.std::auto_ptr"* sret %temp.lvalue)

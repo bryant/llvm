@@ -12,6 +12,14 @@ define void @test1(i32* nocapture noalias dereferenceable(4) %x) {
 ; CHECK-NEXT:    store i32 [[LOAD]], i32* %x, align 4
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @test1(
+; MCO-MSSA-NEXT:  entry:
+; MCO-MSSA-NEXT:    [[T:%.*]] = alloca i32, align 4
+; MCO-MSSA-NEXT:    call void @may_throw(i32* nonnull [[T]])
+; MCO-MSSA-NEXT:    [[LOAD:%.*]] = load i32, i32* [[T]], align 4
+; MCO-MSSA-NEXT:    store i32 [[LOAD]], i32* %x, align 4
+; MCO-MSSA-NEXT:    ret void
+;
 entry:
   %t = alloca i32, align 4
   call void @may_throw(i32* nonnull %t)
@@ -31,6 +39,15 @@ define void @test2(i32* nocapture noalias dereferenceable(4) %x) {
 ; CHECK-NEXT:    call void @always_throws()
 ; CHECK-NEXT:    store i32 [[LOAD]], i32* %x, align 4
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @test2(
+; MCO-MSSA-NEXT:  entry:
+; MCO-MSSA-NEXT:    [[T:%.*]] = alloca i32, align 4
+; MCO-MSSA-NEXT:    call void @may_throw(i32* nonnull [[T]]) #0
+; MCO-MSSA-NEXT:    [[LOAD:%.*]] = load i32, i32* [[T]], align 4
+; MCO-MSSA-NEXT:    call void @always_throws()
+; MCO-MSSA-NEXT:    store i32 [[LOAD]], i32* %x, align 4
+; MCO-MSSA-NEXT:    ret void
 ;
 entry:
   %t = alloca i32, align 4

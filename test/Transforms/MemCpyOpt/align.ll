@@ -12,12 +12,21 @@ declare void @llvm.memset.p0i8.i64(i8* nocapture, i8, i64, i32, i1) nounwind
 define void @foo(i32* %p) {
 ; CHECK-LABEL: @foo(
 ; CHECK-NEXT:    [[A0:%.*]] = getelementptr i32, i32* %p, i64 0
+; CHECK-NEXT:    [[TMP1:%.*]] = bitcast i32* [[A0]] to i8*
+; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP1]], i8 0, i64 16, i32 4, i1 false)
 ; CHECK-NEXT:    [[A1:%.*]] = getelementptr i32, i32* %p, i64 1
 ; CHECK-NEXT:    [[A2:%.*]] = getelementptr i32, i32* %p, i64 2
 ; CHECK-NEXT:    [[A3:%.*]] = getelementptr i32, i32* %p, i64 3
-; CHECK-NEXT:    [[TMP1:%.*]] = bitcast i32* [[A0]] to i8*
-; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP1]], i8 0, i64 16, i32 4, i1 false)
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @foo(
+; MCO-MSSA-NEXT:    [[A0:%.*]] = getelementptr i32, i32* %p, i64 0
+; MCO-MSSA-NEXT:    [[TMP1:%.*]] = bitcast i32* [[A0]] to i8*
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP1]], i8 0, i64 16, i32 4, i1 false)
+; MCO-MSSA-NEXT:    [[A1:%.*]] = getelementptr i32, i32* %p, i64 1
+; MCO-MSSA-NEXT:    [[A2:%.*]] = getelementptr i32, i32* %p, i64 2
+; MCO-MSSA-NEXT:    [[A3:%.*]] = getelementptr i32, i32* %p, i64 3
+; MCO-MSSA-NEXT:    ret void
 ;
   %a0 = getelementptr i32, i32* %p, i64 0
   store i32 0, i32* %a0, align 4
@@ -41,6 +50,15 @@ define void @bar() {
 ; CHECK-NEXT:    [[A41:%.*]] = bitcast i32* [[A4]] to i8*
 ; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[A41]], i8 0, i64 4, i32 8, i1 false)
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @bar(
+; MCO-MSSA-NEXT:    [[A4:%.*]] = alloca i32, align 8
+; MCO-MSSA-NEXT:    [[A8:%.*]] = alloca i32, align 8
+; MCO-MSSA-NEXT:    [[A8_CAST:%.*]] = bitcast i32* [[A8]] to i8*
+; MCO-MSSA-NEXT:    [[A4_CAST:%.*]] = bitcast i32* [[A4]] to i8*
+; MCO-MSSA-NEXT:    [[A41:%.*]] = bitcast i32* [[A4]] to i8*
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[A41]], i8 0, i64 4, i32 8, i1 false)
+; MCO-MSSA-NEXT:    ret void
 ;
   %a4 = alloca i32, align 4
   %a8 = alloca i32, align 8

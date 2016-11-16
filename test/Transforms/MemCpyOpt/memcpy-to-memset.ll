@@ -16,6 +16,14 @@ define void @test1() nounwind {
 ; CHECK-NEXT:    call void @foo(i32* [[ARRAYDECAY]]) #1
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @test1(
+; MCO-MSSA-NEXT:    [[ARR:%.*]] = alloca [3 x i32], align 4
+; MCO-MSSA-NEXT:    [[ARR_I8:%.*]] = bitcast [3 x i32]* [[ARR]] to i8*
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[ARR_I8]], i8 -1, i64 12, i32 4, i1 false)
+; MCO-MSSA-NEXT:    [[ARRAYDECAY:%.*]] = getelementptr inbounds [3 x i32], [3 x i32]* [[ARR]], i64 0, i64 0
+; MCO-MSSA-NEXT:    call void @foo(i32* [[ARRAYDECAY]]) #1
+; MCO-MSSA-NEXT:    ret void
+;
   %arr = alloca [3 x i32], align 4
   %arr_i8 = bitcast [3 x i32]* %arr to i8*
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %arr_i8, i8* bitcast ([3 x i32]* @cst to i8*), i64 12, i32 4, i1 false)

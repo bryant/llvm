@@ -15,6 +15,16 @@ define void @foo(i64* nocapture %P) {
 ; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP2]], i8 0, i64 8, i32 2, i1 false)
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @foo(
+; MCO-MSSA-NEXT:  entry:
+; MCO-MSSA-NEXT:    [[TMP0:%.*]] = bitcast i64* %P to i16*
+; MCO-MSSA-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds i16, i16* [[TMP0]], i64 1
+; MCO-MSSA-NEXT:    [[TMP1:%.*]] = bitcast i16* [[ARRAYIDX]] to i32*
+; MCO-MSSA-NEXT:    [[ARRAYIDX1:%.*]] = getelementptr inbounds i16, i16* [[TMP0]], i64 3
+; MCO-MSSA-NEXT:    [[TMP2:%.*]] = bitcast i16* [[TMP0]] to i8*
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP2]], i8 0, i64 8, i32 2, i1 false)
+; MCO-MSSA-NEXT:    ret void
+;
 entry:
   %0 = bitcast i64* %P to i16*
   %arrayidx = getelementptr inbounds i16, i16* %0, i64 1

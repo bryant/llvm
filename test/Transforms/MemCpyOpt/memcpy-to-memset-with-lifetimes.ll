@@ -12,6 +12,12 @@ define void @foo([8 x i64]* noalias nocapture sret dereferenceable(64) %sret) {
 ; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[SRET1]], i8 0, i64 64, i32 8, i1 false)
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @foo(
+; MCO-MSSA-NEXT:  entry-block:
+; MCO-MSSA-NEXT:    [[SRET1:%.*]] = bitcast [8 x i64]* %sret to i8*
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[SRET1]], i8 0, i64 64, i32 8, i1 false)
+; MCO-MSSA-NEXT:    ret void
+;
 entry-block:
   %a = alloca [8 x i64], align 8
   %a.cast = bitcast [8 x i64]* %a to i8*
@@ -38,6 +44,20 @@ define void @bar([8 x i64]* noalias nocapture sret dereferenceable(64) %sret, [8
 ; CHECK-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* [[OUT_CAST]], i8* [[A_CAST]], i64 64, i32 8, i1 false)
 ; CHECK-NEXT:    call void @llvm.lifetime.end(i64 64, i8* [[A_CAST]])
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @bar(
+; MCO-MSSA-NEXT:  entry-block:
+; MCO-MSSA-NEXT:    [[A:%.*]] = alloca [8 x i64], align 8
+; MCO-MSSA-NEXT:    [[A_CAST:%.*]] = bitcast [8 x i64]* [[A]] to i8*
+; MCO-MSSA-NEXT:    call void @llvm.lifetime.start(i64 64, i8* [[A_CAST]])
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[A_CAST]], i8 0, i64 64, i32 8, i1 false)
+; MCO-MSSA-NEXT:    [[SRET_CAST:%.*]] = bitcast [8 x i64]* %sret to i8*
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[SRET_CAST]], i8 0, i64 64, i32 8, i1 false)
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[A_CAST]], i8 42, i64 32, i32 8, i1 false)
+; MCO-MSSA-NEXT:    [[OUT_CAST:%.*]] = bitcast [8 x i64]* %out to i8*
+; MCO-MSSA-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* [[OUT_CAST]], i8* [[A_CAST]], i64 64, i32 8, i1 false)
+; MCO-MSSA-NEXT:    call void @llvm.lifetime.end(i64 64, i8* [[A_CAST]])
+; MCO-MSSA-NEXT:    ret void
 ;
 entry-block:
   %a = alloca [8 x i64], align 8

@@ -15,6 +15,14 @@ define void @test1() {
 ; CHECK-NEXT:    call void @check(i8 [[TMP3]])
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @test1(
+; MCO-MSSA-NEXT:    [[TMP1:%.*]] = alloca [10 x i8]
+; MCO-MSSA-NEXT:    [[TMP2:%.*]] = bitcast [10 x i8]* [[TMP1]] to i8*
+; MCO-MSSA-NEXT:    call void @write(i8* [[TMP2]])
+; MCO-MSSA-NEXT:    [[TMP3:%.*]] = load i8, i8* [[TMP2]]
+; MCO-MSSA-NEXT:    call void @check(i8 [[TMP3]])
+; MCO-MSSA-NEXT:    ret void
+;
   %1 = alloca [10 x i8]
   %2 = bitcast [10 x i8]* %1 to i8*
   call void @write(i8* %2)

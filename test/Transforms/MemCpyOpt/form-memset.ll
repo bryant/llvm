@@ -12,6 +12,7 @@ define void @test1(i8 signext  %c) nounwind  {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[X:%.*]] = alloca [19 x i8]
 ; CHECK-NEXT:    [[TMP:%.*]] = getelementptr [19 x i8], [19 x i8]* [[X]], i32 0, i32 0
+; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP]], i8 %c, i64 19, i32 1, i1 false)
 ; CHECK-NEXT:    [[TMP5:%.*]] = getelementptr [19 x i8], [19 x i8]* [[X]], i32 0, i32 1
 ; CHECK-NEXT:    [[TMP9:%.*]] = getelementptr [19 x i8], [19 x i8]* [[X]], i32 0, i32 2
 ; CHECK-NEXT:    [[TMP13:%.*]] = getelementptr [19 x i8], [19 x i8]* [[X]], i32 0, i32 3
@@ -30,9 +31,34 @@ define void @test1(i8 signext  %c) nounwind  {
 ; CHECK-NEXT:    [[TMP65:%.*]] = getelementptr [19 x i8], [19 x i8]* [[X]], i32 0, i32 16
 ; CHECK-NEXT:    [[TMP69:%.*]] = getelementptr [19 x i8], [19 x i8]* [[X]], i32 0, i32 17
 ; CHECK-NEXT:    [[TMP73:%.*]] = getelementptr [19 x i8], [19 x i8]* [[X]], i32 0, i32 18
-; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP]], i8 %c, i64 19, i32 1, i1 false)
 ; CHECK-NEXT:    [[TMP76:%.*]] = call i32 (...) @bar([19 x i8]* [[X]]) #0
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @test1(
+; MCO-MSSA-NEXT:  entry:
+; MCO-MSSA-NEXT:    [[X:%.*]] = alloca [19 x i8]
+; MCO-MSSA-NEXT:    [[TMP:%.*]] = getelementptr [19 x i8], [19 x i8]* [[X]], i32 0, i32 0
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP]], i8 %c, i64 19, i32 1, i1 false)
+; MCO-MSSA-NEXT:    [[TMP5:%.*]] = getelementptr [19 x i8], [19 x i8]* [[X]], i32 0, i32 1
+; MCO-MSSA-NEXT:    [[TMP9:%.*]] = getelementptr [19 x i8], [19 x i8]* [[X]], i32 0, i32 2
+; MCO-MSSA-NEXT:    [[TMP13:%.*]] = getelementptr [19 x i8], [19 x i8]* [[X]], i32 0, i32 3
+; MCO-MSSA-NEXT:    [[TMP17:%.*]] = getelementptr [19 x i8], [19 x i8]* [[X]], i32 0, i32 4
+; MCO-MSSA-NEXT:    [[TMP21:%.*]] = getelementptr [19 x i8], [19 x i8]* [[X]], i32 0, i32 5
+; MCO-MSSA-NEXT:    [[TMP25:%.*]] = getelementptr [19 x i8], [19 x i8]* [[X]], i32 0, i32 6
+; MCO-MSSA-NEXT:    [[TMP29:%.*]] = getelementptr [19 x i8], [19 x i8]* [[X]], i32 0, i32 7
+; MCO-MSSA-NEXT:    [[TMP33:%.*]] = getelementptr [19 x i8], [19 x i8]* [[X]], i32 0, i32 8
+; MCO-MSSA-NEXT:    [[TMP37:%.*]] = getelementptr [19 x i8], [19 x i8]* [[X]], i32 0, i32 9
+; MCO-MSSA-NEXT:    [[TMP41:%.*]] = getelementptr [19 x i8], [19 x i8]* [[X]], i32 0, i32 10
+; MCO-MSSA-NEXT:    [[TMP45:%.*]] = getelementptr [19 x i8], [19 x i8]* [[X]], i32 0, i32 11
+; MCO-MSSA-NEXT:    [[TMP49:%.*]] = getelementptr [19 x i8], [19 x i8]* [[X]], i32 0, i32 12
+; MCO-MSSA-NEXT:    [[TMP53:%.*]] = getelementptr [19 x i8], [19 x i8]* [[X]], i32 0, i32 13
+; MCO-MSSA-NEXT:    [[TMP57:%.*]] = getelementptr [19 x i8], [19 x i8]* [[X]], i32 0, i32 14
+; MCO-MSSA-NEXT:    [[TMP61:%.*]] = getelementptr [19 x i8], [19 x i8]* [[X]], i32 0, i32 15
+; MCO-MSSA-NEXT:    [[TMP65:%.*]] = getelementptr [19 x i8], [19 x i8]* [[X]], i32 0, i32 16
+; MCO-MSSA-NEXT:    [[TMP69:%.*]] = getelementptr [19 x i8], [19 x i8]* [[X]], i32 0, i32 17
+; MCO-MSSA-NEXT:    [[TMP73:%.*]] = getelementptr [19 x i8], [19 x i8]* [[X]], i32 0, i32 18
+; MCO-MSSA-NEXT:    [[TMP76:%.*]] = call i32 (...) @bar([19 x i8]* [[X]]) #0
+; MCO-MSSA-NEXT:    ret void
 ;
 entry:
   %x = alloca [19 x i8]		; <[19 x i8]*> [#uses=20]
@@ -97,8 +123,8 @@ define void @test2() nounwind  {
 ; CHECK-NEXT:    [[TMP35:%.*]] = getelementptr [8 x i8], [8 x i8]* [[REF_IDX]], i32 0, i32 2
 ; CHECK-NEXT:    [[TMP38:%.*]] = getelementptr [8 x i8], [8 x i8]* [[REF_IDX]], i32 0, i32 1
 ; CHECK-NEXT:    [[TMP41:%.*]] = getelementptr [8 x i8], [8 x i8]* [[REF_IDX]], i32 0, i32 0
-; CHECK-NEXT:    [[TMP43:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[UP_MVD]], i32 0, i32 7, i32 0
 ; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP41]], i8 -1, i64 8, i32 1, i1 false)
+; CHECK-NEXT:    [[TMP43:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[UP_MVD]], i32 0, i32 7, i32 0
 ; CHECK-NEXT:    [[TMP46:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[UP_MVD]], i32 0, i32 7, i32 1
 ; CHECK-NEXT:    [[TMP57:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[UP_MVD]], i32 0, i32 6, i32 0
 ; CHECK-NEXT:    [[TMP60:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[UP_MVD]], i32 0, i32 6, i32 1
@@ -113,10 +139,10 @@ define void @test2() nounwind  {
 ; CHECK-NEXT:    [[TMP127:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[UP_MVD]], i32 0, i32 1, i32 0
 ; CHECK-NEXT:    [[TMP130:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[UP_MVD]], i32 0, i32 1, i32 1
 ; CHECK-NEXT:    [[TMP141:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[UP_MVD]], i32 0, i32 0, i32 0
-; CHECK-NEXT:    [[TMP144:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[UP_MVD]], i32 0, i32 0, i32 1
-; CHECK-NEXT:    [[TMP148:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[LEFT_MVD]], i32 0, i32 7, i32 0
 ; CHECK-NEXT:    [[TMP0:%.*]] = bitcast i16* [[TMP141]] to i8*
 ; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP0]], i8 0, i64 32, i32 8, i1 false)
+; CHECK-NEXT:    [[TMP144:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[UP_MVD]], i32 0, i32 0, i32 1
+; CHECK-NEXT:    [[TMP148:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[LEFT_MVD]], i32 0, i32 7, i32 0
 ; CHECK-NEXT:    [[TMP151:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[LEFT_MVD]], i32 0, i32 7, i32 1
 ; CHECK-NEXT:    [[TMP162:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[LEFT_MVD]], i32 0, i32 6, i32 0
 ; CHECK-NEXT:    [[TMP165:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[LEFT_MVD]], i32 0, i32 6, i32 1
@@ -131,13 +157,68 @@ define void @test2() nounwind  {
 ; CHECK-NEXT:    [[TMP232:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[LEFT_MVD]], i32 0, i32 1, i32 0
 ; CHECK-NEXT:    [[TMP235:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[LEFT_MVD]], i32 0, i32 1, i32 1
 ; CHECK-NEXT:    [[TMP246:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[LEFT_MVD]], i32 0, i32 0, i32 0
+; CHECK-NEXT:    [[TMP1:%.*]] = bitcast i16* [[TMP246]] to i8*
+; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP1]], i8 0, i64 32, i32 8, i1 false)
 ; CHECK-NEXT:    [[TMP249:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[LEFT_MVD]], i32 0, i32 0, i32 1
 ; CHECK-NEXT:    [[UP_MVD252:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[UP_MVD]], i32 0, i32 0
 ; CHECK-NEXT:    [[LEFT_MVD253:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[LEFT_MVD]], i32 0, i32 0
-; CHECK-NEXT:    [[TMP1:%.*]] = bitcast i16* [[TMP246]] to i8*
-; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP1]], i8 0, i64 32, i32 8, i1 false)
 ; CHECK-NEXT:    call void @foo(%struct.MV* [[UP_MVD252]], %struct.MV* [[LEFT_MVD253]], i8* [[TMP41]]) #0
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @test2(
+; MCO-MSSA-NEXT:  entry:
+; MCO-MSSA-NEXT:    [[REF_IDX:%.*]] = alloca [8 x i8]
+; MCO-MSSA-NEXT:    [[LEFT_MVD:%.*]] = alloca [8 x %struct.MV]
+; MCO-MSSA-NEXT:    [[UP_MVD:%.*]] = alloca [8 x %struct.MV]
+; MCO-MSSA-NEXT:    [[TMP20:%.*]] = getelementptr [8 x i8], [8 x i8]* [[REF_IDX]], i32 0, i32 7
+; MCO-MSSA-NEXT:    [[TMP23:%.*]] = getelementptr [8 x i8], [8 x i8]* [[REF_IDX]], i32 0, i32 6
+; MCO-MSSA-NEXT:    [[TMP26:%.*]] = getelementptr [8 x i8], [8 x i8]* [[REF_IDX]], i32 0, i32 5
+; MCO-MSSA-NEXT:    [[TMP29:%.*]] = getelementptr [8 x i8], [8 x i8]* [[REF_IDX]], i32 0, i32 4
+; MCO-MSSA-NEXT:    [[TMP32:%.*]] = getelementptr [8 x i8], [8 x i8]* [[REF_IDX]], i32 0, i32 3
+; MCO-MSSA-NEXT:    [[TMP35:%.*]] = getelementptr [8 x i8], [8 x i8]* [[REF_IDX]], i32 0, i32 2
+; MCO-MSSA-NEXT:    [[TMP38:%.*]] = getelementptr [8 x i8], [8 x i8]* [[REF_IDX]], i32 0, i32 1
+; MCO-MSSA-NEXT:    [[TMP41:%.*]] = getelementptr [8 x i8], [8 x i8]* [[REF_IDX]], i32 0, i32 0
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP41]], i8 -1, i64 8, i32 1, i1 false)
+; MCO-MSSA-NEXT:    [[TMP43:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[UP_MVD]], i32 0, i32 7, i32 0
+; MCO-MSSA-NEXT:    [[TMP46:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[UP_MVD]], i32 0, i32 7, i32 1
+; MCO-MSSA-NEXT:    [[TMP57:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[UP_MVD]], i32 0, i32 6, i32 0
+; MCO-MSSA-NEXT:    [[TMP60:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[UP_MVD]], i32 0, i32 6, i32 1
+; MCO-MSSA-NEXT:    [[TMP71:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[UP_MVD]], i32 0, i32 5, i32 0
+; MCO-MSSA-NEXT:    [[TMP74:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[UP_MVD]], i32 0, i32 5, i32 1
+; MCO-MSSA-NEXT:    [[TMP85:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[UP_MVD]], i32 0, i32 4, i32 0
+; MCO-MSSA-NEXT:    [[TMP88:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[UP_MVD]], i32 0, i32 4, i32 1
+; MCO-MSSA-NEXT:    [[TMP99:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[UP_MVD]], i32 0, i32 3, i32 0
+; MCO-MSSA-NEXT:    [[TMP102:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[UP_MVD]], i32 0, i32 3, i32 1
+; MCO-MSSA-NEXT:    [[TMP113:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[UP_MVD]], i32 0, i32 2, i32 0
+; MCO-MSSA-NEXT:    [[TMP116:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[UP_MVD]], i32 0, i32 2, i32 1
+; MCO-MSSA-NEXT:    [[TMP127:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[UP_MVD]], i32 0, i32 1, i32 0
+; MCO-MSSA-NEXT:    [[TMP130:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[UP_MVD]], i32 0, i32 1, i32 1
+; MCO-MSSA-NEXT:    [[TMP141:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[UP_MVD]], i32 0, i32 0, i32 0
+; MCO-MSSA-NEXT:    [[TMP0:%.*]] = bitcast i16* [[TMP141]] to i8*
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP0]], i8 0, i64 32, i32 8, i1 false)
+; MCO-MSSA-NEXT:    [[TMP144:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[UP_MVD]], i32 0, i32 0, i32 1
+; MCO-MSSA-NEXT:    [[TMP148:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[LEFT_MVD]], i32 0, i32 7, i32 0
+; MCO-MSSA-NEXT:    [[TMP151:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[LEFT_MVD]], i32 0, i32 7, i32 1
+; MCO-MSSA-NEXT:    [[TMP162:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[LEFT_MVD]], i32 0, i32 6, i32 0
+; MCO-MSSA-NEXT:    [[TMP165:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[LEFT_MVD]], i32 0, i32 6, i32 1
+; MCO-MSSA-NEXT:    [[TMP176:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[LEFT_MVD]], i32 0, i32 5, i32 0
+; MCO-MSSA-NEXT:    [[TMP179:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[LEFT_MVD]], i32 0, i32 5, i32 1
+; MCO-MSSA-NEXT:    [[TMP190:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[LEFT_MVD]], i32 0, i32 4, i32 0
+; MCO-MSSA-NEXT:    [[TMP193:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[LEFT_MVD]], i32 0, i32 4, i32 1
+; MCO-MSSA-NEXT:    [[TMP204:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[LEFT_MVD]], i32 0, i32 3, i32 0
+; MCO-MSSA-NEXT:    [[TMP207:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[LEFT_MVD]], i32 0, i32 3, i32 1
+; MCO-MSSA-NEXT:    [[TMP218:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[LEFT_MVD]], i32 0, i32 2, i32 0
+; MCO-MSSA-NEXT:    [[TMP221:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[LEFT_MVD]], i32 0, i32 2, i32 1
+; MCO-MSSA-NEXT:    [[TMP232:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[LEFT_MVD]], i32 0, i32 1, i32 0
+; MCO-MSSA-NEXT:    [[TMP235:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[LEFT_MVD]], i32 0, i32 1, i32 1
+; MCO-MSSA-NEXT:    [[TMP246:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[LEFT_MVD]], i32 0, i32 0, i32 0
+; MCO-MSSA-NEXT:    [[TMP1:%.*]] = bitcast i16* [[TMP246]] to i8*
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP1]], i8 0, i64 32, i32 8, i1 false)
+; MCO-MSSA-NEXT:    [[TMP249:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[LEFT_MVD]], i32 0, i32 0, i32 1
+; MCO-MSSA-NEXT:    [[UP_MVD252:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[UP_MVD]], i32 0, i32 0
+; MCO-MSSA-NEXT:    [[LEFT_MVD253:%.*]] = getelementptr [8 x %struct.MV], [8 x %struct.MV]* [[LEFT_MVD]], i32 0, i32 0
+; MCO-MSSA-NEXT:    call void @foo(%struct.MV* [[UP_MVD252]], %struct.MV* [[LEFT_MVD253]], i8* [[TMP41]]) #0
+; MCO-MSSA-NEXT:    ret void
 ;
 entry:
   %ref_idx = alloca [8 x i8]		; <[8 x i8]*> [#uses=8]
@@ -238,11 +319,20 @@ define void @test3(i32* nocapture %P) nounwind ssp {
 ; CHECK-LABEL: @test3(
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds i32, i32* %P, i64 1
+; CHECK-NEXT:    [[TMP0:%.*]] = bitcast i32* [[ARRAYIDX]] to i8*
+; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP0]], i8 0, i64 15, i32 4, i1 false)
 ; CHECK-NEXT:    [[ADD_PTR:%.*]] = getelementptr inbounds i32, i32* %P, i64 2
-; CHECK-NEXT:    [[TMP0:%.*]] = bitcast i32* [[ADD_PTR]] to i8*
-; CHECK-NEXT:    [[TMP1:%.*]] = bitcast i32* [[ARRAYIDX]] to i8*
-; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP1]], i8 0, i64 15, i32 4, i1 false)
+; CHECK-NEXT:    [[TMP1:%.*]] = bitcast i32* [[ADD_PTR]] to i8*
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @test3(
+; MCO-MSSA-NEXT:  entry:
+; MCO-MSSA-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds i32, i32* %P, i64 1
+; MCO-MSSA-NEXT:    [[TMP0:%.*]] = bitcast i32* [[ARRAYIDX]] to i8*
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP0]], i8 0, i64 15, i32 4, i1 false)
+; MCO-MSSA-NEXT:    [[ADD_PTR:%.*]] = getelementptr inbounds i32, i32* %P, i64 2
+; MCO-MSSA-NEXT:    [[TMP1:%.*]] = bitcast i32* [[ADD_PTR]] to i8*
+; MCO-MSSA-NEXT:    ret void
 ;
 entry:
   %arrayidx = getelementptr inbounds i32, i32* %P, i64 1
@@ -257,11 +347,19 @@ entry:
 define void @test4(i32* nocapture %P) nounwind ssp {
 ; CHECK-LABEL: @test4(
 ; CHECK-NEXT:  entry:
+; CHECK-NEXT:    [[TMP0:%.*]] = bitcast i32* %P to i8*
+; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP0]], i8 0, i64 15, i32 4, i1 false)
 ; CHECK-NEXT:    [[ADD_PTR:%.*]] = getelementptr inbounds i32, i32* %P, i64 1
-; CHECK-NEXT:    [[TMP0:%.*]] = bitcast i32* [[ADD_PTR]] to i8*
-; CHECK-NEXT:    [[TMP1:%.*]] = bitcast i32* %P to i8*
-; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP1]], i8 0, i64 15, i32 4, i1 false)
+; CHECK-NEXT:    [[TMP1:%.*]] = bitcast i32* [[ADD_PTR]] to i8*
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @test4(
+; MCO-MSSA-NEXT:  entry:
+; MCO-MSSA-NEXT:    [[TMP0:%.*]] = bitcast i32* %P to i8*
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP0]], i8 0, i64 15, i32 4, i1 false)
+; MCO-MSSA-NEXT:    [[ADD_PTR:%.*]] = getelementptr inbounds i32, i32* %P, i64 1
+; MCO-MSSA-NEXT:    [[TMP1:%.*]] = bitcast i32* [[ADD_PTR]] to i8*
+; MCO-MSSA-NEXT:    ret void
 ;
 entry:
   store i32 0, i32* %P, align 4
@@ -284,6 +382,15 @@ define void @test5(i32* nocapture %P) nounwind ssp {
 ; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP1]], i8 0, i64 15, i32 4, i1 false)
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @test5(
+; MCO-MSSA-NEXT:  entry:
+; MCO-MSSA-NEXT:    [[ADD_PTR:%.*]] = getelementptr inbounds i32, i32* %P, i64 2
+; MCO-MSSA-NEXT:    [[TMP0:%.*]] = bitcast i32* [[ADD_PTR]] to i8*
+; MCO-MSSA-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds i32, i32* %P, i64 1
+; MCO-MSSA-NEXT:    [[TMP1:%.*]] = bitcast i32* [[ARRAYIDX]] to i8*
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP1]], i8 0, i64 15, i32 4, i1 false)
+; MCO-MSSA-NEXT:    ret void
+;
 entry:
   %add.ptr = getelementptr inbounds i32, i32* %P, i64 2
   %0 = bitcast i32* %add.ptr to i8*
@@ -298,11 +405,20 @@ define void @test6(i32* nocapture %P) nounwind ssp {
 ; CHECK-LABEL: @test6(
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[TMP0:%.*]] = bitcast i32* %P to i8*
+; CHECK-NEXT:    [[TMP1:%.*]] = bitcast i32* %P to i8*
+; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP1]], i8 0, i64 24, i32 1, i1 false)
 ; CHECK-NEXT:    [[ADD_PTR:%.*]] = getelementptr inbounds i32, i32* %P, i64 3
-; CHECK-NEXT:    [[TMP1:%.*]] = bitcast i32* [[ADD_PTR]] to i8*
-; CHECK-NEXT:    [[TMP2:%.*]] = bitcast i32* %P to i8*
-; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP2]], i8 0, i64 24, i32 1, i1 false)
+; CHECK-NEXT:    [[TMP2:%.*]] = bitcast i32* [[ADD_PTR]] to i8*
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @test6(
+; MCO-MSSA-NEXT:  entry:
+; MCO-MSSA-NEXT:    [[TMP0:%.*]] = bitcast i32* %P to i8*
+; MCO-MSSA-NEXT:    [[TMP1:%.*]] = bitcast i32* %P to i8*
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP1]], i8 0, i64 24, i32 1, i1 false)
+; MCO-MSSA-NEXT:    [[ADD_PTR:%.*]] = getelementptr inbounds i32, i32* %P, i64 3
+; MCO-MSSA-NEXT:    [[TMP2:%.*]] = bitcast i32* [[ADD_PTR]] to i8*
+; MCO-MSSA-NEXT:    ret void
 ;
 entry:
   %0 = bitcast i32* %P to i8*
@@ -317,13 +433,22 @@ entry:
 ; rdar://9892684
 define void @test7(i32* nocapture %c) nounwind optsize {
 ; CHECK-LABEL: @test7(
-; CHECK-NEXT:    [[TMP1:%.*]] = getelementptr inbounds i32, i32* %c, i32 1
-; CHECK-NEXT:    [[TMP2:%.*]] = getelementptr inbounds i32, i32* %c, i32 2
-; CHECK-NEXT:    [[TMP3:%.*]] = getelementptr inbounds i32, i32* %c, i32 3
-; CHECK-NEXT:    [[TMP4:%.*]] = getelementptr inbounds i32, i32* %c, i32 4
-; CHECK-NEXT:    [[TMP5:%.*]] = bitcast i32* %c to i8*
-; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP5]], i8 -1, i64 20, i32 4, i1 false)
+; CHECK-NEXT:    [[TMP1:%.*]] = bitcast i32* %c to i8*
+; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP1]], i8 -1, i64 20, i32 4, i1 false)
+; CHECK-NEXT:    [[TMP2:%.*]] = getelementptr inbounds i32, i32* %c, i32 1
+; CHECK-NEXT:    [[TMP3:%.*]] = getelementptr inbounds i32, i32* %c, i32 2
+; CHECK-NEXT:    [[TMP4:%.*]] = getelementptr inbounds i32, i32* %c, i32 3
+; CHECK-NEXT:    [[TMP5:%.*]] = getelementptr inbounds i32, i32* %c, i32 4
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @test7(
+; MCO-MSSA-NEXT:    [[TMP1:%.*]] = bitcast i32* %c to i8*
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP1]], i8 -1, i64 20, i32 4, i1 false)
+; MCO-MSSA-NEXT:    [[TMP2:%.*]] = getelementptr inbounds i32, i32* %c, i32 1
+; MCO-MSSA-NEXT:    [[TMP3:%.*]] = getelementptr inbounds i32, i32* %c, i32 2
+; MCO-MSSA-NEXT:    [[TMP4:%.*]] = getelementptr inbounds i32, i32* %c, i32 3
+; MCO-MSSA-NEXT:    [[TMP5:%.*]] = getelementptr inbounds i32, i32* %c, i32 4
+; MCO-MSSA-NEXT:    ret void
 ;
   store i32 -1, i32* %c, align 4
   %1 = getelementptr inbounds i32, i32* %c, i32 1
@@ -347,6 +472,13 @@ define void @test8() {
 ; CHECK-NEXT:    store <4 x i32> <i32 -1, i32 -1, i32 -1, i32 -1>, <4 x i32>* [[TMP0]], align 16
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @test8(
+; MCO-MSSA-NEXT:  entry:
+; MCO-MSSA-NEXT:    [[MEMTMP:%.*]] = alloca %struct.test8, align 16
+; MCO-MSSA-NEXT:    [[TMP0:%.*]] = bitcast %struct.test8* [[MEMTMP]] to <4 x i32>*
+; MCO-MSSA-NEXT:    store <4 x i32> <i32 -1, i32 -1, i32 -1, i32 -1>, <4 x i32>* [[TMP0]], align 16
+; MCO-MSSA-NEXT:    ret void
+;
 entry:
   %memtmp = alloca %struct.test8, align 16
   %0 = bitcast %struct.test8* %memtmp to <4 x i32>*
@@ -360,6 +492,10 @@ define void @test9() nounwind {
 ; CHECK-LABEL: @test9(
 ; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* bitcast ([16 x i64]* @test9buf to i8*), i8 -1, i64 16, i32 16, i1 false)
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @test9(
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* bitcast ([16 x i64]* @test9buf to i8*), i8 -1, i64 16, i32 16, i1 false)
+; MCO-MSSA-NEXT:    ret void
 ;
   store i8 -1, i8* bitcast ([16 x i64]* @test9buf to i8*), align 16
   store i8 -1, i8* getelementptr (i8, i8* bitcast ([16 x i64]* @test9buf to i8*), i64 1), align 1
@@ -386,6 +522,10 @@ define void @test10(i8* nocapture %P) nounwind {
 ; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* %P, i8 0, i64 42, i32 1, i1 false)
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @test10(
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* %P, i8 0, i64 42, i32 1, i1 false)
+; MCO-MSSA-NEXT:    ret void
+;
   tail call void @llvm.memset.p0i8.i64(i8* %P, i8 0, i64 42, i32 1, i1 false)
   tail call void @llvm.memset.p0i8.i64(i8* %P, i8 0, i64 23, i32 1, i1 false)
   ret void
@@ -402,6 +542,16 @@ define void @test11(i32* nocapture %P) nounwind ssp {
 ; CHECK-NEXT:    [[TMP1:%.*]] = bitcast i96* [[ARRAYIDX_CAST]] to i8*
 ; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP1]], i8 1, i64 23, i32 4, i1 false)
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @test11(
+; MCO-MSSA-NEXT:  entry:
+; MCO-MSSA-NEXT:    [[ADD_PTR:%.*]] = getelementptr inbounds i32, i32* %P, i64 3
+; MCO-MSSA-NEXT:    [[TMP0:%.*]] = bitcast i32* [[ADD_PTR]] to i8*
+; MCO-MSSA-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds i32, i32* %P, i64 0
+; MCO-MSSA-NEXT:    [[ARRAYIDX_CAST:%.*]] = bitcast i32* [[ARRAYIDX]] to i96*
+; MCO-MSSA-NEXT:    [[TMP1:%.*]] = bitcast i96* [[ARRAYIDX_CAST]] to i8*
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP1]], i8 1, i64 23, i32 4, i1 false)
+; MCO-MSSA-NEXT:    ret void
 ;
 entry:
   %add.ptr = getelementptr inbounds i32, i32* %P, i64 3

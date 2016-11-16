@@ -16,6 +16,12 @@ define void @_ZN4CordC2EOS_(i8* nocapture dereferenceable(16) %arg1) {
 ; CHECK-NEXT:    store i8 0, i8* [[TMP_SROA_3_0_ARG1_SROA_RAW_IDX]], align 1
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @_ZN4CordC2EOS_(
+; MCO-MSSA-NEXT:  bb:
+; MCO-MSSA-NEXT:    [[TMP_SROA_3_0_ARG1_SROA_RAW_IDX:%.*]] = getelementptr inbounds i8, i8* %arg1, i64 7
+; MCO-MSSA-NEXT:    store i8 0, i8* [[TMP_SROA_3_0_ARG1_SROA_RAW_IDX]], align 1
+; MCO-MSSA-NEXT:    ret void
+;
 bb:
   %tmp = alloca [8 x i8], align 8
   %tmp5 = bitcast [8 x i8]* %tmp to i8*

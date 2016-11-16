@@ -26,6 +26,25 @@ define void @nontemporal_stores_1(<4 x float>* nocapture %dst) {
 ; CHECK-NEXT:    store <4 x float> zeroinitializer, <4 x float>* [[PTR7]], align 16, !nontemporal !0
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @nontemporal_stores_1(
+; MCO-MSSA-NEXT:  entry:
+; MCO-MSSA-NEXT:    store <4 x float> zeroinitializer, <4 x float>* %dst, align 16, !nontemporal !0
+; MCO-MSSA-NEXT:    [[PTR1:%.*]] = getelementptr inbounds <4 x float>, <4 x float>* %dst, i64 1
+; MCO-MSSA-NEXT:    store <4 x float> zeroinitializer, <4 x float>* [[PTR1]], align 16, !nontemporal !0
+; MCO-MSSA-NEXT:    [[PTR2:%.*]] = getelementptr inbounds <4 x float>, <4 x float>* %dst, i64 2
+; MCO-MSSA-NEXT:    store <4 x float> zeroinitializer, <4 x float>* [[PTR2]], align 16, !nontemporal !0
+; MCO-MSSA-NEXT:    [[PTR3:%.*]] = getelementptr inbounds <4 x float>, <4 x float>* %dst, i64 3
+; MCO-MSSA-NEXT:    store <4 x float> zeroinitializer, <4 x float>* [[PTR3]], align 16, !nontemporal !0
+; MCO-MSSA-NEXT:    [[PTR4:%.*]] = getelementptr inbounds <4 x float>, <4 x float>* %dst, i64 4
+; MCO-MSSA-NEXT:    store <4 x float> zeroinitializer, <4 x float>* [[PTR4]], align 16, !nontemporal !0
+; MCO-MSSA-NEXT:    [[PTR5:%.*]] = getelementptr inbounds <4 x float>, <4 x float>* %dst, i64 5
+; MCO-MSSA-NEXT:    store <4 x float> zeroinitializer, <4 x float>* [[PTR5]], align 16, !nontemporal !0
+; MCO-MSSA-NEXT:    [[PTR6:%.*]] = getelementptr inbounds <4 x float>, <4 x float>* %dst, i64 6
+; MCO-MSSA-NEXT:    store <4 x float> zeroinitializer, <4 x float>* [[PTR6]], align 16, !nontemporal !0
+; MCO-MSSA-NEXT:    [[PTR7:%.*]] = getelementptr inbounds <4 x float>, <4 x float>* %dst, i64 7
+; MCO-MSSA-NEXT:    store <4 x float> zeroinitializer, <4 x float>* [[PTR7]], align 16, !nontemporal !0
+; MCO-MSSA-NEXT:    ret void
+;
 entry:
   store <4 x float> zeroinitializer, <4 x float>* %dst, align 16, !nontemporal !0
   %ptr1 = getelementptr inbounds <4 x float>, <4 x float>* %dst, i64 1
@@ -52,6 +71,13 @@ define void @nontemporal_stores_2(<4 x float>* nocapture %dst) {
 ; CHECK-NEXT:    [[PTR1:%.*]] = getelementptr inbounds <4 x float>, <4 x float>* %dst, i64 1
 ; CHECK-NEXT:    store <4 x float> zeroinitializer, <4 x float>* [[PTR1]], align 16, !nontemporal !0
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @nontemporal_stores_2(
+; MCO-MSSA-NEXT:  entry:
+; MCO-MSSA-NEXT:    store <4 x float> zeroinitializer, <4 x float>* %dst, align 16, !nontemporal !0
+; MCO-MSSA-NEXT:    [[PTR1:%.*]] = getelementptr inbounds <4 x float>, <4 x float>* %dst, i64 1
+; MCO-MSSA-NEXT:    store <4 x float> zeroinitializer, <4 x float>* [[PTR1]], align 16, !nontemporal !0
+; MCO-MSSA-NEXT:    ret void
 ;
 entry:
   store <4 x float> zeroinitializer, <4 x float>* %dst, align 16, !nontemporal !0

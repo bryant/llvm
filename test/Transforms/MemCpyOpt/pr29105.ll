@@ -15,6 +15,17 @@ define void @baz() unnamed_addr #0 {
 ; CHECK-NEXT:    call void @llvm.lifetime.end(i64 16384, i8* [[TMP0]])
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @baz(
+; MCO-MSSA-NEXT:  entry-block:
+; MCO-MSSA-NEXT:    [[TMP2:%.*]] = alloca %Foo, align 8
+; MCO-MSSA-NEXT:    [[TMP223:%.*]] = bitcast %Foo* [[TMP2]] to i8*
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP223]], i8 0, i64 16384, i32 8, i1 false)
+; MCO-MSSA-NEXT:    [[TMP0:%.*]] = bitcast %Foo* [[TMP2]] to i8*
+; MCO-MSSA-NEXT:    call void @llvm.lifetime.start(i64 16384, i8* [[TMP0]])
+; MCO-MSSA-NEXT:    call void @bar(%Foo* noalias nocapture nonnull dereferenceable(16384) [[TMP2]])
+; MCO-MSSA-NEXT:    call void @llvm.lifetime.end(i64 16384, i8* [[TMP0]])
+; MCO-MSSA-NEXT:    ret void
+;
 entry-block:
   %x.sroa.0 = alloca [2048 x i64], align 8
   %tmp0 = alloca [2048 x i64], align 8

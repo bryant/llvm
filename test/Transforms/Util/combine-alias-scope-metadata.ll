@@ -10,6 +10,12 @@ define void @test(i8* noalias dereferenceable(1) %in, i8* noalias dereferenceabl
 ; CHECK-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* %out, i8* %in, i64 1, i32 8, i1 false)
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @test(
+; MCO-MSSA-NEXT:    [[TMP:%.*]] = alloca i8
+; MCO-MSSA-NEXT:    [[TMP2:%.*]] = alloca i8
+; MCO-MSSA-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* %out, i8* %in, i64 1, i32 8, i1 false)
+; MCO-MSSA-NEXT:    ret void
+;
   %tmp = alloca i8
   %tmp2 = alloca i8
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %tmp, i8* %in, i64 1, i32 8, i1 false), !alias.scope !4

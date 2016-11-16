@@ -14,6 +14,12 @@ define void @copy(%S* %src, %S* %dst) {
 ; CHECK-NEXT:    call void @llvm.memmove.p0i8.p0i8.i64(i8* [[TMP1]], i8* [[TMP2]], i64 16, i32 8, i1 false)
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @copy(
+; MCO-MSSA-NEXT:    [[TMP1:%.*]] = bitcast %S* %dst to i8*
+; MCO-MSSA-NEXT:    [[TMP2:%.*]] = bitcast %S* %src to i8*
+; MCO-MSSA-NEXT:    call void @llvm.memmove.p0i8.p0i8.i64(i8* [[TMP1]], i8* [[TMP2]], i64 16, i32 8, i1 false)
+; MCO-MSSA-NEXT:    ret void
+;
   %1 = load %S, %S* %src
   store %S %1, %S* %dst
   ret void
@@ -25,6 +31,12 @@ define void @noaliassrc(%S* noalias %src, %S* %dst) {
 ; CHECK-NEXT:    [[TMP2:%.*]] = bitcast %S* %src to i8*
 ; CHECK-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* [[TMP1]], i8* [[TMP2]], i64 16, i32 8, i1 false)
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @noaliassrc(
+; MCO-MSSA-NEXT:    [[TMP1:%.*]] = bitcast %S* %dst to i8*
+; MCO-MSSA-NEXT:    [[TMP2:%.*]] = bitcast %S* %src to i8*
+; MCO-MSSA-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* [[TMP1]], i8* [[TMP2]], i64 16, i32 8, i1 false)
+; MCO-MSSA-NEXT:    ret void
 ;
   %1 = load %S, %S* %src
   store %S %1, %S* %dst
@@ -38,6 +50,12 @@ define void @noaliasdst(%S* %src, %S* noalias %dst) {
 ; CHECK-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* [[TMP1]], i8* [[TMP2]], i64 16, i32 8, i1 false)
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @noaliasdst(
+; MCO-MSSA-NEXT:    [[TMP1:%.*]] = bitcast %S* %dst to i8*
+; MCO-MSSA-NEXT:    [[TMP2:%.*]] = bitcast %S* %src to i8*
+; MCO-MSSA-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* [[TMP1]], i8* [[TMP2]], i64 16, i32 8, i1 false)
+; MCO-MSSA-NEXT:    ret void
+;
   %1 = load %S, %S* %src
   store %S %1, %S* %dst
   ret void
@@ -50,6 +68,13 @@ define void @destroysrc(%S* %src, %S* %dst) {
 ; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP2]], i8 0, i64 16, i32 8, i1 false)
 ; CHECK-NEXT:    store %S [[TMP1]], %S* %dst
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @destroysrc(
+; MCO-MSSA-NEXT:    [[TMP1:%.*]] = load %S, %S* %src
+; MCO-MSSA-NEXT:    [[TMP2:%.*]] = bitcast %S* %src to i8*
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP2]], i8 0, i64 16, i32 8, i1 false)
+; MCO-MSSA-NEXT:    store %S [[TMP1]], %S* %dst
+; MCO-MSSA-NEXT:    ret void
 ;
   %1 = load %S, %S* %src
   store %S zeroinitializer, %S* %src
@@ -66,6 +91,14 @@ define void @destroynoaliassrc(%S* noalias %src, %S* %dst) {
 ; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP1]], i8 0, i64 16, i32 8, i1 false)
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @destroynoaliassrc(
+; MCO-MSSA-NEXT:    [[TMP1:%.*]] = bitcast %S* %src to i8*
+; MCO-MSSA-NEXT:    [[TMP2:%.*]] = bitcast %S* %dst to i8*
+; MCO-MSSA-NEXT:    [[TMP3:%.*]] = bitcast %S* %src to i8*
+; MCO-MSSA-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* [[TMP2]], i8* [[TMP3]], i64 16, i32 8, i1 false)
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP1]], i8 0, i64 16, i32 8, i1 false)
+; MCO-MSSA-NEXT:    ret void
+;
   %1 = load %S, %S* %src
   store %S zeroinitializer, %S* %src
   store %S %1, %S* %dst
@@ -80,6 +113,14 @@ define void @copyalias(%S* %src, %S* %dst) {
 ; CHECK-NEXT:    call void @llvm.memmove.p0i8.p0i8.i64(i8* [[TMP2]], i8* [[TMP3]], i64 16, i32 8, i1 false)
 ; CHECK-NEXT:    store %S [[TMP1]], %S* %dst
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @copyalias(
+; MCO-MSSA-NEXT:    [[TMP1:%.*]] = load %S, %S* %src
+; MCO-MSSA-NEXT:    [[TMP2:%.*]] = bitcast %S* %dst to i8*
+; MCO-MSSA-NEXT:    [[TMP3:%.*]] = bitcast %S* %src to i8*
+; MCO-MSSA-NEXT:    call void @llvm.memmove.p0i8.p0i8.i64(i8* [[TMP2]], i8* [[TMP3]], i64 16, i32 8, i1 false)
+; MCO-MSSA-NEXT:    store %S [[TMP1]], %S* %dst
+; MCO-MSSA-NEXT:    ret void
 ;
   %1 = load %S, %S* %src
   %2 = load %S, %S* %src
@@ -99,6 +140,14 @@ define void @addrproducer(%S* %src, %S* %dst) {
 ; CHECK-NEXT:    store %S undef, %S* %dst
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @addrproducer(
+; MCO-MSSA-NEXT:    [[DST2:%.*]] = getelementptr %S, %S* %dst, i64 1
+; MCO-MSSA-NEXT:    [[TMP1:%.*]] = bitcast %S* [[DST2]] to i8*
+; MCO-MSSA-NEXT:    [[TMP2:%.*]] = bitcast %S* %src to i8*
+; MCO-MSSA-NEXT:    call void @llvm.memmove.p0i8.p0i8.i64(i8* [[TMP1]], i8* [[TMP2]], i64 16, i32 8, i1 false)
+; MCO-MSSA-NEXT:    store %S undef, %S* %dst
+; MCO-MSSA-NEXT:    ret void
+;
   %1 = load %S, %S* %src
   store %S undef, %S* %dst
   %dst2 = getelementptr %S , %S* %dst, i64 1
@@ -114,6 +163,14 @@ define void @aliasaddrproducer(%S* %src, %S* %dst, i32* %dstidptr) {
 ; CHECK-NEXT:    [[DST2:%.*]] = getelementptr %S, %S* %dst, i32 [[DSTINDEX]]
 ; CHECK-NEXT:    store %S [[TMP1]], %S* [[DST2]]
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @aliasaddrproducer(
+; MCO-MSSA-NEXT:    [[TMP1:%.*]] = load %S, %S* %src
+; MCO-MSSA-NEXT:    store %S undef, %S* %dst
+; MCO-MSSA-NEXT:    [[DSTINDEX:%.*]] = load i32, i32* %dstidptr
+; MCO-MSSA-NEXT:    [[DST2:%.*]] = getelementptr %S, %S* %dst, i32 [[DSTINDEX]]
+; MCO-MSSA-NEXT:    store %S [[TMP1]], %S* [[DST2]]
+; MCO-MSSA-NEXT:    ret void
 ;
   %1 = load %S, %S* %src
   store %S undef, %S* %dst
@@ -133,6 +190,16 @@ define void @noaliasaddrproducer(%S* %src, %S* noalias %dst, i32* noalias %dstid
 ; CHECK-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* [[TMP2]], i8* [[TMP3]], i64 16, i32 8, i1 false)
 ; CHECK-NEXT:    store %S undef, %S* %src
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @noaliasaddrproducer(
+; MCO-MSSA-NEXT:    [[TMP1:%.*]] = load i32, i32* %dstidptr
+; MCO-MSSA-NEXT:    [[DSTINDEX:%.*]] = or i32 [[TMP1]], 1
+; MCO-MSSA-NEXT:    [[DST2:%.*]] = getelementptr %S, %S* %dst, i32 [[DSTINDEX]]
+; MCO-MSSA-NEXT:    [[TMP2:%.*]] = bitcast %S* [[DST2]] to i8*
+; MCO-MSSA-NEXT:    [[TMP3:%.*]] = bitcast %S* %src to i8*
+; MCO-MSSA-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* [[TMP2]], i8* [[TMP3]], i64 16, i32 8, i1 false)
+; MCO-MSSA-NEXT:    store %S undef, %S* %src
+; MCO-MSSA-NEXT:    ret void
 ;
   %1 = load %S, %S* %src
   store %S undef, %S* %src

@@ -14,6 +14,15 @@ define void @test(i8* %src, i64 %src_size, i8* %dst, i64 %dst_size, i8 %c) {
 ; CHECK-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst, i8* %src, i64 %src_size, i32 1, i1 false)
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @test(
+; MCO-MSSA-NEXT:    [[TMP1:%.*]] = icmp ule i64 %dst_size, %src_size
+; MCO-MSSA-NEXT:    [[TMP2:%.*]] = sub i64 %dst_size, %src_size
+; MCO-MSSA-NEXT:    [[TMP3:%.*]] = select i1 [[TMP1]], i64 0, i64 [[TMP2]]
+; MCO-MSSA-NEXT:    [[TMP4:%.*]] = getelementptr i8, i8* %dst, i64 %src_size
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP4]], i8 %c, i64 [[TMP3]], i32 1, i1 false)
+; MCO-MSSA-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst, i8* %src, i64 %src_size, i32 1, i1 false)
+; MCO-MSSA-NEXT:    ret void
+;
   call void @llvm.memset.p0i8.i64(i8* %dst, i8 %c, i64 %dst_size, i32 1, i1 false)
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst, i8* %src, i64 %src_size, i32 1, i1 false)
   ret void
@@ -29,6 +38,16 @@ define void @test_different_types_i32_i64(i8* %dst, i8* %src, i32 %dst_size, i64
 ; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP5]], i8 %c, i64 [[TMP4]], i32 1, i1 false)
 ; CHECK-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst, i8* %src, i64 %src_size, i32 1, i1 false)
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @test_different_types_i32_i64(
+; MCO-MSSA-NEXT:    [[TMP1:%.*]] = zext i32 %dst_size to i64
+; MCO-MSSA-NEXT:    [[TMP2:%.*]] = icmp ule i64 [[TMP1]], %src_size
+; MCO-MSSA-NEXT:    [[TMP3:%.*]] = sub i64 [[TMP1]], %src_size
+; MCO-MSSA-NEXT:    [[TMP4:%.*]] = select i1 [[TMP2]], i64 0, i64 [[TMP3]]
+; MCO-MSSA-NEXT:    [[TMP5:%.*]] = getelementptr i8, i8* %dst, i64 %src_size
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP5]], i8 %c, i64 [[TMP4]], i32 1, i1 false)
+; MCO-MSSA-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst, i8* %src, i64 %src_size, i32 1, i1 false)
+; MCO-MSSA-NEXT:    ret void
 ;
   call void @llvm.memset.p0i8.i32(i8* %dst, i8 %c, i32 %dst_size, i32 1, i1 false)
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst, i8* %src, i64 %src_size, i32 1, i1 false)
@@ -46,6 +65,16 @@ define void @test_different_types_i128_i32(i8* %dst, i8* %src, i128 %dst_size, i
 ; CHECK-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i32(i8* %dst, i8* %src, i32 %src_size, i32 1, i1 false)
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @test_different_types_i128_i32(
+; MCO-MSSA-NEXT:    [[TMP1:%.*]] = zext i32 %src_size to i128
+; MCO-MSSA-NEXT:    [[TMP2:%.*]] = icmp ule i128 %dst_size, [[TMP1]]
+; MCO-MSSA-NEXT:    [[TMP3:%.*]] = sub i128 %dst_size, [[TMP1]]
+; MCO-MSSA-NEXT:    [[TMP4:%.*]] = select i1 [[TMP2]], i128 0, i128 [[TMP3]]
+; MCO-MSSA-NEXT:    [[TMP5:%.*]] = getelementptr i8, i8* %dst, i128 [[TMP1]]
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i128(i8* [[TMP5]], i8 %c, i128 [[TMP4]], i32 1, i1 false)
+; MCO-MSSA-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i32(i8* %dst, i8* %src, i32 %src_size, i32 1, i1 false)
+; MCO-MSSA-NEXT:    ret void
+;
   call void @llvm.memset.p0i8.i128(i8* %dst, i8 %c, i128 %dst_size, i32 1, i1 false)
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* %dst, i8* %src, i32 %src_size, i32 1, i1 false)
   ret void
@@ -61,6 +90,16 @@ define void @test_different_types_i32_i128(i8* %dst, i8* %src, i32 %dst_size, i1
 ; CHECK-NEXT:    call void @llvm.memset.p0i8.i128(i8* [[TMP5]], i8 %c, i128 [[TMP4]], i32 1, i1 false)
 ; CHECK-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i128(i8* %dst, i8* %src, i128 %src_size, i32 1, i1 false)
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @test_different_types_i32_i128(
+; MCO-MSSA-NEXT:    [[TMP1:%.*]] = zext i32 %dst_size to i128
+; MCO-MSSA-NEXT:    [[TMP2:%.*]] = icmp ule i128 [[TMP1]], %src_size
+; MCO-MSSA-NEXT:    [[TMP3:%.*]] = sub i128 [[TMP1]], %src_size
+; MCO-MSSA-NEXT:    [[TMP4:%.*]] = select i1 [[TMP2]], i128 0, i128 [[TMP3]]
+; MCO-MSSA-NEXT:    [[TMP5:%.*]] = getelementptr i8, i8* %dst, i128 %src_size
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i128(i8* [[TMP5]], i8 %c, i128 [[TMP4]], i32 1, i1 false)
+; MCO-MSSA-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i128(i8* %dst, i8* %src, i128 %src_size, i32 1, i1 false)
+; MCO-MSSA-NEXT:    ret void
 ;
   call void @llvm.memset.p0i8.i32(i8* %dst, i8 %c, i32 %dst_size, i32 1, i1 false)
   call void @llvm.memcpy.p0i8.p0i8.i128(i8* %dst, i8* %src, i128 %src_size, i32 1, i1 false)
@@ -78,6 +117,16 @@ define void @test_different_types_i64_i32(i8* %dst, i8* %src, i64 %dst_size, i32
 ; CHECK-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i32(i8* %dst, i8* %src, i32 %src_size, i32 1, i1 false)
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @test_different_types_i64_i32(
+; MCO-MSSA-NEXT:    [[TMP1:%.*]] = zext i32 %src_size to i64
+; MCO-MSSA-NEXT:    [[TMP2:%.*]] = icmp ule i64 %dst_size, [[TMP1]]
+; MCO-MSSA-NEXT:    [[TMP3:%.*]] = sub i64 %dst_size, [[TMP1]]
+; MCO-MSSA-NEXT:    [[TMP4:%.*]] = select i1 [[TMP2]], i64 0, i64 [[TMP3]]
+; MCO-MSSA-NEXT:    [[TMP5:%.*]] = getelementptr i8, i8* %dst, i64 [[TMP1]]
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP5]], i8 %c, i64 [[TMP4]], i32 1, i1 false)
+; MCO-MSSA-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i32(i8* %dst, i8* %src, i32 %src_size, i32 1, i1 false)
+; MCO-MSSA-NEXT:    ret void
+;
   call void @llvm.memset.p0i8.i64(i8* %dst, i8 %c, i64 %dst_size, i32 1, i1 false)
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* %dst, i8* %src, i32 %src_size, i32 1, i1 false)
   ret void
@@ -92,6 +141,15 @@ define void @test_align_same(i8* %src, i8* %dst, i64 %dst_size) {
 ; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP4]], i8 0, i64 [[TMP3]], i32 8, i1 false)
 ; CHECK-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst, i8* %src, i64 80, i32 1, i1 false)
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @test_align_same(
+; MCO-MSSA-NEXT:    [[TMP1:%.*]] = icmp ule i64 %dst_size, 80
+; MCO-MSSA-NEXT:    [[TMP2:%.*]] = sub i64 %dst_size, 80
+; MCO-MSSA-NEXT:    [[TMP3:%.*]] = select i1 [[TMP1]], i64 0, i64 [[TMP2]]
+; MCO-MSSA-NEXT:    [[TMP4:%.*]] = getelementptr i8, i8* %dst, i64 80
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP4]], i8 0, i64 [[TMP3]], i32 8, i1 false)
+; MCO-MSSA-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst, i8* %src, i64 80, i32 1, i1 false)
+; MCO-MSSA-NEXT:    ret void
 ;
   call void @llvm.memset.p0i8.i64(i8* %dst, i8 0, i64 %dst_size, i32 8, i1 false)
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst, i8* %src, i64 80, i32 1, i1 false)
@@ -108,6 +166,15 @@ define void @test_align_min(i8* %src, i8* %dst, i64 %dst_size) {
 ; CHECK-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst, i8* %src, i64 36, i32 1, i1 false)
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @test_align_min(
+; MCO-MSSA-NEXT:    [[TMP1:%.*]] = icmp ule i64 %dst_size, 36
+; MCO-MSSA-NEXT:    [[TMP2:%.*]] = sub i64 %dst_size, 36
+; MCO-MSSA-NEXT:    [[TMP3:%.*]] = select i1 [[TMP1]], i64 0, i64 [[TMP2]]
+; MCO-MSSA-NEXT:    [[TMP4:%.*]] = getelementptr i8, i8* %dst, i64 36
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP4]], i8 0, i64 [[TMP3]], i32 4, i1 false)
+; MCO-MSSA-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst, i8* %src, i64 36, i32 1, i1 false)
+; MCO-MSSA-NEXT:    ret void
+;
   call void @llvm.memset.p0i8.i64(i8* %dst, i8 0, i64 %dst_size, i32 8, i1 false)
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst, i8* %src, i64 36, i32 1, i1 false)
   ret void
@@ -122,6 +189,15 @@ define void @test_align_memcpy(i8* %src, i8* %dst, i64 %dst_size) {
 ; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP4]], i8 0, i64 [[TMP3]], i32 8, i1 false)
 ; CHECK-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst, i8* %src, i64 80, i32 8, i1 false)
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @test_align_memcpy(
+; MCO-MSSA-NEXT:    [[TMP1:%.*]] = icmp ule i64 %dst_size, 80
+; MCO-MSSA-NEXT:    [[TMP2:%.*]] = sub i64 %dst_size, 80
+; MCO-MSSA-NEXT:    [[TMP3:%.*]] = select i1 [[TMP1]], i64 0, i64 [[TMP2]]
+; MCO-MSSA-NEXT:    [[TMP4:%.*]] = getelementptr i8, i8* %dst, i64 80
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP4]], i8 0, i64 [[TMP3]], i32 8, i1 false)
+; MCO-MSSA-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst, i8* %src, i64 80, i32 8, i1 false)
+; MCO-MSSA-NEXT:    ret void
 ;
   call void @llvm.memset.p0i8.i64(i8* %dst, i8 0, i64 %dst_size, i32 1, i1 false)
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst, i8* %src, i64 80, i32 8, i1 false)
@@ -139,6 +215,16 @@ define void @test_non_i8_dst_type(i8* %src, i64 %src_size, i64* %dst_pi64, i64 %
 ; CHECK-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* [[DST]], i8* %src, i64 %src_size, i32 1, i1 false)
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @test_non_i8_dst_type(
+; MCO-MSSA-NEXT:    [[DST:%.*]] = bitcast i64* [[DST:%.*]]_pi64 to i8*
+; MCO-MSSA-NEXT:    [[TMP1:%.*]] = icmp ule i64 [[DST]]_size, %src_size
+; MCO-MSSA-NEXT:    [[TMP2:%.*]] = sub i64 [[DST]]_size, %src_size
+; MCO-MSSA-NEXT:    [[TMP3:%.*]] = select i1 [[TMP1]], i64 0, i64 [[TMP2]]
+; MCO-MSSA-NEXT:    [[TMP4:%.*]] = getelementptr i8, i8* [[DST]], i64 %src_size
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[TMP4]], i8 %c, i64 [[TMP3]], i32 1, i1 false)
+; MCO-MSSA-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* [[DST]], i8* %src, i64 %src_size, i32 1, i1 false)
+; MCO-MSSA-NEXT:    ret void
+;
   %dst = bitcast i64* %dst_pi64 to i8*
   call void @llvm.memset.p0i8.i64(i8* %dst, i8 %c, i64 %dst_size, i32 1, i1 false)
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst, i8* %src, i64 %src_size, i32 1, i1 false)
@@ -150,6 +236,11 @@ define void @test_different_dst(i8* %dst2, i8* %src, i64 %src_size, i8* %dst, i6
 ; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* %dst, i8 0, i64 %dst_size, i32 1, i1 false)
 ; CHECK-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst2, i8* %src, i64 %src_size, i32 1, i1 false)
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @test_different_dst(
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* %dst, i8 0, i64 %dst_size, i32 1, i1 false)
+; MCO-MSSA-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst2, i8* %src, i64 %src_size, i32 1, i1 false)
+; MCO-MSSA-NEXT:    ret void
 ;
   call void @llvm.memset.p0i8.i64(i8* %dst, i8 0, i64 %dst_size, i32 1, i1 false)
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst2, i8* %src, i64 %src_size, i32 1, i1 false)
@@ -164,6 +255,12 @@ define i8 @test_intermediate_read(i8* %a, i8* %b) #0 {
 ; CHECK-NEXT:    [[R:%.*]] = load i8, i8* %a
 ; CHECK-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* %a, i8* %b, i64 24, i32 1, i1 false)
 ; CHECK-NEXT:    ret i8 [[R]]
+;
+; MCO-MSSA-LABEL: @test_intermediate_read(
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* %a, i8 0, i64 64, i32 1, i1 false)
+; MCO-MSSA-NEXT:    [[R:%.*]] = load i8, i8* %a
+; MCO-MSSA-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* %a, i8* %b, i64 24, i32 1, i1 false)
+; MCO-MSSA-NEXT:    ret i8 [[R]]
 ;
   call void @llvm.memset.p0i8.i64(i8* %a, i8 0, i64 64, i32 1, i1 false)
   %r = load i8, i8* %a
@@ -182,6 +279,15 @@ define void @test_intermediate_write(i8* %b) #0 {
 ; CHECK-NEXT:    store i8 1, i8* [[A1]]
 ; CHECK-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* [[A0]], i8* %b, i64 8, i32 1, i1 false)
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @test_intermediate_write(
+; MCO-MSSA-NEXT:    [[A:%.*]] = alloca %struct
+; MCO-MSSA-NEXT:    [[A0:%.*]] = getelementptr %struct, %struct* [[A]], i32 0, i32 0, i32 0
+; MCO-MSSA-NEXT:    [[A1:%.*]] = getelementptr %struct, %struct* [[A]], i32 0, i32 1, i32 0
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* [[A0]], i8 0, i64 16, i32 1, i1 false)
+; MCO-MSSA-NEXT:    store i8 1, i8* [[A1]]
+; MCO-MSSA-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* [[A0]], i8* %b, i64 8, i32 1, i1 false)
+; MCO-MSSA-NEXT:    ret void
 ;
   %a = alloca %struct
   %a0 = getelementptr %struct, %struct* %a, i32 0, i32 0, i32 0

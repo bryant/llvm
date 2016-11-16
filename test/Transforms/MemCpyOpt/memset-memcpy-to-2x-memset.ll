@@ -10,6 +10,11 @@ define void @test(i8* %dst1, i8* %dst2, i8 %c) {
 ; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* %dst2, i8 %c, i64 128, i32 8, i1 false)
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @test(
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* %dst1, i8 %c, i64 128, i32 1, i1 false)
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* %dst2, i8 %c, i64 128, i32 8, i1 false)
+; MCO-MSSA-NEXT:    ret void
+;
   call void @llvm.memset.p0i8.i64(i8* %dst1, i8 %c, i64 128, i32 1, i1 false)
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst2, i8* %dst1, i64 128, i32 8, i1 false)
   ret void
@@ -20,6 +25,11 @@ define void @test_smaller_memcpy(i8* %dst1, i8* %dst2, i8 %c) {
 ; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* %dst1, i8 %c, i64 128, i32 1, i1 false)
 ; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* %dst2, i8 %c, i64 100, i32 1, i1 false)
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @test_smaller_memcpy(
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* %dst1, i8 %c, i64 128, i32 1, i1 false)
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* %dst2, i8 %c, i64 100, i32 1, i1 false)
+; MCO-MSSA-NEXT:    ret void
 ;
   call void @llvm.memset.p0i8.i64(i8* %dst1, i8 %c, i64 128, i32 1, i1 false)
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst2, i8* %dst1, i64 100, i32 1, i1 false)
@@ -32,6 +42,11 @@ define void @test_smaller_memset(i8* %dst1, i8* %dst2, i8 %c) {
 ; CHECK-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst2, i8* %dst1, i64 128, i32 1, i1 false)
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @test_smaller_memset(
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* %dst1, i8 %c, i64 100, i32 1, i1 false)
+; MCO-MSSA-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst2, i8* %dst1, i64 128, i32 1, i1 false)
+; MCO-MSSA-NEXT:    ret void
+;
   call void @llvm.memset.p0i8.i64(i8* %dst1, i8 %c, i64 100, i32 1, i1 false)
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst2, i8* %dst1, i64 128, i32 1, i1 false)
   ret void
@@ -42,6 +57,11 @@ define void @test_align_memset(i8* %dst1, i8* %dst2, i8 %c) {
 ; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* %dst1, i8 %c, i64 128, i32 8, i1 false)
 ; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* %dst2, i8 %c, i64 128, i32 1, i1 false)
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @test_align_memset(
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* %dst1, i8 %c, i64 128, i32 8, i1 false)
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* %dst2, i8 %c, i64 128, i32 1, i1 false)
+; MCO-MSSA-NEXT:    ret void
 ;
   call void @llvm.memset.p0i8.i64(i8* %dst1, i8 %c, i64 128, i32 8, i1 false)
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst2, i8* %dst1, i64 128, i32 1, i1 false)
@@ -54,6 +74,11 @@ define void @test_different_types(i8* %dst1, i8* %dst2, i8 %c) {
 ; CHECK-NEXT:    call void @llvm.memset.p0i8.i32(i8* %dst2, i8 %c, i32 100, i32 1, i1 false)
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @test_different_types(
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* %dst1, i8 %c, i64 128, i32 8, i1 false)
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i32(i8* %dst2, i8 %c, i32 100, i32 1, i1 false)
+; MCO-MSSA-NEXT:    ret void
+;
   call void @llvm.memset.p0i8.i64(i8* %dst1, i8 %c, i64 128, i32 8, i1 false)
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* %dst2, i8* %dst1, i32 100, i32 1, i1 false)
   ret void
@@ -64,6 +89,11 @@ define void @test_different_types_2(i8* %dst1, i8* %dst2, i8 %c) {
 ; CHECK-NEXT:    call void @llvm.memset.p0i8.i32(i8* %dst1, i8 %c, i32 128, i32 8, i1 false)
 ; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* %dst2, i8 %c, i64 100, i32 1, i1 false)
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @test_different_types_2(
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i32(i8* %dst1, i8 %c, i32 128, i32 8, i1 false)
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* %dst2, i8 %c, i64 100, i32 1, i1 false)
+; MCO-MSSA-NEXT:    ret void
 ;
   call void @llvm.memset.p0i8.i32(i8* %dst1, i8 %c, i32 128, i32 8, i1 false)
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst2, i8* %dst1, i64 100, i32 1, i1 false)
@@ -76,6 +106,12 @@ define void @test_different_source_gep(i8* %dst1, i8* %dst2, i8 %c) {
 ; CHECK-NEXT:    [[P:%.*]] = getelementptr i8, i8* %dst1, i64 64
 ; CHECK-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst2, i8* [[P]], i64 64, i32 1, i1 false)
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @test_different_source_gep(
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* %dst1, i8 %c, i64 128, i32 1, i1 false)
+; MCO-MSSA-NEXT:    [[P:%.*]] = getelementptr i8, i8* %dst1, i64 64
+; MCO-MSSA-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst2, i8* [[P]], i64 64, i32 1, i1 false)
+; MCO-MSSA-NEXT:    ret void
 ;
   call void @llvm.memset.p0i8.i64(i8* %dst1, i8 %c, i64 128, i32 1, i1 false)
   ; FIXME: We could optimize this as well.
@@ -90,6 +126,11 @@ define void @test_variable_size_1(i8* %dst1, i64 %dst1_size, i8* %dst2, i8 %c) {
 ; CHECK-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst2, i8* %dst1, i64 128, i32 1, i1 false)
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @test_variable_size_1(
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* %dst1, i8 %c, i64 %dst1_size, i32 1, i1 false)
+; MCO-MSSA-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst2, i8* %dst1, i64 128, i32 1, i1 false)
+; MCO-MSSA-NEXT:    ret void
+;
   call void @llvm.memset.p0i8.i64(i8* %dst1, i8 %c, i64 %dst1_size, i32 1, i1 false)
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst2, i8* %dst1, i64 128, i32 1, i1 false)
   ret void
@@ -100,6 +141,11 @@ define void @test_variable_size_2(i8* %dst1, i8* %dst2, i64 %dst2_size, i8 %c) {
 ; CHECK-NEXT:    call void @llvm.memset.p0i8.i64(i8* %dst1, i8 %c, i64 128, i32 1, i1 false)
 ; CHECK-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst2, i8* %dst1, i64 %dst2_size, i32 1, i1 false)
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @test_variable_size_2(
+; MCO-MSSA-NEXT:    call void @llvm.memset.p0i8.i64(i8* %dst1, i8 %c, i64 128, i32 1, i1 false)
+; MCO-MSSA-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst2, i8* %dst1, i64 %dst2_size, i32 1, i1 false)
+; MCO-MSSA-NEXT:    ret void
 ;
   call void @llvm.memset.p0i8.i64(i8* %dst1, i8 %c, i64 128, i32 1, i1 false)
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %dst2, i8* %dst1, i64 %dst2_size, i32 1, i1 false)

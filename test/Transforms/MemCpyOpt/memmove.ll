@@ -17,6 +17,14 @@ define i8* @test1(i8* nocapture %src) nounwind {
 ; CHECK-NEXT:    tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* [[CALL3_SUB]], i8* %src, i64 13, i32 1, i1 false)
 ; CHECK-NEXT:    ret i8* [[CALL3_SUB]]
 ;
+; MCO-MSSA-LABEL: @test1(
+; MCO-MSSA-NEXT:  entry:
+; MCO-MSSA-NEXT:    [[MALLOCCALL:%.*]] = tail call i8* @malloc(i32 trunc (i64 mul nuw (i64 ptrtoint (i8* getelementptr (i8, i8* null, i32 1) to i64), i64 13) to i32))
+; MCO-MSSA-NEXT:    [[CALL3:%.*]] = bitcast i8* [[MALLOCCALL]] to [13 x i8]*
+; MCO-MSSA-NEXT:    [[CALL3_SUB:%.*]] = getelementptr inbounds [13 x i8], [13 x i8]* [[CALL3]], i64 0, i64 0
+; MCO-MSSA-NEXT:    tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* [[CALL3_SUB]], i8* %src, i64 13, i32 1, i1 false)
+; MCO-MSSA-NEXT:    ret i8* [[CALL3_SUB]]
+;
 entry:
 
   %malloccall = tail call i8* @malloc(i32 trunc (i64 mul nuw (i64 ptrtoint (i8* getelementptr (i8, i8* null, i32 1) to i64), i64 13) to i32))
@@ -35,6 +43,12 @@ define void @test2(i8* %P) nounwind {
 ; CHECK-NEXT:    tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* %P, i8* [[ADD_PTR]], i64 16, i32 1, i1 false)
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @test2(
+; MCO-MSSA-NEXT:  entry:
+; MCO-MSSA-NEXT:    [[ADD_PTR:%.*]] = getelementptr i8, i8* %P, i64 16
+; MCO-MSSA-NEXT:    tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* %P, i8* [[ADD_PTR]], i64 16, i32 1, i1 false)
+; MCO-MSSA-NEXT:    ret void
+;
 entry:
   %add.ptr = getelementptr i8, i8* %P, i64 16
   tail call void @llvm.memmove.p0i8.p0i8.i64(i8* %P, i8* %add.ptr, i64 16, i32 1, i1 false)
@@ -48,6 +62,12 @@ define void @test3(i8* %P) nounwind {
 ; CHECK-NEXT:    [[ADD_PTR:%.*]] = getelementptr i8, i8* %P, i64 16
 ; CHECK-NEXT:    tail call void @llvm.memmove.p0i8.p0i8.i64(i8* %P, i8* [[ADD_PTR]], i64 17, i32 1, i1 false)
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @test3(
+; MCO-MSSA-NEXT:  entry:
+; MCO-MSSA-NEXT:    [[ADD_PTR:%.*]] = getelementptr i8, i8* %P, i64 16
+; MCO-MSSA-NEXT:    tail call void @llvm.memmove.p0i8.p0i8.i64(i8* %P, i8* [[ADD_PTR]], i64 17, i32 1, i1 false)
+; MCO-MSSA-NEXT:    ret void
 ;
 entry:
   %add.ptr = getelementptr i8, i8* %P, i64 16

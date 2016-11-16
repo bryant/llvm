@@ -12,6 +12,12 @@ define void @test(i8* %src) {
 ; CHECK-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* [[DST]], i8* %src, i64 1, i32 8, i1 false)
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @test(
+; MCO-MSSA-NEXT:    [[TMP:%.*]] = alloca i8
+; MCO-MSSA-NEXT:    [[DST:%.*]] = alloca i8
+; MCO-MSSA-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* [[DST]], i8* %src, i64 1, i32 8, i1 false)
+; MCO-MSSA-NEXT:    ret void
+;
   %tmp = alloca i8
   %dst = alloca i8
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %tmp, i8* %src, i64 1, i32 8, i1 false), !noalias !2

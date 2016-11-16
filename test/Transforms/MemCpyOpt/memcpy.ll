@@ -19,6 +19,16 @@ define void @test1(%0* sret  %agg.result, x86_fp80 %z.0, x86_fp80 %z.1) nounwind
 ; CHECK-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i32(i8* [[AGG_RESULT21]], i8* [[TMP219]], i32 32, i32 16, i1 false)
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @test1(
+; MCO-MSSA-NEXT:  entry:
+; MCO-MSSA-NEXT:    [[TMP2:%.*]] = alloca %0
+; MCO-MSSA-NEXT:    [[TMP5:%.*]] = fsub x86_fp80 0xK80000000000000000000, %z.1
+; MCO-MSSA-NEXT:    call void @ccoshl(%0* sret [[TMP2]], x86_fp80 [[TMP5]], x86_fp80 %z.0) #0
+; MCO-MSSA-NEXT:    [[TMP219:%.*]] = bitcast %0* [[TMP2]] to i8*
+; MCO-MSSA-NEXT:    [[AGG_RESULT21:%.*]] = bitcast %0* %agg.result to i8*
+; MCO-MSSA-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i32(i8* [[AGG_RESULT21]], i8* [[TMP219]], i32 32, i32 16, i1 false)
+; MCO-MSSA-NEXT:    ret void
+;
 entry:
   %tmp2 = alloca %0
   %memtmp = alloca %0, align 16
@@ -46,6 +56,10 @@ define void @test2(i8* %P, i8* %Q) nounwind  {
 ; CHECK-NEXT:    call void @llvm.memmove.p0i8.p0i8.i32(i8* %Q, i8* %P, i32 32, i32 16, i1 false)
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @test2(
+; MCO-MSSA-NEXT:    call void @llvm.memmove.p0i8.p0i8.i32(i8* %Q, i8* %P, i32 32, i32 16, i1 false)
+; MCO-MSSA-NEXT:    ret void
+;
   %memtmp = alloca %0, align 16
   %R = bitcast %0* %memtmp to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* %R, i8* %P, i32 32, i32 16, i1 false)
@@ -65,6 +79,11 @@ define void @test3(%0* noalias sret %agg.result) nounwind  {
 ; CHECK-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i32(i8* [[AGG_RESULT1]], i8* bitcast (%0* @x to i8*), i32 32, i32 16, i1 false)
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @test3(
+; MCO-MSSA-NEXT:    [[AGG_RESULT1:%.*]] = bitcast %0* %agg.result to i8*
+; MCO-MSSA-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i32(i8* [[AGG_RESULT1]], i8* bitcast (%0* @x to i8*), i32 32, i32 16, i1 false)
+; MCO-MSSA-NEXT:    ret void
+;
   %x.0 = alloca %0
   %x.01 = bitcast %0* %x.0 to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* %x.01, i8* bitcast (%0* @x to i8*), i32 32, i32 16, i1 false)
@@ -79,6 +98,10 @@ define void @test4(i8 *%P) {
 ; CHECK-LABEL: @test4(
 ; CHECK-NEXT:    call void @test4a(i8* byval align 1 %P)
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @test4(
+; MCO-MSSA-NEXT:    call void @test4a(i8* byval align 1 %P)
+; MCO-MSSA-NEXT:    ret void
 ;
   %A = alloca %1
   %a = bitcast %1* %A to i8*
@@ -110,6 +133,16 @@ define i32 @test5(i32 %x) nounwind ssp {
 ; CHECK-NEXT:    call void @test5a(%struct.S* byval align 16 [[Y]])
 ; CHECK-NEXT:    ret i32 0
 ;
+; MCO-MSSA-LABEL: @test5(
+; MCO-MSSA-NEXT:  entry:
+; MCO-MSSA-NEXT:    [[Y:%.*]] = alloca %struct.S, align 16
+; MCO-MSSA-NEXT:    [[TMP:%.*]] = bitcast %struct.S* [[Y]] to i8*
+; MCO-MSSA-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i64(i8* [[TMP]], i8* bitcast (%struct.S* @sS to i8*), i64 32, i32 16, i1 false)
+; MCO-MSSA-NEXT:    [[A:%.*]] = getelementptr %struct.S, %struct.S* [[Y]], i64 0, i32 1, i64 0
+; MCO-MSSA-NEXT:    store i8 4, i8* [[A]]
+; MCO-MSSA-NEXT:    call void @test5a(%struct.S* byval align 16 [[Y]])
+; MCO-MSSA-NEXT:    ret i32 0
+;
 entry:
   %y = alloca %struct.S, align 16
   %tmp = bitcast %struct.S* %y to i8*
@@ -125,6 +158,9 @@ define void @test6(i8 *%P) {
 ; CHECK-LABEL: @test6(
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @test6(
+; MCO-MSSA-NEXT:    ret void
+;
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %P, i8* %P, i64 8, i32 4, i1 false)
   ret void
 }
@@ -139,6 +175,11 @@ define i32 @test7(%struct.p* nocapture align 8 byval %q) nounwind ssp {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[CALL:%.*]] = call i32 @g(%struct.p* byval align 8 %q) #0
 ; CHECK-NEXT:    ret i32 [[CALL]]
+;
+; MCO-MSSA-LABEL: @test7(
+; MCO-MSSA-NEXT:  entry:
+; MCO-MSSA-NEXT:    [[CALL:%.*]] = call i32 @g(%struct.p* byval align 8 %q) #0
+; MCO-MSSA-NEXT:    ret i32 [[CALL]]
 ;
 entry:
   %agg.tmp = alloca %struct.p, align 4
@@ -160,6 +201,9 @@ declare void @llvm.memcpy.p0i8.p0i8.i32(i8* nocapture, i8* nocapture, i32, i32, 
 define void @test8() {
 ; CHECK-LABEL: @test8(
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @test8(
+; MCO-MSSA-NEXT:    ret void
 ;
   %A = tail call i8* @malloc(i32 10)
   %B = getelementptr inbounds i8, i8* %A, i64 2
@@ -183,6 +227,13 @@ define void @test9_addrspacecast() nounwind ssp uwtable {
 ; CHECK-NEXT:    call void @f2(%struct.big* [[B]])
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @test9_addrspacecast(
+; MCO-MSSA-NEXT:  entry:
+; MCO-MSSA-NEXT:    [[B:%.*]] = alloca %struct.big, align 4
+; MCO-MSSA-NEXT:    call void @f1(%struct.big* sret [[B]])
+; MCO-MSSA-NEXT:    call void @f2(%struct.big* [[B]])
+; MCO-MSSA-NEXT:    ret void
+;
 entry:
   %b = alloca %struct.big, align 4
   %tmp = alloca %struct.big, align 4
@@ -201,6 +252,13 @@ define void @test9() nounwind ssp uwtable {
 ; CHECK-NEXT:    call void @f1(%struct.big* sret [[B]])
 ; CHECK-NEXT:    call void @f2(%struct.big* [[B]])
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @test9(
+; MCO-MSSA-NEXT:  entry:
+; MCO-MSSA-NEXT:    [[B:%.*]] = alloca %struct.big, align 4
+; MCO-MSSA-NEXT:    call void @f1(%struct.big* sret [[B]])
+; MCO-MSSA-NEXT:    call void @f2(%struct.big* [[B]])
+; MCO-MSSA-NEXT:    ret void
 ;
 entry:
   %b = alloca %struct.big, align 4
@@ -229,6 +287,15 @@ define void @test10(%opaque* noalias nocapture sret %x, i32 %y) {
 ; CHECK-NEXT:    [[D:%.*]] = bitcast %opaque* %x to i32*
 ; CHECK-NEXT:    store i32 [[C]], i32* [[D]]
 ; CHECK-NEXT:    ret void
+;
+; MCO-MSSA-LABEL: @test10(
+; MCO-MSSA-NEXT:    [[A:%.*]] = alloca i32, align 4
+; MCO-MSSA-NEXT:    store i32 %y, i32* [[A]]
+; MCO-MSSA-NEXT:    call void @foo(i32* noalias nocapture [[A]])
+; MCO-MSSA-NEXT:    [[C:%.*]] = load i32, i32* [[A]]
+; MCO-MSSA-NEXT:    [[D:%.*]] = bitcast %opaque* %x to i32*
+; MCO-MSSA-NEXT:    store i32 [[C]], i32* [[D]]
+; MCO-MSSA-NEXT:    ret void
 ;
   %a = alloca i32, align 4
   store i32 %y, i32* %a

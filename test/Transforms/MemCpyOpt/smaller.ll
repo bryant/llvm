@@ -29,6 +29,16 @@ define void @foo() nounwind {
 ; CHECK-NEXT:    call void @check(%struct.s* byval [[AGG_TMP]])
 ; CHECK-NEXT:    ret void
 ;
+; MCO-MSSA-LABEL: @foo(
+; MCO-MSSA-NEXT:  entry:
+; MCO-MSSA-NEXT:    [[AGG_TMP:%.*]] = alloca %struct.s, align 4
+; MCO-MSSA-NEXT:    store i32 99, i32* getelementptr inbounds (%struct.s, %struct.s* @cell, i32 0, i32 1), align 4
+; MCO-MSSA-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i32(i8* getelementptr inbounds (%struct.s, %struct.s* @cell, i32 0, i32 0, i32 0), i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.str, i32 0, i32 0), i32 11, i32 1, i1 false)
+; MCO-MSSA-NEXT:    [[TMP:%.*]] = getelementptr inbounds %struct.s, %struct.s* [[AGG_TMP]], i32 0, i32 0, i32 0
+; MCO-MSSA-NEXT:    call void @llvm.memcpy.p0i8.p0i8.i32(i8* [[TMP]], i8* getelementptr inbounds (%struct.s, %struct.s* @cell, i32 0, i32 0, i32 0), i32 16, i32 4, i1 false)
+; MCO-MSSA-NEXT:    call void @check(%struct.s* byval [[AGG_TMP]])
+; MCO-MSSA-NEXT:    ret void
+;
 entry:
   %agg.tmp = alloca %struct.s, align 4
   store i32 99, i32* getelementptr inbounds (%struct.s, %struct.s* @cell, i32 0, i32 1), align 4
