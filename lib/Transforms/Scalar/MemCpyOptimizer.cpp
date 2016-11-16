@@ -1416,6 +1416,9 @@ bool MemCpyOptPass::processMemCpyMSSA(MemCpyInst *M) {
       }
     }
 
+    DEBUG(dbgs() << "clobber: " << *MUD << "\n");
+    DEBUG(if (MUD->getMemoryInst()) dbgs()
+          << "clobber inst: " << *MUD->getMemoryInst() << "\n");
     // Non-local permitted since processMemCpyMemCpyDependence modifies M only
     // and getCMA ensures that MDep doms M.
     if (auto *MDep = dyn_cast_or_null<MemCpyInst>(MUD->getMemoryInst()))
