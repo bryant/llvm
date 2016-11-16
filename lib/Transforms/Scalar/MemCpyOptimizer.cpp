@@ -131,6 +131,19 @@ static MemoryAccess *getCMA(MemorySSA *MSSA, MemoryUseOrDef *StartAbove,
   return MSSA->getWalker()->getClobberingMemoryAccess(Start, MemLoc);
 }
 
+// \brief Returns the clobber between [\p EndAt, \p StartAbove) that clobbers \p
+// MemLoc, otherwise returns \p EndAt. For this query to make sense, \p EndAt
+// must dominate \p StartAbove.
+static MemoryAccess *getCMABetween(const MemoryLocation &MemLoc,
+                                   MemoryAccess *EndAt,
+                                   MemoryUseOrDef *StartAbove,
+                                   MemorySSA *MSSA) {
+  assert(MSSA->dominates(EndAt, StartAbove) &&
+         "EndAt must dominate StartAbove.");
+  MemoryAccess *Clob = getCMA(MSSA, StartAbove, MemLoc);
+  return MSSA->dominates(EndAt, Clob) ? Clob : EndAt;
+}
+
 /// Represents a range of memset'd bytes with the ByteVal value.
 /// This allows us to analyze stores like:
 ///   store 0 -> P+1
