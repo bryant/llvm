@@ -1640,6 +1640,10 @@ void MemorySSA::spliceMemoryAccessAbove(MemoryDef *Where,
   AccessList *Src = getWritableBlockAccesses(What->getBlock());
   AccessList *Dest = getWritableBlockAccesses(Where->getBlock());
   Dest->splice(AccessList::iterator(Where), *Src, What);
+
+  BlockNumberingValid.erase(What->getBlock());
+  if (What->getBlock() != Where->getBlock())
+    BlockNumberingValid.erase(Where->getBlock());
 }
 
 /// \brief Helper function to create new memory accesses
