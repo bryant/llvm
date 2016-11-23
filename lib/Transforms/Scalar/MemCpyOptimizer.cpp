@@ -349,15 +349,16 @@ namespace {
       AU.setPreservesCFG();
       AU.addRequired<AssumptionCacheTracker>();
       AU.addRequired<DominatorTreeWrapperPass>();
-      AU.addRequired<MemoryDependenceWrapperPass>();
       AU.addRequired<AAResultsWrapperPass>();
       AU.addRequired<TargetLibraryInfoWrapperPass>();
       AU.addPreserved<GlobalsAAWrapperPass>();
-      AU.addPreserved<MemoryDependenceWrapperPass>();
 
       if (UseMSSA) {
         AU.addRequired<MemorySSAWrapperPass>();
         AU.addPreserved<MemorySSAWrapperPass>();
+      } else {
+        AU.addRequired<MemoryDependenceWrapperPass>();
+        AU.addPreserved<MemoryDependenceWrapperPass>();
       }
     }
 
@@ -408,7 +409,6 @@ INITIALIZE_PASS_BEGIN(MemCpyOptMemSSALegacyPass, "memcpyopt-mssa",
 INITIALIZE_PASS_DEPENDENCY(AssumptionCacheTracker)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(MemorySSAWrapperPass)
-INITIALIZE_PASS_DEPENDENCY(MemoryDependenceWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(TargetLibraryInfoWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(GlobalsAAWrapperPass)
@@ -416,12 +416,12 @@ INITIALIZE_PASS_END(MemCpyOptMemSSALegacyPass, "memcpyopt-mssa",
                     "MemCpy Optimization (Memory SSA)", false, false)
 
 void MemCpyOptPass::eraseInstruction(Instruction *I) {
-  assert(MD);
   DEBUG(dbgs() << "Erasing instruction " << *I << "\n");
-  MD->removeInstruction(I);
-  if (UseMemorySSA)
+  if (UseMemorySSA) {
     if (MemoryAccess *MA = MSSA->getMemoryAccess(I))
       MSSA->removeMemoryAccess(MA);
+  } else
+    MD->removeInstruction(I);
   I->eraseFromParent();
   if (UseMemorySSA)
     DEBUG(dbgs() << "Asserting well-formedness after erasure\n"; MSSA->print(dbgs());
@@ -1052,7 +1052,8 @@ bool MemCpyOptPass::performCallSlotOptzn(Instruction *cpy, Value *cpyDest,
 
   // Drop any cached information about the call, because we may have changed
   // its dependence information by changing its parameter.
-  MD->removeInstruction(C);
+  if (!UseMemorySSA)
+    MD->removeInstruction(C);
 
   // Update AA metadata
   // FIXME: MD_tbaa_struct and MD_mem_parallel_loop_access should also be
@@ -1289,6 +1290,7 @@ bool MemCpyOptPass::performMemCpyToMemSetOptzn(MemCpyInst *MemCpy,
 /// circumstances). This allows later passes to remove the first memcpy
 /// altogether.
 bool MemCpyOptPass::processMemCpy(MemCpyInst *M) {
+  assert(!UseMemorySSA && MD && "Only used with legacy MemCpyOptPass");
   // We can only optimize non-volatile memcpy's.
   if (M->isVolatile()) return false;
 
@@ -1511,7 +1513,8 @@ bool MemCpyOptPass::processMemMove(MemMoveInst *M) {
 
   // MemDep may have over conservative information about this instruction, just
   // conservatively flush it from the cache.
-  MD->removeInstruction(M);
+  if (!UseMemorySSA)
+    MD->removeInstruction(M);
 
   ++NumMoveToCpy;
   return true;
@@ -1649,7 +1652,8 @@ PreservedAnalyses MemCpyOptPass::run(Function &F, FunctionAnalysisManager &AM) {
 
   auto *MSSA =
       UseMemorySSA ? &AM.getResult<MemorySSAAnalysis>(F).getMSSA() : nullptr;
-  auto &MD = AM.getResult<MemoryDependenceAnalysis>(F);
+  auto *MD =
+      UseMemorySSA ? nullptr : &AM.getResult<MemoryDependenceAnalysis>(F);
   auto &TLI = AM.getResult<TargetLibraryAnalysis>(F);
 
   auto LookupAliasAnalysis = [&]() -> AliasAnalysis & {
@@ -1662,16 +1666,17 @@ PreservedAnalyses MemCpyOptPass::run(Function &F, FunctionAnalysisManager &AM) {
     return AM.getResult<DominatorTreeAnalysis>(F);
   };
 
-  bool MadeChange = runImpl(F, MSSA, &MD, &TLI, LookupAliasAnalysis,
+  bool MadeChange = runImpl(F, MSSA, MD, &TLI, LookupAliasAnalysis,
                             LookupAssumptionCache, LookupDomTree);
   if (!MadeChange)
     return PreservedAnalyses::all();
   PreservedAnalyses PA;
   PA.preserve<GlobalsAA>();
-  PA.preserve<MemoryDependenceAnalysis>();
 
   if (UseMemorySSA)
     PA.preserve<MemorySSAAnalysis>();
+  else
+    PA.preserve<MemoryDependenceAnalysis>();
 
   return PA;
 }
@@ -1717,7 +1722,8 @@ bool MemCpyOptLegacyCommon<UseMSSA>::runOnFunction(Function &F) {
 
   auto *MSSA =
       UseMSSA ? &getAnalysis<MemorySSAWrapperPass>().getMSSA() : nullptr;
-  auto *MD = &getAnalysis<MemoryDependenceWrapperPass>().getMemDep();
+  auto *MD = UseMSSA ? nullptr
+                     : &getAnalysis<MemoryDependenceWrapperPass>().getMemDep();
   auto *TLI = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
 
   auto LookupAliasAnalysis = [this]() -> AliasAnalysis & {
