@@ -14,6 +14,7 @@
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/LLVMContext.h"
 #include "gtest/gtest.h"
 
@@ -531,4 +532,44 @@ TEST_F(MemorySSATest, SpliceAboveMemoryDef) {
                                     MSSA.getMemoryAccess(StoreB)));
   EXPECT_TRUE(MSSA.locallyDominates(MSSA.getMemoryAccess(StoreA1),
                                     MSSA.getMemoryAccess(StoreA2)));
+}
+
+TEST_F(MemorySSATest, InstClobbersMemLoc) {
+  F = Function::Create(FunctionType::get(B.getVoidTy(),
+                                         {B.getInt8PtrTy(), B.getInt8PtrTy()},
+                                         false),
+                       GlobalValue::ExternalLinkage, "F", &M);
+  B.SetInsertPoint(BasicBlock::Create(C, "", F));
+  Argument *P = &*F->arg_begin();
+  Argument *Q = &*std::next(F->arg_begin());
+
+  Type *Int64 = Type::getInt64Ty(C);
+
+  AllocaInst *A =
+      B.CreateAlloca(Type::getInt128Ty(C), ConstantInt::get(Int64, 1), "A");
+
+  auto *M0 = B.CreateMemCpy(A, P, ConstantInt::get(Int64, 16), 1);
+  auto *M1 =
+      cast<MemCpyInst>(B.CreateMemCpy(Q, A, ConstantInt::get(Int64, 16), 1));
+  auto *M2 =
+      cast<MemCpyInst>(B.CreateMemCpy(Q, A, ConstantInt::get(Int64, 16), 1));
+  auto *M3 =
+      cast<MemCpyInst>(B.CreateMemCpy(Q, P, ConstantInt::get(Int64, 16), 1));
+
+  setupAnalyses();
+  MemorySSA &MSSA = *Analyses->MSSA;
+  MemorySSAWalker &Walker = *Analyses->Walker;
+
+  // M1 obviously clobbers M2 -- on the dest loc.
+  EXPECT_EQ(MSSA.getMemoryAccess(M1), Walker.getClobberingMemoryAccess(M2));
+  // But only M0 clobbers M2 on its source loc. In other words,
+  // instructionClobbersQuery must call getModRefInfo(ImmutableCallSite, const
+  // MemoryLocation).
+  EXPECT_EQ(MSSA.getMemoryAccess(M0),
+            Walker.getClobberingMemoryAccess(MSSA.getMemoryAccess(M2),
+                                             MemoryLocation::getForSource(M2)));
+  // FIXME: AA should know that memcpy operands never overlap.
+  EXPECT_NE(MSSA.getLiveOnEntryDef(),
+            Walker.getClobberingMemoryAccess(MSSA.getMemoryAccess(M3),
+                                             MemoryLocation::getForSource(M3)));
 }
