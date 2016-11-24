@@ -69,6 +69,7 @@ private:
   void eraseInstruction(Instruction *);
 
   bool iterateOnFunction(Function &F);
+  bool iterateOnFunctionMSSA(Function &F);
 };
 }
 

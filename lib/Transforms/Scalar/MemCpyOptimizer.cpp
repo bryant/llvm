@@ -1628,8 +1628,7 @@ bool MemCpyOptPass::iterateOnFunction(Function &F) {
       else if (MemSetInst *M = dyn_cast<MemSetInst>(I))
         RepeatInstruction = processMemSet(M, BI);
       else if (MemCpyInst *M = dyn_cast<MemCpyInst>(I))
-        RepeatInstruction =
-            UseMemorySSA ? processMemCpyMSSA(M) : processMemCpy(M);
+        RepeatInstruction = processMemCpy(M);
       else if (MemMoveInst *M = dyn_cast<MemMoveInst>(I))
         RepeatInstruction = processMemMove(M);
       else if (auto CS = CallSite(I)) {
@@ -1647,6 +1646,50 @@ bool MemCpyOptPass::iterateOnFunction(Function &F) {
     }
   }
 
+  return MadeChange;
+}
+
+bool MemCpyOptPass::iterateOnFunctionMSSA(Function &F) {
+  DEBUG(assert(UseMemorySSA && MSSA && "Only called in MSSA mode."));
+  bool MadeChange = false;
+
+  // TODO: if we instead walk in reverse, then we can walk along
+  // getDefiningAccess, skip MemoryUses for free, and avoid iterator inval.
+  for (BasicBlock &BB : F) {
+    if (const MemorySSA::AccessList *AL = MSSA->getBlockAccesses(&BB)) {
+      for (auto it = AL->begin(); it != AL->end();) {
+        bool RepeatInstruction = false;
+        if (auto *Def = dyn_cast<MemoryDef>(it++)) {
+          Instruction *I = Def->getMemoryInst();
+          auto BI = I->getIterator();
+          const auto OldI = BI;
+
+          if (StoreInst *SI = dyn_cast<StoreInst>(I))
+            MadeChange |= processStore(SI, BI);
+          else if (MemSetInst *M = dyn_cast<MemSetInst>(I))
+            MadeChange |= processMemSet(M, BI);
+          else if (MemCpyInst *M = dyn_cast<MemCpyInst>(I))
+            RepeatInstruction = processMemCpyMSSA(M);
+          else if (MemMoveInst *M = dyn_cast<MemMoveInst>(I))
+            RepeatInstruction = processMemMove(M);
+          else if (auto CS = CallSite(I))
+            for (unsigned i = 0, e = CS.arg_size(); i != e; ++i)
+              if (CS.isByValArgument(i))
+                MadeChange |= processByValArgument(CS, i);
+
+          MadeChange |= RepeatInstruction;
+
+
+          // Reset iterator to last good position if invalidated. FIXME: This
+          // might not work once we go non-local.
+          if (BI != OldI)
+            it = MSSA->getMemoryAccess(&*BI)->getIterator();
+          else if (RepeatInstruction)
+            --it;
+        }
+      }
+    }
+  }
   return MadeChange;
 }
 
@@ -1707,7 +1750,10 @@ bool MemCpyOptPass::runImpl(
   if (MSSA)
   DEBUG(dbgs() << "before memcpyopt-mssa:"; MSSA->print(dbgs()));
   while (1) {
-    if (!iterateOnFunction(F))
+    if (UseMemorySSA) {
+      if (!iterateOnFunctionMSSA(F))
+        break;
+    } else if (!iterateOnFunction(F))
       break;
     MadeChange = true;
   }
