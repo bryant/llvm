@@ -1664,6 +1664,8 @@ bool MemCpyOptPass::iterateOnFunctionMSSA(Function &F) {
           auto BI = I->getIterator();
           const auto OldI = BI;
 
+          DEBUG(dbgs() << "processing it: " << *Def << "\n"; MSSA->print(dbgs()));
+
           if (StoreInst *SI = dyn_cast<StoreInst>(I))
             MadeChange |= processStore(SI, BI);
           else if (MemSetInst *M = dyn_cast<MemSetInst>(I))
@@ -1679,6 +1681,7 @@ bool MemCpyOptPass::iterateOnFunctionMSSA(Function &F) {
 
           MadeChange |= RepeatInstruction;
 
+          DEBUG(dbgs() << " BI " << &*BI << " OldI " << &*OldI << "\n");
 
           // Reset iterator to last good position if invalidated. FIXME: This
           // might not work once we go non-local.
