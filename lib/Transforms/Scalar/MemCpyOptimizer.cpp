@@ -685,6 +685,8 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
 
   const DataLayout &DL = SI->getModule()->getDataLayout();
 
+  MemoryUseOrDef *StoreDef = UseMemorySSA ? MSSA->getMemoryAccess(SI) : nullptr;
+
   // Load to store forwarding can be interpreted as memcpy.
   if (LoadInst *LI = dyn_cast<LoadInst>(SI->getOperand(0))) {
     if (LI->isSimple() && LI->hasOneUse() &&
@@ -700,9 +702,8 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
         Instruction *P = nullptr;
 
         if (UseMemorySSA) {
-          if (auto *LClob = dyn_cast<MemoryDef>(
-                  getCMA(MSSA, MSSA->getMemoryAccess(SI), LoadLoc)))
-            P = MSSA->dominates(LUse, LClob) ? LClob->getMemoryInst() : SI;
+          if (auto *Clob = dyn_cast<MemoryDef>(getCMA(MSSA, StoreDef, LoadLoc)))
+            P = MSSA->dominates(LUse, Clob) ? Clob->getMemoryInst() : SI;
         } else {
           // We use alias analysis to check if an instruction may store to
           // the memory we load from in between the load and the store. If
@@ -750,7 +751,7 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
                                      LI->getPointerOperand(), Size,
                                      Align, SI->isVolatile());
           if (UseMemorySSA)
-            MSSA->replaceMemoryAccess(SI, M);
+            MSSA->replaceMemoryAccess(StoreDef, M);
 
           DEBUG(dbgs() << "Promoting " << *LI << " to " << *SI
                        << " => " << *M << "\n");
@@ -847,7 +848,7 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
       auto *M = Builder.CreateMemSet(SI->getPointerOperand(), ByteVal,
                                      Size, Align, SI->isVolatile());
       if (UseMemorySSA)
-        MSSA->replaceMemoryAccess(SI, M);
+        MSSA->replaceMemoryAccess(StoreDef, M);
 
       DEBUG(dbgs() << "Promoting " << *SI << " to " << *M << "\n");
 
@@ -1095,6 +1096,7 @@ bool MemCpyOptPass::processMemCpyMemCpyDependence(MemCpyInst *M,
     return false;
 
   AliasAnalysis &AA = LookupAliasAnalysis();
+  MemoryUseOrDef *MAcc = UseMemorySSA ? MSSA->getMemoryAccess(M) : nullptr;
 
   // Verify that the copied-from memory doesn't change in between the two
   // transfers.  For example, in:
@@ -1110,8 +1112,8 @@ bool MemCpyOptPass::processMemCpyMemCpyDependence(MemCpyInst *M,
   // not just the defining memcpy.
   if (UseMemorySSA) {
     MemoryUseOrDef *DepAcc = MSSA->getMemoryAccess(MDep);
-    if (getCMABetween(MemoryLocation::getForSource(MDep), DepAcc,
-                      MSSA->getMemoryAccess(M), MSSA) != DepAcc)
+    if (getCMABetween(MemoryLocation::getForSource(MDep), DepAcc, MAcc, MSSA) !=
+        DepAcc)
       return false;
   } else {
     MemDepResult SourceDep =
@@ -1146,7 +1148,7 @@ bool MemCpyOptPass::processMemCpyMemCpyDependence(MemCpyInst *M,
           : Builder.CreateMemCpy(M->getRawDest(), MDep->getRawSource(),
                                  M->getLength(), Align, M->isVolatile());
   if (UseMemorySSA)
-    MSSA->replaceMemoryAccess(M, New);
+    MSSA->replaceMemoryAccess(MAcc, New);
 
   // Remove the instruction we're replacing.
   eraseInstruction(M, true);
@@ -1175,9 +1177,11 @@ bool MemCpyOptPass::processMemSetMemCpyDependence(MemCpyInst *MemCpy,
   if (MemSet->getDest() != MemCpy->getDest())
     return false;
 
+  MemoryUseOrDef *MSAcc =
+      UseMemorySSA ? MSSA->getMemoryAccess(MemSet) : nullptr;
+
   // Check that there are no other dependencies on the memset destination.
   if (UseMemorySSA) {
-    MemoryUseOrDef *MSAcc = MSSA->getMemoryAccess(MemSet);
     MemoryUseOrDef *MemCpyAcc = MSSA->getMemoryAccess(MemCpy);
     assert(MSSA->dominates(MSAcc, MemCpyAcc));
 
@@ -1186,8 +1190,8 @@ bool MemCpyOptPass::processMemSetMemCpyDependence(MemCpyInst *MemCpy,
       return false;
 
     AliasAnalysis &AA = LookupAliasAnalysis();
-    using It = MemorySSA::AccessList::iterator;
-    for (const auto &Acc : make_range(std::next(It(MSAcc)), It(MemCpyAcc))) {
+    for (const auto &Acc : make_range(std::next(MSAcc->getIterator()),
+                                      MemCpyAcc->getIterator())) {
       DEBUG(
           dbgs() << "Does " << Acc << " modref " << *MemSet->getDest() << " ? "
                  << AA.getModRefInfo(cast<MemoryUseOrDef>(Acc).getMemoryInst(),
@@ -1239,7 +1243,7 @@ bool MemCpyOptPass::processMemSetMemCpyDependence(MemCpyInst *MemCpy,
   auto *M = Builder.CreateMemSet(Builder.CreateGEP(Dest, SrcSize),
                                  MemSet->getOperand(1), MemsetLen, Align);
   if (UseMemorySSA)
-    MSSA->replaceMemoryAccess(MemSet, M);
+    MSSA->replaceMemoryAccess(MSAcc, M);
 
   eraseInstruction(MemSet, true);
   return true;
@@ -1391,6 +1395,8 @@ bool MemCpyOptPass::processMemCpyMSSA(MemCpyInst *M) {
     return false;
   }
 
+  MemoryUseOrDef *MAcc = MSSA->getMemoryAccess(M);
+
   // If copying from a constant, try to turn the memcpy into a memset.
   if (GlobalVariable *GV = dyn_cast<GlobalVariable>(M->getSource()))
     if (GV->isConstant() && GV->hasDefinitiveInitializer())
@@ -1398,7 +1404,7 @@ bool MemCpyOptPass::processMemCpyMSSA(MemCpyInst *M) {
         IRBuilder<> Builder(M);
         auto *MemSet = Builder.CreateMemSet(
             M->getRawDest(), ByteVal, M->getLength(), M->getAlignment(), false);
-        MSSA->replaceMemoryAccess(M, MemSet);
+        MSSA->replaceMemoryAccess(MAcc, MemSet);
         eraseInstruction(M, true);
         ++NumCpyToSet;
         return true;
@@ -1406,8 +1412,7 @@ bool MemCpyOptPass::processMemCpyMSSA(MemCpyInst *M) {
 
   DEBUG(dbgs() << "get clobber on dest of " << *MSSA->getMemoryAccess(M)
                << "\n");
-  MemoryAccess *DestClob =
-      getCMA(MSSA, MSSA->getMemoryAccess(M), MemoryLocation::getForDest(M));
+  MemoryAccess *DestClob = getCMA(MSSA, MAcc, MemoryLocation::getForDest(M));
 
   // TODO: This can be made non-local if M post-doms MDep
   if (DestClob->getBlock() == M->getParent())
@@ -1422,7 +1427,6 @@ bool MemCpyOptPass::processMemCpyMSSA(MemCpyInst *M) {
     return false;
 
   DEBUG(dbgs() << "get clobber on src of " << *MSSA->getMemoryAccess(M) << "\n");
-  MemoryUseOrDef *MAcc = MSSA->getMemoryAccess(M);
   MemoryAccess *SrcClob = getCMA(MSSA, MAcc, MemoryLocation::getForSource(M));
   DEBUG(dbgs() << "just for fun, clobber of src is "
                << *MSSA->getWalker()->getClobberingMemoryAccess(
@@ -1532,14 +1536,15 @@ bool MemCpyOptPass::processByValArgument(CallSite CS, unsigned ArgNo) {
   uint64_t ByValSize = DL.getTypeAllocSize(ByValTy);
   MemoryLocation ByValLoc(ByValArg, ByValSize);
   MemCpyInst *MDep = nullptr;
+  MemoryUseOrDef *MDepAcc = nullptr;
+  MemoryUseOrDef *MUD =
+      UseMemorySSA ? MSSA->getMemoryAccess(CS.getInstruction()) : nullptr;
 
   if (UseMemorySSA) {
-    if (MemoryUseOrDef *MUD = MSSA->getMemoryAccess(CS.getInstruction()))
-      if (auto *ByValClob =
-              dyn_cast<MemoryUseOrDef>(getCMA(MSSA, MUD, ByValLoc)))
-        // TODO: Non-local: It's sufficient for MDep to dominate CS.
-        if (ByValClob->getBlock() == CS.getParent())
-          MDep = dyn_cast_or_null<MemCpyInst>(ByValClob->getMemoryInst());
+    if ((MDepAcc = dyn_cast<MemoryUseOrDef>(getCMA(MSSA, MUD, ByValLoc))))
+      // TODO: Non-local: It's sufficient for MDep to dominate CS.
+      if (MDepAcc->getBlock() == CS.getParent()) 
+        MDep = dyn_cast_or_null<MemCpyInst>(MDepAcc->getMemoryInst());
   } else {
     MemDepResult DepInfo = MD->getPointerDependencyFrom(
         ByValLoc, true, CS.getInstruction()->getIterator(),
@@ -1585,9 +1590,8 @@ bool MemCpyOptPass::processByValArgument(CallSite CS, unsigned ArgNo) {
   // NOTE: This is conservative, it will stop on any read from the source loc,
   // not just the defining memcpy.
   if (UseMemorySSA) {
-    MemoryUseOrDef *Dep = MSSA->getMemoryAccess(MDep);
-    if (getCMABetween(MemoryLocation::getForSource(MDep), Dep,
-                      MSSA->getMemoryAccess(CS.getInstruction()), MSSA) != Dep)
+    if (getCMABetween(MemoryLocation::getForSource(MDep), MDepAcc, MUD, MSSA) !=
+        MDepAcc)
       return false;
   } else {
     MemDepResult SourceDep = MD->getPointerDependencyFrom(
