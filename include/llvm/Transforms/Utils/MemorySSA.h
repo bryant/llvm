@@ -570,6 +570,16 @@ public:
                                           MemoryAccess *Definition,
                                           MemoryAccess *InsertPt);
 
+  void replaceMemoryAccess(MemoryUseOrDef *MUD, Instruction *I) {
+    ValueToMemoryAccess.erase(MUD->getMemoryInst());
+    MUD->MemoryInst = I;
+    ValueToMemoryAccess[I] = MUD;
+  }
+
+  void replaceMemoryAccess(Instruction *Old, Instruction *I) {
+    return replaceMemoryAccess(getMemoryAccess(Old), I);
+  }
+
   // \brief Splice \p What to just before \p Where.
   //
   // In order to be efficient, the following conditions must be met:
