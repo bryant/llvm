@@ -357,6 +357,7 @@ namespace {
         AU.addRequired<MemorySSAWrapperPass>();
         AU.addPreserved<MemorySSAWrapperPass>();
       } else {
+        AU.addRequired<MemorySSAWrapperPass>();
         AU.addRequired<MemoryDependenceWrapperPass>();
         AU.addPreserved<MemoryDependenceWrapperPass>();
       }
@@ -398,6 +399,7 @@ INITIALIZE_PASS_BEGIN(MemCpyOptLegacyPass, "memcpyopt", "MemCpy Optimization",
 INITIALIZE_PASS_DEPENDENCY(AssumptionCacheTracker)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(MemoryDependenceWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(MemorySSAWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(TargetLibraryInfoWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(GlobalsAAWrapperPass)
@@ -1678,6 +1680,7 @@ PreservedAnalyses MemCpyOptPass::run(Function &F, FunctionAnalysisManager &AM) {
   else
     PA.preserve<MemoryDependenceAnalysis>();
 
+  AM.getResult<MemorySSAAnalysis>(F).getMSSA();
   return PA;
 }
 
