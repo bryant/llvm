@@ -417,11 +417,12 @@ INITIALIZE_PASS_DEPENDENCY(GlobalsAAWrapperPass)
 INITIALIZE_PASS_END(MemCpyOptMemSSALegacyPass, "memcpyopt-mssa",
                     "MemCpy Optimization (Memory SSA)", false, false)
 
-void MemCpyOptPass::eraseInstruction(Instruction *I) {
+void MemCpyOptPass::eraseInstruction(Instruction *I, bool Replaced) {
   DEBUG(dbgs() << "Erasing instruction " << *I << "\n");
   if (UseMemorySSA) {
-    if (MemoryAccess *MA = MSSA->getMemoryAccess(I))
-      MSSA->removeMemoryAccess(MA);
+    if (!Replaced)
+      if (MemoryAccess *MA = MSSA->getMemoryAccess(I))
+        MSSA->removeMemoryAccess(MA);
   } else
     MD->removeInstruction(I);
   I->eraseFromParent();
@@ -754,7 +755,7 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
           DEBUG(dbgs() << "Promoting " << *LI << " to " << *SI
                        << " => " << *M << "\n");
 
-          eraseInstruction(SI);
+          eraseInstruction(SI, true);
           eraseInstruction(LI);
           ++NumMemCpyInstr;
 
@@ -850,7 +851,7 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
 
       DEBUG(dbgs() << "Promoting " << *SI << " to " << *M << "\n");
 
-      eraseInstruction(SI);
+      eraseInstruction(SI, true);
       NumMemSetInfer++;
 
       // Make sure we do not invalidate the iterator.
@@ -1147,7 +1148,7 @@ bool MemCpyOptPass::processMemCpyMemCpyDependence(MemCpyInst *M,
     MSSA->replaceMemoryAccess(M, New);
 
   // Remove the instruction we're replacing.
-  eraseInstruction(M);
+  eraseInstruction(M, true);
   ++NumMemCpyInstr;
   return true;
 }
@@ -1239,7 +1240,7 @@ bool MemCpyOptPass::processMemSetMemCpyDependence(MemCpyInst *MemCpy,
   if (UseMemorySSA)
     MSSA->replaceMemoryAccess(MemSet, M);
 
-  eraseInstruction(MemSet);
+  eraseInstruction(MemSet, true);
   return true;
 }
 
@@ -1280,7 +1281,7 @@ bool MemCpyOptPass::performMemCpyToMemSetOptzn(MemCpyInst *MemCpy,
   DEBUG(dbgs() << "performMemCpyToMemSetOptzn converted " << *MemCpy << " to " << *MemSetNew << "\n");
   if (UseMemorySSA)
     MSSA->replaceMemoryAccess(MemCpy, MemSetNew);
-  eraseInstruction(MemCpy);
+  eraseInstruction(MemCpy, true);
   ++NumCpyToSet;
   return true;
 }
@@ -1397,7 +1398,7 @@ bool MemCpyOptPass::processMemCpyMSSA(MemCpyInst *M) {
         auto *MemSet = Builder.CreateMemSet(
             M->getRawDest(), ByteVal, M->getLength(), M->getAlignment(), false);
         MSSA->replaceMemoryAccess(M, MemSet);
-        eraseInstruction(M);
+        eraseInstruction(M, true);
         ++NumCpyToSet;
         return true;
       }

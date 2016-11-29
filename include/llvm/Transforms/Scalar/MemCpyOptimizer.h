@@ -66,7 +66,7 @@ private:
   Instruction *tryMergingIntoMemset(Instruction *I, Value *StartPtr,
                                     Value *ByteVal);
 
-  void eraseInstruction(Instruction *);
+  void eraseInstruction(Instruction *, bool = false);
 
   bool iterateOnFunction(Function &F);
   bool iterateOnFunctionMSSA(Function &F);
