@@ -543,8 +543,7 @@ Instruction *MemCpyOptPass::tryMergingIntoMemset(Instruction *StartInst,
                                    Alignment);
 
     if (UseMemorySSA) {
-      replaceMemoryAccess(*MSSA, Range.StartPtrUser, AMemSet);
-      MSSA->removeMemoryAccess(MSSA->getMemoryAccess(Range.StartPtrUser));
+      MSSA->replaceMemoryAccess(Range.StartPtrUser, AMemSet);
     }
 
     DEBUG(dbgs() << "Replace stores:\n";
@@ -750,7 +749,7 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
                                      LI->getPointerOperand(), Size,
                                      Align, SI->isVolatile());
           if (UseMemorySSA)
-            replaceMemoryAccess(*MSSA, SI, M);
+            MSSA->replaceMemoryAccess(SI, M);
 
           DEBUG(dbgs() << "Promoting " << *LI << " to " << *SI
                        << " => " << *M << "\n");
@@ -847,7 +846,7 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
       auto *M = Builder.CreateMemSet(SI->getPointerOperand(), ByteVal,
                                      Size, Align, SI->isVolatile());
       if (UseMemorySSA)
-        replaceMemoryAccess(*MSSA, SI, M);
+        MSSA->replaceMemoryAccess(SI, M);
 
       DEBUG(dbgs() << "Promoting " << *SI << " to " << *M << "\n");
 
@@ -1145,7 +1144,7 @@ bool MemCpyOptPass::processMemCpyMemCpyDependence(MemCpyInst *M,
           : Builder.CreateMemCpy(M->getRawDest(), MDep->getRawSource(),
                                  M->getLength(), Align, M->isVolatile());
   if (UseMemorySSA)
-    replaceMemoryAccess(*MSSA, M, New);
+    MSSA->replaceMemoryAccess(M, New);
 
   // Remove the instruction we're replacing.
   eraseInstruction(M);
@@ -1238,7 +1237,7 @@ bool MemCpyOptPass::processMemSetMemCpyDependence(MemCpyInst *MemCpy,
   auto *M = Builder.CreateMemSet(Builder.CreateGEP(Dest, SrcSize),
                                  MemSet->getOperand(1), MemsetLen, Align);
   if (UseMemorySSA)
-    replaceMemoryAccess(*MSSA, MemSet, M);
+    MSSA->replaceMemoryAccess(MemSet, M);
 
   eraseInstruction(MemSet);
   return true;
@@ -1280,7 +1279,7 @@ bool MemCpyOptPass::performMemCpyToMemSetOptzn(MemCpyInst *MemCpy,
                            CopySize, MemCpy->getAlignment());
   DEBUG(dbgs() << "performMemCpyToMemSetOptzn converted " << *MemCpy << " to " << *MemSetNew << "\n");
   if (UseMemorySSA)
-    replaceMemoryAccess(*MSSA, MemCpy, MemSetNew);
+    MSSA->replaceMemoryAccess(MemCpy, MemSetNew);
   eraseInstruction(MemCpy);
   ++NumCpyToSet;
   return true;
@@ -1397,7 +1396,7 @@ bool MemCpyOptPass::processMemCpyMSSA(MemCpyInst *M) {
         IRBuilder<> Builder(M);
         auto *MemSet = Builder.CreateMemSet(
             M->getRawDest(), ByteVal, M->getLength(), M->getAlignment(), false);
-        replaceMemoryAccess(*MSSA, M, MemSet);
+        MSSA->replaceMemoryAccess(M, MemSet);
         eraseInstruction(M);
         ++NumCpyToSet;
         return true;
