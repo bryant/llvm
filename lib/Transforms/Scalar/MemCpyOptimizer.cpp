@@ -1468,18 +1468,19 @@ bool MemCpyOptPass::processMemCpyMSSA(MemCpyInst *M) {
     // Both MUD and and lifetime_start (if one exists for M's source) dominate
     // MAcc. The only way for lifetime_start to imply undef contents is if it
     // resides between MUD and MAcc.
-    for (MemoryUseOrDef *L =
-             dyn_cast_or_null<MemoryUseOrDef>(MAcc->getDefiningAccess());
-         L && L != MUD;
-         L = dyn_cast_or_null<MemoryUseOrDef>(L->getDefiningAccess())) {
-      if (auto *II = dyn_cast_or_null<IntrinsicInst>(L->getMemoryInst())) {
-        if (II->getIntrinsicID() == Intrinsic::lifetime_start &&
-            II->getArgOperand(1)->stripPointerCasts() == M->getSource()) {
-          if (ConstantInt *LTSize =
-                  dyn_cast<ConstantInt>(II->getArgOperand(0))) {
-            hasUndefContents |=
-                LTSize->getZExtValue() >= CopySize->getZExtValue();
-            break;
+    if (MUD->getBlock() == MAcc->getBlock()) {
+      for (auto *L = dyn_cast<MemoryUseOrDef>(MAcc->getDefiningAccess());
+           L && L != MUD;
+           L = dyn_cast<MemoryUseOrDef>(L->getDefiningAccess())) {
+        if (auto *II = dyn_cast_or_null<IntrinsicInst>(L->getMemoryInst())) {
+          if (II->getIntrinsicID() == Intrinsic::lifetime_start &&
+              II->getArgOperand(1)->stripPointerCasts() == M->getSource()) {
+            if (ConstantInt *LTSize =
+                    dyn_cast<ConstantInt>(II->getArgOperand(0))) {
+              hasUndefContents |=
+                  LTSize->getZExtValue() >= CopySize->getZExtValue();
+              break;
+            }
           }
         }
       }
