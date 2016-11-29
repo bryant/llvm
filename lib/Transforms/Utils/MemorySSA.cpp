@@ -1734,7 +1734,6 @@ static MemoryAccess *onlySingleValue(MemoryPhi *MP) {
 void MemorySSA::removeFromLookups(MemoryAccess *MA) {
   assert(MA->use_empty() &&
          "Trying to remove memory access that still has uses");
-  BlockNumbering.erase(MA);
   if (MemoryUseOrDef *MUD = dyn_cast<MemoryUseOrDef>(MA))
     MUD->setDefiningAccess(nullptr);
   // Invalidate our walker's cache if necessary
