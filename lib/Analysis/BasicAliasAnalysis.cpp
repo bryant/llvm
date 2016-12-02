@@ -777,8 +777,8 @@ ModRefInfo BasicAAResult::getModRefInfo(ImmutableCallSite CS,
   }
 
   // The semantics of memcpy intrinsics forbid overlap between their respective
-  // operands, i.e., source and destination memory locations must no-alias. If
-  // Loc must-aliases either one of these two locations then it necessarily
+  // operands, i.e., source and destination of any given memcpy must no-alias.
+  // If Loc must-aliases either one of these two locations, then it necessarily
   // no-aliases the other.
   if (auto *Inst = dyn_cast<MemCpyInst>(CS.getInstruction())) {
     AliasResult SrcAA, DestAA;
