@@ -625,8 +625,11 @@ endif()
 #  - We generate the dependencies for the CMake fragment, so that we will
 #    automatically reconfigure outselves.
 
+set(LLVMBUILDTOOL "${LLVM_MAIN_SRC_DIR}/utils/llvm-build/llvm-build")
 set(LLVMCONFIGLIBRARYDEPENDENCIESINC
   "${LLVM_BINARY_DIR}/tools/llvm-config/LibraryDependencies.inc")
+set(LLVMBUILDCMAKEFRAG
+  "${LLVM_BINARY_DIR}/LLVMBuild.cmake")
 
 # Create the list of optional components that are enabled
 if (LLVM_USE_INTEL_JITEVENTS)
@@ -635,6 +638,36 @@ endif (LLVM_USE_INTEL_JITEVENTS)
 if (LLVM_USE_OPROFILE)
   set(LLVMOPTIONALCOMPONENTS ${LLVMOPTIONALCOMPONENTS} OProfileJIT)
 endif (LLVM_USE_OPROFILE)
+
+message(STATUS "Constructing LLVMBuild project information")
+execute_process(
+  COMMAND ${PYTHON_EXECUTABLE} ${LLVMBUILDTOOL}
+            --native-target "${LLVM_NATIVE_ARCH}"
+            --enable-targets "${LLVM_TARGETS_TO_BUILD}"
+            --enable-optional-components "${LLVMOPTIONALCOMPONENTS}"
+            --write-library-table ${LLVMCONFIGLIBRARYDEPENDENCIESINC}
+            --write-cmake-fragment ${LLVMBUILDCMAKEFRAG}
+            OUTPUT_VARIABLE LLVMBUILDOUTPUT
+            ERROR_VARIABLE LLVMBUILDERRORS
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_STRIP_TRAILING_WHITESPACE
+  RESULT_VARIABLE LLVMBUILDRESULT)
+
+# On Win32, CMake doesn't properly handle piping the default output/error
+# streams into the GUI console. So, we explicitly catch and report them.
+if( NOT "${LLVMBUILDOUTPUT}" STREQUAL "")
+  message(STATUS "llvm-build output: ${LLVMBUILDOUTPUT}")
+endif()
+if( NOT "${LLVMBUILDRESULT}" STREQUAL "0" )
+  message(FATAL_ERROR
+    "Unexpected failure executing llvm-build: ${LLVMBUILDERRORS}")
+endif()
+
+# Include the generated CMake fragment. This will define properties from the
+# LLVMBuild files in a format which is easy to consume from CMake, and will add
+# the dependencies so that CMake will reconfigure properly when the LLVMBuild
+# files change.
+include(${LLVMBUILDCMAKEFRAG})
 
 ######
 
