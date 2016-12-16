@@ -1,3 +1,6 @@
+if(PPP)
+  set(LLVM_LINK_COMPONENTS Analysis CodeGen Core DebugInfoCodeView DebugInfoMSF MC MCParser Support Target TransformUtils)
+endif(PPP)
 add_llvm_library(LLVMAsmPrinter
   AddressPool.cpp
   ARMException.cpp

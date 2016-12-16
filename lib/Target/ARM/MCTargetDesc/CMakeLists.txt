@@ -1,3 +1,6 @@
+if(PPP)
+  set(LLVM_LINK_COMPONENTS ARMAsmPrinter ARMInfo MC MCDisassembler Support)
+endif(PPP)
 add_llvm_library(LLVMARMDesc
   ARMAsmBackend.cpp
   ARMELFObjectWriter.cpp

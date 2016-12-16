@@ -1,3 +1,6 @@
+if(PPP)
+  set(LLVM_LINK_COMPONENTS MC Object Support)
+endif(PPP)
 add_llvm_library(LLVMRuntimeDyld
   JITSymbol.cpp
   RTDyldMemoryManager.cpp

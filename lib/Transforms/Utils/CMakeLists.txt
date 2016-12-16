@@ -1,3 +1,6 @@
+if(PPP)
+  set(LLVM_LINK_COMPONENTS Analysis Core Support)
+endif(PPP)
 add_llvm_library(LLVMTransformUtils
   ASanStackFrameLayout.cpp
   AddDiscriminators.cpp

@@ -1,5 +1,8 @@
 
 
+if(PPP)
+  set(LLVM_LINK_COMPONENTS Core MC Object RuntimeDyld Support Target)
+endif(PPP)
 add_llvm_library(LLVMExecutionEngine
   ExecutionEngine.cpp
   ExecutionEngineBindings.cpp

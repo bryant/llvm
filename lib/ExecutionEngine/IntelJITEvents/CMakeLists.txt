@@ -7,6 +7,9 @@ endif()
 set(LLVM_INTEL_JIT_LIBS ${PTHREAD_LIB} ${LLVM_INTEL_JIT_LIBS})
 
 
+if(PPP)
+  set(LLVM_LINK_COMPONENTS CodeGen Core DebugInfoDWARF Support Object ExecutionEngine)
+endif(PPP)
 add_llvm_library(LLVMIntelJITEvents
   IntelJITEventListener.cpp
   jitprofiling.c

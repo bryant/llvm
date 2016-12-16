@@ -1,3 +1,6 @@
+if(PPP)
+  set(LLVM_LINK_COMPONENTS Analysis CodeGen Core IPO InstCombine Scalar Support TransformUtils Vectorize Instrumentation)
+endif(PPP)
 add_llvm_library(LLVMPasses
   PassBuilder.cpp
 

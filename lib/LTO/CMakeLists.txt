@@ -47,6 +47,9 @@ else()
 endif()
 
 
+if(PPP)
+  set(LLVM_LINK_COMPONENTS required_libraries =)
+endif(PPP)
 add_llvm_library(LLVMLTO
   Caching.cpp
   LTO.cpp

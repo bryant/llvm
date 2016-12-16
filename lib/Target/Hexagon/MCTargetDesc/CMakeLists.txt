@@ -1,3 +1,6 @@
+if(PPP)
+  set(LLVM_LINK_COMPONENTS HexagonInfo MC Support)
+endif(PPP)
 add_llvm_library(LLVMHexagonDesc
   HexagonAsmBackend.cpp
   HexagonELFObjectWriter.cpp

@@ -1,3 +1,6 @@
+if(PPP)
+  set(LLVM_LINK_COMPONENTS MC AVRAsmPrinter AVRInfo Support)
+endif(PPP)
 add_llvm_library(LLVMAVRDesc
   AVRAsmBackend.cpp
   AVRELFObjectWriter.cpp

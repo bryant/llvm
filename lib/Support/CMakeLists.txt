@@ -26,6 +26,9 @@ elseif( CMAKE_HOST_UNIX )
   endif()
 endif( MSVC OR MINGW )
 
+if(PPP)
+  set(LLVM_LINK_COMPONENTS Demangle)
+endif(PPP)
 add_llvm_library(LLVMSupport
   APFloat.cpp
   APInt.cpp

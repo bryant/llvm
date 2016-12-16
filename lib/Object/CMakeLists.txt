@@ -1,3 +1,6 @@
+if(PPP)
+  set(LLVM_LINK_COMPONENTS BitReader Core MC MCParser Support)
+endif(PPP)
 add_llvm_library(LLVMObject
   Archive.cpp
   ArchiveWriter.cpp

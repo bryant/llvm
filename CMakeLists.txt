@@ -611,7 +611,7 @@ if( ${PYTHON_VERSION_STRING} VERSION_LESS 2.7 )
   message(FATAL_ERROR "Python 2.7 or newer is required")
 endif()
 
-if(PPP)
+if(NOT PPP)
     message(STATUS "using the old llvmbuild system.")
 ######
 # LLVMBuild Integration
@@ -670,7 +670,7 @@ endif()
 # the dependencies so that CMake will reconfigure properly when the LLVMBuild
 # files change.
 include(${LLVMBUILDCMAKEFRAG})
-endif(PPP)
+endif(NOT PPP)
 
 ######
 
