@@ -916,6 +916,10 @@ if (LLVM_INCLUDE_DOCS)
   add_subdirectory(docs)
 endif()
 
+include(LLVMBuild)
+get_property(llvm_libz GLOBAL PROPERTY LLVM_LIBS)
+validate_component_deps(llvm_libz)
+
 add_subdirectory(cmake/modules)
 
 if (NOT LLVM_INSTALL_TOOLCHAIN_ONLY)
