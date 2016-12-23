@@ -12,6 +12,9 @@ tablegen(LLVM PPCGenCallingConv.inc -gen-callingconv)
 tablegen(LLVM PPCGenSubtargetInfo.inc -gen-subtarget)
 add_public_tablegen_target(PowerPCCommonTableGen)
 
+if(PPP)
+  set(LLVM_LINK_COMPONENTS Analysis AsmPrinter CodeGen Core MC PowerPCAsmPrinter PowerPCDesc PowerPCInfo ScalarOpts SelectionDAG Support Target TransformUtils)
+endif(PPP)
 add_llvm_target(PowerPCCodeGen
   PPCBoolRetToInt.cpp
   PPCAsmPrinter.cpp

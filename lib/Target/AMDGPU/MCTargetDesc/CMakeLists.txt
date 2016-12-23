@@ -1,6 +1,6 @@
 
 if(PPP)
-  set(LLVM_LINK_COMPONENTS MC AMDGPUAsmPrinter AMDGPUInfo AMDGPUUtils Support)
+  set(LLVM_LINK_COMPONENTS Core MC AMDGPUAsmPrinter AMDGPUInfo AMDGPUUtils Support)
 endif(PPP)
 add_llvm_library(LLVMAMDGPUDesc
   AMDGPUAsmBackend.cpp

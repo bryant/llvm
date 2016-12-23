@@ -35,7 +35,9 @@ else()
   set(LLVM_OPTIONAL_SOURCES LLVMGlobalISel ${GLOBAL_ISEL_FILES})
 endif()
 
-
+if(PPP)
+  set(LLVM_LINK_COMPONENTS AArch64AsmPrinter AArch64Desc AArch64Info AArch64Utils Analysis AsmPrinter CodeGen Core MC ScalarOpts SelectionDAG Support Target GlobalISel)
+endif(PPP)
 add_llvm_target(AArch64CodeGen
   AArch64A57FPLoadBalancing.cpp
   AArch64AddressTypePromotion.cpp

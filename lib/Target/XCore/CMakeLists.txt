@@ -9,6 +9,9 @@ tablegen(LLVM XCoreGenCallingConv.inc -gen-callingconv)
 tablegen(LLVM XCoreGenSubtargetInfo.inc -gen-subtarget)
 add_public_tablegen_target(XCoreCommonTableGen)
 
+if(PPP)
+  set(LLVM_LINK_COMPONENTS Analysis AsmPrinter CodeGen Core MC SelectionDAG Support Target TransformUtils XCoreAsmPrinter XCoreDesc XCoreInfo)
+endif(PPP)
 add_llvm_target(XCoreCodeGen
   XCoreAsmPrinter.cpp
   XCoreFrameLowering.cpp

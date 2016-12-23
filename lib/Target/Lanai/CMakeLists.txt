@@ -11,6 +11,9 @@ tablegen(LLVM LanaiGenRegisterInfo.inc -gen-register-info)
 tablegen(LLVM LanaiGenSubtargetInfo.inc -gen-subtarget)
 add_public_tablegen_target(LanaiCommonTableGen)
 
+if(PPP)
+  set(LLVM_LINK_COMPONENTS Analysis AsmPrinter CodeGen Core LanaiAsmParser LanaiDesc LanaiInfo LanaiInstPrinter MC SelectionDAG Support Target TransformUtils)
+endif(PPP)
 add_llvm_target(LanaiCodeGen
   LanaiAsmPrinter.cpp
   LanaiDelaySlotFiller.cpp

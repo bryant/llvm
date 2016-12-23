@@ -11,6 +11,9 @@ tablegen(LLVM SparcGenSubtargetInfo.inc -gen-subtarget)
 tablegen(LLVM SparcGenCallingConv.inc -gen-callingconv)
 add_public_tablegen_target(SparcCommonTableGen)
 
+if(PPP)
+  set(LLVM_LINK_COMPONENTS AsmPrinter CodeGen Core MC SelectionDAG SparcAsmPrinter SparcDesc SparcInfo Support Target)
+endif(PPP)
 add_llvm_target(SparcCodeGen
   DelaySlotFiller.cpp
   LeonPasses.cpp

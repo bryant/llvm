@@ -9,6 +9,9 @@ tablegen(LLVM WebAssemblyGenRegisterInfo.inc -gen-register-info)
 tablegen(LLVM WebAssemblyGenSubtargetInfo.inc -gen-subtarget)
 add_public_tablegen_target(WebAssemblyCommonTableGen)
 
+if(PPP)
+  set(LLVM_LINK_COMPONENTS Analysis AsmPrinter CodeGen Core MC ScalarOpts SelectionDAG Support Target TransformUtils WebAssemblyAsmPrinter WebAssemblyDesc WebAssemblyInfo)
+endif(PPP)
 add_llvm_target(WebAssemblyCodeGen
   WebAssemblyArgumentMove.cpp
   WebAssemblyAsmPrinter.cpp

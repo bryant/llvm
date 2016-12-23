@@ -1,5 +1,5 @@
 if(PPP)
-  set(LLVM_LINK_COMPONENTS Core Support ProfileData)
+  set(LLVM_LINK_COMPONENTS Core Support ProfileData Object)
 endif(PPP)
 add_llvm_library(LLVMAnalysis
   AliasAnalysis.cpp

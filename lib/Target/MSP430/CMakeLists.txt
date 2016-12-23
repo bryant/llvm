@@ -8,6 +8,9 @@ tablegen(LLVM MSP430GenCallingConv.inc -gen-callingconv)
 tablegen(LLVM MSP430GenSubtargetInfo.inc -gen-subtarget)
 add_public_tablegen_target(MSP430CommonTableGen)
 
+if(PPP)
+  set(LLVM_LINK_COMPONENTS AsmPrinter CodeGen Core MC MSP430AsmPrinter MSP430Desc MSP430Info SelectionDAG Support Target)
+endif(PPP)
 add_llvm_target(MSP430CodeGen
   MSP430BranchSelector.cpp
   MSP430ISelDAGToDAG.cpp

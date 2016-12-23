@@ -13,6 +13,9 @@ tablegen(LLVM MipsGenAsmMatcher.inc -gen-asm-matcher)
 tablegen(LLVM MipsGenMCPseudoLowering.inc -gen-pseudo-lowering)
 add_public_tablegen_target(MipsCommonTableGen)
 
+if(PPP)
+  set(LLVM_LINK_COMPONENTS Analysis AsmPrinter CodeGen Core MC MipsAsmPrinter MipsDesc MipsInfo SelectionDAG Support Target)
+endif(PPP)
 add_llvm_target(MipsCodeGen
   Mips16FrameLowering.cpp
   Mips16HardFloat.cpp

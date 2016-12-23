@@ -28,6 +28,9 @@ else()
 endif()
 
 
+if(PPP)
+  set(LLVM_LINK_COMPONENTS Analysis AsmPrinter CodeGen Core IPO MC AMDGPUAsmPrinter AMDGPUDesc AMDGPUInfo AMDGPUUtils ScalarOpts SelectionDAG Support Target TransformUtils Vectorize)
+endif(PPP)
 add_llvm_target(AMDGPUCodeGen
   AMDILCFGStructurizer.cpp
   AMDGPUAlwaysInlinePass.cpp

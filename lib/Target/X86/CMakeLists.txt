@@ -59,6 +59,9 @@ set(sources
   ${GLOBAL_ISEL_BUILD_FILES}
   )
 
+if(PPP)
+  set(LLVM_LINK_COMPONENTS Analysis AsmPrinter CodeGen Core MC SelectionDAG Support Target X86AsmPrinter X86Desc X86Info X86Utils GlobalISel)
+endif(PPP)
 add_llvm_target(X86CodeGen ${sources})
 
 add_subdirectory(AsmParser)
