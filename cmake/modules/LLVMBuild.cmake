@@ -5,7 +5,7 @@
 # utils/llvm-build.
 function(validate_component_deps components)
   foreach(component ${components})
-    get_target_property(cdeps ${component} INTERFACE_LINK_LIBRARIES)
+    get_target_property(cdeps ${component} LINK_LIBRARIES)
     list(GET cdeps 0 first_dep)
     if(NOT ${first_dep} STREQUAL "cdeps-NOTFOUND")
       foreach(cdep ${cdeps})
