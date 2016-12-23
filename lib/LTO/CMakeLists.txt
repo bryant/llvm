@@ -48,7 +48,7 @@ endif()
 
 
 if(PPP)
-  set(LLVM_LINK_COMPONENTS required_libraries =)
+  set(LLVM_LINK_COMPONENTS Analysis BitReader BitWriter CodeGen Core IPO InstCombine Linker MC ObjCARCOpts Object Passes ScalarOpts Support Target TransformUtils)
 endif(PPP)
 add_llvm_library(LLVMLTO
   Caching.cpp
