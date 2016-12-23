@@ -1,5 +1,5 @@
 if(PPP)
-  set(LLVM_LINK_COMPONENTS Analysis BitReader BitWriter Core Instrumentation MC ProfileData Scalar Support Target TransformUtils)
+  set(LLVM_LINK_COMPONENTS Analysis BitReader BitWriter Core Instrumentation MC ProfileData ScalarOpts Support Target TransformUtils)
 endif(PPP)
 add_llvm_library(LLVMCodeGen
   AggressiveAntiDepBreaker.cpp

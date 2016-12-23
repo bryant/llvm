@@ -1,5 +1,5 @@
 if(PPP)
-  set(LLVM_LINK_COMPONENTS Analysis Core InstCombine IRReader Linker Object ProfileData Scalar Support TransformUtils Vectorize Instrumentation)
+  set(LLVM_LINK_COMPONENTS Analysis Core InstCombine IRReader Linker Object ProfileData ScalarOpts Support TransformUtils Vectorize Instrumentation)
 endif(PPP)
 add_llvm_library(LLVMipo
   AlwaysInliner.cpp

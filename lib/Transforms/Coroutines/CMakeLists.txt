@@ -1,5 +1,5 @@
 if(PPP)
-  set(LLVM_LINK_COMPONENTS Analysis Core IPO Scalar Support TransformUtils)
+  set(LLVM_LINK_COMPONENTS Analysis Core IPO ScalarOpts Support TransformUtils)
 endif(PPP)
 add_llvm_library(LLVMCoroutines
   Coroutines.cpp
