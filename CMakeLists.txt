@@ -916,9 +916,12 @@ if (LLVM_INCLUDE_DOCS)
   add_subdirectory(docs)
 endif()
 
-include(LLVMBuild)
-get_property(llvm_libz GLOBAL PROPERTY LLVM_LIBS)
-validate_component_deps(llvm_libz)
+if(PPP)
+  include(LLVMBuild)
+  get_property(llvm_libz GLOBAL PROPERTY LLVM_LIBS)
+  validate_component_deps("${llvm_libz}")
+  gen_libdep_inc("${llvm_libz}" "${LLVM_ALL_TARGETS}" "")
+endif()
 
 add_subdirectory(cmake/modules)
 
