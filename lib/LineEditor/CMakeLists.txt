@@ -2,9 +2,9 @@ if(HAVE_LIBEDIT)
   set(link_libs edit)
 endif()
 
-if(PPP)
+if(WITHOUT_LLVMBUILD)
   set(LLVM_LINK_COMPONENTS Support)
-endif(PPP)
+endif(WITHOUT_LLVMBUILD)
 add_llvm_library(LLVMLineEditor
   LineEditor.cpp
 

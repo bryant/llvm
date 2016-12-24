@@ -28,9 +28,9 @@ else()
   set(LLVM_OPTIONAL_SOURCES LLVMGlobalISel ${GLOBAL_ISEL_FILES})
 endif()
 
-if(PPP)
+if(WITHOUT_LLVMBUILD)
   set(LLVM_LINK_COMPONENTS ARMAsmPrinter ARMDesc ARMInfo Analysis AsmPrinter CodeGen Core MC ScalarOpts SelectionDAG Support Target GlobalISel)
-endif(PPP)
+endif(WITHOUT_LLVMBUILD)
 add_llvm_target(ARMCodeGen
   A15SDOptimizer.cpp
   ARMAsmPrinter.cpp

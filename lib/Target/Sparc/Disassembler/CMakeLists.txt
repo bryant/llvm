@@ -1,6 +1,6 @@
-if(PPP)
+if(WITHOUT_LLVMBUILD)
   set(LLVM_LINK_COMPONENTS MCDisassembler SparcInfo Support)
-endif(PPP)
+endif(WITHOUT_LLVMBUILD)
 add_llvm_library(LLVMSparcDisassembler
   SparcDisassembler.cpp
   )

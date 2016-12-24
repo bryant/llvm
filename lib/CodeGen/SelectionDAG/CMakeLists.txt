@@ -1,6 +1,6 @@
-if(PPP)
+if(WITHOUT_LLVMBUILD)
   set(LLVM_LINK_COMPONENTS Analysis CodeGen Core MC Support Target TransformUtils)
-endif(PPP)
+endif(WITHOUT_LLVMBUILD)
 add_llvm_library(LLVMSelectionDAG
   DAGCombiner.cpp
   FastISel.cpp

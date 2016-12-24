@@ -11,9 +11,9 @@ tablegen(LLVM HexagonGenRegisterInfo.inc -gen-register-info)
 tablegen(LLVM HexagonGenSubtargetInfo.inc -gen-subtarget)
 add_public_tablegen_target(HexagonCommonTableGen)
 
-if(PPP)
+if(WITHOUT_LLVMBUILD)
   set(LLVM_LINK_COMPONENTS Analysis AsmPrinter CodeGen Core HexagonAsmParser HexagonDesc HexagonInfo MC ScalarOpts SelectionDAG Support Target TransformUtils)
-endif(PPP)
+endif(WITHOUT_LLVMBUILD)
 add_llvm_target(HexagonCodeGen
   BitTracker.cpp
   HexagonAsmPrinter.cpp

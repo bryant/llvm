@@ -1,6 +1,6 @@
-if(PPP)
+if(WITHOUT_LLVMBUILD)
   set(LLVM_LINK_COMPONENTS Analysis Core Support)
-endif(PPP)
+endif(WITHOUT_LLVMBUILD)
 add_llvm_library(LLVMBitWriter
   BitWriter.cpp
   BitcodeWriter.cpp

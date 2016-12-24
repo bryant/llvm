@@ -16,9 +16,9 @@ tablegen(LLVM AVRGenRegisterInfo.inc -gen-register-info)
 tablegen(LLVM AVRGenSubtargetInfo.inc -gen-subtarget)
 add_public_tablegen_target(AVRCommonTableGen)
 
-if(PPP)
+if(WITHOUT_LLVMBUILD)
   set(LLVM_LINK_COMPONENTS AsmPrinter CodeGen Core MC AVRAsmPrinter AVRDesc AVRInfo SelectionDAG Support Target)
-endif(PPP)
+endif(WITHOUT_LLVMBUILD)
 add_llvm_target(AVRCodeGen
   AVRAsmPrinter.cpp
   AVRExpandPseudoInsts.cpp

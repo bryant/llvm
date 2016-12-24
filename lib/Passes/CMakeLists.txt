@@ -1,6 +1,6 @@
-if(PPP)
+if(WITHOUT_LLVMBUILD)
   set(LLVM_LINK_COMPONENTS Analysis CodeGen Core IPO InstCombine ScalarOpts Support TransformUtils Vectorize Instrumentation)
-endif(PPP)
+endif(WITHOUT_LLVMBUILD)
 add_llvm_library(LLVMPasses
   PassBuilder.cpp
 

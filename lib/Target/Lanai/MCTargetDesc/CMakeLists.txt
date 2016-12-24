@@ -1,6 +1,6 @@
-if(PPP)
+if(WITHOUT_LLVMBUILD)
   set(LLVM_LINK_COMPONENTS LanaiInfo LanaiInstPrinter MC MCDisassembler Support)
-endif(PPP)
+endif(WITHOUT_LLVMBUILD)
 add_llvm_library(LLVMLanaiDesc
   LanaiAsmBackend.cpp
   LanaiELFObjectWriter.cpp

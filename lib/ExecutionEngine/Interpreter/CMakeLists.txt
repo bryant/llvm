@@ -6,9 +6,9 @@ if( FFI_INCLUDE_PATH )
   include_directories( ${FFI_INCLUDE_PATH} )
 endif()
 
-if(PPP)
+if(WITHOUT_LLVMBUILD)
   set(LLVM_LINK_COMPONENTS CodeGen Core ExecutionEngine Support)
-endif(PPP)
+endif(WITHOUT_LLVMBUILD)
 add_llvm_library(LLVMInterpreter
   Execution.cpp
   ExternalFunctions.cpp

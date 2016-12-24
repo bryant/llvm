@@ -1,6 +1,6 @@
-if(PPP)
+if(WITHOUT_LLVMBUILD)
   set(LLVM_LINK_COMPONENTS Support DebugInfoMSF)
-endif(PPP)
+endif(WITHOUT_LLVMBUILD)
 add_llvm_library(LLVMDebugInfoCodeView
   CodeViewError.cpp
   CodeViewRecordIO.cpp

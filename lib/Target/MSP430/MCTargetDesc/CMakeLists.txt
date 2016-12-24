@@ -1,6 +1,6 @@
-if(PPP)
+if(WITHOUT_LLVMBUILD)
   set(LLVM_LINK_COMPONENTS MC MSP430AsmPrinter MSP430Info Support)
-endif(PPP)
+endif(WITHOUT_LLVMBUILD)
 add_llvm_library(LLVMMSP430Desc
   MSP430MCTargetDesc.cpp
   MSP430MCAsmInfo.cpp

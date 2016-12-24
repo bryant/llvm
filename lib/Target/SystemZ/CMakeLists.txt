@@ -11,9 +11,9 @@ tablegen(LLVM SystemZGenRegisterInfo.inc -gen-register-info)
 tablegen(LLVM SystemZGenSubtargetInfo.inc -gen-subtarget)
 add_public_tablegen_target(SystemZCommonTableGen)
 
-if(PPP)
+if(WITHOUT_LLVMBUILD)
   set(LLVM_LINK_COMPONENTS Analysis AsmPrinter CodeGen Core MC SelectionDAG Support SystemZAsmPrinter SystemZDesc SystemZInfo Target)
-endif(PPP)
+endif(WITHOUT_LLVMBUILD)
 add_llvm_target(SystemZCodeGen
   SystemZAsmPrinter.cpp
   SystemZCallingConv.cpp

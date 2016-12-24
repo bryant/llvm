@@ -1,6 +1,6 @@
-if(PPP)
+if(WITHOUT_LLVMBUILD)
   set(LLVM_LINK_COMPONENTS MC MCDisassembler Object Support X86AsmPrinter X86Info)
-endif(PPP)
+endif(WITHOUT_LLVMBUILD)
 add_llvm_library(LLVMX86Desc
   X86AsmBackend.cpp
   X86MCTargetDesc.cpp

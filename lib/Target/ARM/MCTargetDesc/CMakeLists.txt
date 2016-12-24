@@ -1,6 +1,6 @@
-if(PPP)
+if(WITHOUT_LLVMBUILD)
   set(LLVM_LINK_COMPONENTS ARMAsmPrinter ARMInfo MC MCDisassembler Support)
-endif(PPP)
+endif(WITHOUT_LLVMBUILD)
 add_llvm_library(LLVMARMDesc
   ARMAsmBackend.cpp
   ARMELFObjectWriter.cpp
