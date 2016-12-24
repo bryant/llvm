@@ -418,10 +418,10 @@ subdirectories = %s
                 is_installed_as_cstr = 'true'
             else:
                 is_installed_as_cstr = 'false'
-            f.write('  { "%s", %s, %s, { %s } },\n' % (
+            f.write('{"%s", %s, %s, {%s}},\n' % (
                 name, library_name_as_cstr, is_installed_as_cstr,
                 ', '.join('"%s"' % dep
-                          for dep in required_names)))
+                          for dep in sorted(required_names))))
         f.write('};\n')
         f.close()
 
