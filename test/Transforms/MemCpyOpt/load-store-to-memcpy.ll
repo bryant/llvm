@@ -3,7 +3,7 @@
 
 %T = type { i8, i32 }
 
-; memcpy(%d, %a) hould not be generated since store2 may-aliases load %a.
+; memcpy(%d, %a) should not be generated since store2 may-aliases load %a.
 define void @f(%T* %a, %T* %b, %T* %c, %T* %d) {
 ; CHECK-LABEL: @f(
 ; CHECK-NEXT:    [[VAL:%.*]] = load %T, %T* %a, !alias.scope !0
