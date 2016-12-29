@@ -1,3 +1,4 @@
+memcpy-memcpy opts need to ensure that there are no throws in between.
 //===- MemCpyOptimizer.cpp - Optimize use of memcpy and friends -----------===//
 //
 //                     The LLVM Compiler Infrastructure
