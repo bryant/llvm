@@ -1345,6 +1345,29 @@ localDeadStoresMSSA(Instruction &Earlier, MemoryDef &EarlierDef,
   return std::make_pair(false, Walk);
 }
 
+static bool isNoopStoreMSSA(Instruction &I, MemorySSA &MSSA,
+                            const TargetLibraryInfo &TLI) {
+  if (auto *SI = dyn_cast<StoreInst>(&I)) {
+    MemoryAccess *Clob = MSSA.getWalker()->getClobberingMemoryAccess(SI);
+    if (auto *LI = dyn_cast<LoadInst>(SI->getValueOperand())) {
+      if (MSSA.getMemoryAccess(LI)->getDefiningAccess() == Clob)
+        // Counter-example: load and store from different globals could both be
+        // defined by LOE.
+        return !MSSA.isLiveOnEntryDef(Clob) ||
+               LI->getPointerOperand() == SI->getPointerOperand();
+    } else if (auto *MUD = dyn_cast<MemoryUseOrDef>(Clob)) {
+      if (!MSSA.isLiveOnEntryDef(MUD)) {
+        Constant *C;
+        return (C = dyn_cast<Constant>(SI->getValueOperand())) &&
+               C->isNullValue() && isCallocLikeFn(MUD->getMemoryInst(), &TLI);
+      }
+    }
+  }
+  // TODO: Can also handle memmove(a <- a) and memcpy(a <- a), though the latter
+  // is technically UB.
+  return false;
+}
+
 static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
                                     MemorySSA &MSSA,
                                     const PostDominatorTree &PDT,
@@ -1361,15 +1384,19 @@ static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
   bool Changed = false;
   for (Instruction *I : Stores) {
     DEBUG(dbgs() << "inspecting " << *I << "\n");
-    // TODO: no-op stores
-    // if (eliminateNoopMSSA(I))
-    // continue;
+    auto &EarlierDef = *cast<MemoryDef>(MSSA.getMemoryAccess(I));
+
+    if (isNoopStoreMSSA(*I, MSSA, TLI)) {
+      DEBUG(dbgs() << "deleting no-op store " << *I << "\n");
+      deleteDeadStoreMSSA(*I, EarlierDef, IOL, MSSA);
+      Changed = true;
+      continue;
+    }
 
     MemoryLocation EarlierLoc = getLocForWrite(I, AA, TLI);
     if (EarlierLoc == MemoryLocation{})
       continue;
 
-    auto &EarlierDef = *cast<MemoryDef>(MSSA.getMemoryAccess(I));
     // I is killable if it stores after free. TODO: Same for lifetime_end.
     if (auto *MUD = dyn_cast<MemoryUseOrDef>(
             MSSA.getWalker()->getClobberingMemoryAccess(
