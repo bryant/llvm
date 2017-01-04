@@ -1303,6 +1303,26 @@ static void numberInstsPO(Function &F,
   }
 }
 
+// Determines if Earlier is redundant with respect to Later. Special handling
+// when Later == call void @free.
+static bool overwriteMSSA(const MemoryLocation &LaterLoc,
+                          const Instruction &Later,
+                          const MemoryLocation &EarlierLoc,
+                          Instruction &Earlier, InstOverlapIntervalsTy &IOL,
+                          AliasAnalysis &AA, const TargetLibraryInfo &TLI) {
+  const auto &DL = Earlier.getParent()->getModule()->getDataLayout();
+  if (isFreeCall(&Later, &TLI) && LaterLoc.Ptr && EarlierLoc.Ptr)
+    return AA.isMustAlias(GetUnderlyingObject(LaterLoc.Ptr, DL),
+                          GetUnderlyingObject(EarlierLoc.Ptr, DL));
+  int64_t EarlierOff, LaterOff;
+  OverwriteResult O = isOverwrite(LaterLoc, EarlierLoc, DL, TLI, EarlierOff,
+                                  LaterOff, &Earlier, IOL);
+  auto Lap = AA.alias(LaterLoc, EarlierLoc);
+  DEBUG(dbgs() << "Overwrite: " << O << "\n");
+  DEBUG(dbgs() << "got aa result: " << Lap << "\n");
+  return O == OverwriteComplete || Lap == MustAlias;
+}
+
 // Attempt to DSE only within I's basic block. Needed because post-dom checks
 // are limited to BasicBlock granularity.
 static std::pair<bool, WalkResult>
@@ -1326,15 +1346,9 @@ localDeadStoresMSSA(Instruction &Earlier, MemoryDef &EarlierDef,
                      MayThrows))
       break;
       */
-    int64_t EarlierOff, LaterOff;
-    const Module *M = Earlier.getParent()->getModule();
     MemoryLocation LaterLoc = getLocForWrite(LaterDef.getMemoryInst(), AA, TLI);
-    OverwriteResult O = isOverwrite(LaterLoc, EarlierLoc, M->getDataLayout(),
-                                    TLI, EarlierOff, LaterOff, &Earlier, IOL);
-    DEBUG(dbgs() << "Overwrite: " << O << "\n");
-    auto Lap = AA.alias(LaterLoc, EarlierLoc);
-    DEBUG(dbgs() << "got aa result: " << Lap << "\n");
-    if (O == OverwriteComplete || Lap == MustAlias) {
+    if (overwriteMSSA(LaterLoc, *LaterDef.getMemoryInst(), EarlierLoc, Earlier,
+                      IOL, AA, TLI)) {
       // Done.
       deleteDeadStoreMSSA(Earlier, EarlierDef, IOL, MSSA);
       return std::make_pair(true, Walk);
@@ -1434,16 +1448,10 @@ static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
             // Some later store after LaterDef could post-dom I.
             continue;
 
-          int64_t EarlierOff, LaterOff;
           MemoryLocation LaterLoc =
               getLocForWrite(LaterDef.getMemoryInst(), AA, TLI);
-          auto O =
-              isOverwrite(LaterLoc, EarlierLoc, F.getParent()->getDataLayout(),
-                          TLI, EarlierOff, LaterOff, I, IOL);
-          DEBUG(dbgs() << "Overwrite: " << O << "\n");
-          auto Lap = AA.alias(LaterLoc, EarlierLoc);
-          DEBUG(dbgs() << "got aa result: " << Lap << "\n");
-          if (O == OverwriteComplete || Lap == MustAlias) {
+          if (overwriteMSSA(LaterLoc, *LaterDef.getMemoryInst(), EarlierLoc, *I,
+                            IOL, AA, TLI)) {
             // Done.
             deleteDeadStoreMSSA(*I, EarlierDef, IOL, MSSA);
             Changed = true;
