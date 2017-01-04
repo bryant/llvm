@@ -1389,13 +1389,21 @@ public:
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.setPreservesCFG();
-    AU.addRequired<DominatorTreeWrapperPass>();
     AU.addRequired<AAResultsWrapperPass>();
-    AU.addRequired<MemoryDependenceWrapperPass>();
     AU.addRequired<TargetLibraryInfoWrapperPass>();
-    AU.addPreserved<DominatorTreeWrapperPass>();
     AU.addPreserved<GlobalsAAWrapperPass>();
-    AU.addPreserved<MemoryDependenceWrapperPass>();
+
+    if (UseMSSA) {
+      AU.addRequired<PostDominatorTreeWrapperPass>();
+      AU.addRequired<MemorySSAWrapperPass>();
+      AU.addPreserved<PostDominatorTreeWrapperPass>();
+      AU.addPreserved<MemorySSAWrapperPass>();
+    } else {
+      AU.addRequired<DominatorTreeWrapperPass>();
+      AU.addRequired<MemoryDependenceWrapperPass>();
+      AU.addPreserved<DominatorTreeWrapperPass>();
+      AU.addPreserved<MemoryDependenceWrapperPass>();
+    }
   }
 
   static char ID; // Pass identification, replacement for typeid
