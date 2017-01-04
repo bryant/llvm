@@ -1330,7 +1330,7 @@ static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
       }
     }
 
-    if (Walk.State == WalkResult::ReachedEnd && underlying_no_escape)
+    if (Walk.State == WalkResult::ReachedEnd && underlying_no_escape) {
       deleteDeadStoreMSSA(*I, EarlierDef, MSSA);
       Changed = true;
     }
