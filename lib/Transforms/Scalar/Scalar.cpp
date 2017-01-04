@@ -40,7 +40,8 @@ void llvm::initializeScalarOpts(PassRegistry &Registry) {
   initializeDCELegacyPassPass(Registry);
   initializeDeadInstEliminationPass(Registry);
   initializeScalarizerPass(Registry);
-  initializeDSELegacyPassPass(Registry);
+  initializeDSELegacyMemDepPass(Registry);
+  initializeDSELegacyMSSAPass(Registry);
   initializeGuardWideningLegacyPassPass(Registry);
   initializeGVNLegacyPassPass(Registry);
   initializeNewGVNPass(Registry);

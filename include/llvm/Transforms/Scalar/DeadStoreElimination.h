@@ -25,7 +25,7 @@ namespace llvm {
 
 /// This class implements a trivial dead store elimination. We consider
 /// only the redundant stores that are local to a single Basic Block.
-class DSEPass : public PassInfoMixin<DSEPass> {
+template <bool UseMSSA> class DSEPass : public PassInfoMixin<DSEPass<UseMSSA>> {
 public:
   PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM);
 };

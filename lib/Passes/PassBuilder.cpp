@@ -364,7 +364,8 @@ PassBuilder::buildFunctionSimplificationPipeline(OptimizationLevel Level,
   // redo DCE, etc.
   FPM.addPass(JumpThreadingPass());
   FPM.addPass(CorrelatedValuePropagationPass());
-  FPM.addPass(DSEPass());
+  FPM.addPass(DSEPass<false>());
+  FPM.addPass(DSEPass<true>());
   FPM.addPass(createFunctionToLoopPassAdaptor(LICMPass()));
 
   // Finally, do an expensive DCE pass to catch all the dead code exposed by
