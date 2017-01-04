@@ -1267,9 +1267,21 @@ static bool throwInRange(unsigned Earlier, unsigned Later,
 static void deleteDeadStoreMSSA(Instruction &I, MemoryDef &D,
                                 InstOverlapIntervalsTy &IOL, MemorySSA &MSSA) {
   DEBUG(dbgs() << "DSE:\n\t" << D << "\n\t" << I << "\n");
+  SmallVector<Value *, 32> DeadPool(I.value_op_begin(), I.value_op_end());
   MSSA.removeMemoryAccess(&D);
-  IOL.erase(&I);
   I.eraseFromParent();
+  while (!DeadPool.empty()) {
+    auto *Cand = dyn_cast<Instruction>(DeadPool.pop_back_val());
+    if (Cand && Cand->use_empty()) {
+      DeadPool.insert(DeadPool.end(), Cand->value_op_begin(),
+                      Cand->value_op_end());
+      if (MemoryAccess *MA = MSSA.getMemoryAccess(Cand))
+        MSSA.removeMemoryAccess(MA);
+      Cand->eraseFromParent();
+      IOL.erase(Cand);
+      ++NumFastOther;
+    }
+  }
 }
 
 static void numberInstsPO(Function &F,
