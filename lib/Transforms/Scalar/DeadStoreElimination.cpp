@@ -1218,9 +1218,10 @@ static WalkResult nextMemoryDef(MemoryAccess &Def, const MemoryLocation &DefLoc,
   WalkResult Res = {WalkResult::ReachedEnd, nullptr};
   for (Use &U : Def.uses()) {
     if (auto *Phi = dyn_cast<MemoryPhi>(U.getUser())) {
-      if (Res.MA)
+      if (Res.MA || MSSA.dominates(Phi, EarlierDef))
         // More than one MemoryDef or phi in the uselist implies a split point
-        // in the MSSA graph.
+        // in the MSSA graph. If the phi dominates the earlier def, then we've
+        // walked a loop.
         return {WalkResult::SplitPoint, nullptr};
       Res = {WalkResult::NextPhi, Phi};
     } else if (auto *Load = dyn_cast<MemoryUse>(U.getUser())) {
