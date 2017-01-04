@@ -1408,7 +1408,9 @@ static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
 //===----------------------------------------------------------------------===//
 // DSE Pass
 //===----------------------------------------------------------------------===//
-PreservedAnalyses DSEPass::run(Function &F, FunctionAnalysisManager &AM) {
+template <>
+PreservedAnalyses DSEPass<false>::run(Function &F,
+                                      FunctionAnalysisManager &AM) {
   AliasAnalysis *AA = &AM.getResult<AAManager>(F);
   DominatorTree *DT = &AM.getResult<DominatorTreeAnalysis>(F);
   MemoryDependenceResults *MD = &AM.getResult<MemoryDependenceAnalysis>(F);
@@ -1424,13 +1426,31 @@ PreservedAnalyses DSEPass::run(Function &F, FunctionAnalysisManager &AM) {
   return PA;
 }
 
+template <>
+PreservedAnalyses DSEPass<true>::run(Function &F, FunctionAnalysisManager &AM) {
+  if (!eliminateDeadStoresMSSA(F, AM.getResult<AAManager>(F),
+                               AM.getResult<DominatorTreeAnalysis>(F),
+                               AM.getResult<MemorySSAAnalysis>(F).getMSSA(),
+                               AM.getResult<PostDominatorTreeAnalysis>(F),
+                               AM.getResult<TargetLibraryAnalysis>(F)))
+    return PreservedAnalyses::all();
+  PreservedAnalyses PA;
+  PA.preserve<DominatorTreeAnalysis>();
+  PA.preserve<PostDominatorTreeAnalysis>();
+  PA.preserve<MemorySSAAnalysis>();
+  PA.preserve<GlobalsAA>();
+  return PA;
+}
+
 namespace {
 /// A legacy pass for the legacy pass manager that wraps \c DSEPass.
-template <bool UseMSSA>
-class DSELegacyPass : public FunctionPass {
+template <bool UseMSSA> class DSELegacyPass : public FunctionPass {
 public:
   DSELegacyPass() : FunctionPass(ID) {
-    initializeDSELegacyPassPass(*PassRegistry::getPassRegistry());
+    if (UseMSSA)
+      initializeDSELegacyMSSAPass(*PassRegistry::getPassRegistry());
+    else
+      initializeDSELegacyMemDepPass(*PassRegistry::getPassRegistry());
   }
 
   bool runOnFunction(Function &F) override {
@@ -1438,27 +1458,28 @@ public:
       return false;
 
     AliasAnalysis *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
-    if (UseMSSA) {
-      PostDominatorTree *DT =
-          &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
-      MemorySSA *MSSA = &getAnalysis<MemorySSAWrapperPass>().getResult();
-    } else {
-      DominatorTree *DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
-      MemoryDependenceResults *MD =
-          &getAnalysis<MemoryDependenceWrapperPass>().getMemDep();
-    }
     const TargetLibraryInfo *TLI =
         &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
-
-    return UseMSSA ? eliminateDeadStoresMSSA(F, AA, MSSA, PDT, TLI)
-                   : eliminateDeadStores(F, AA, MD, DT, TLI);
+    DominatorTree *DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+    if (UseMSSA) {
+      PostDominatorTree &PDT =
+          getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
+      MemorySSA &MSSA = getAnalysis<MemorySSAWrapperPass>().getMSSA();
+      return eliminateDeadStoresMSSA(F, *AA, *DT, MSSA, PDT, *TLI);
+    } else {
+      MemoryDependenceResults *MD =
+          &getAnalysis<MemoryDependenceWrapperPass>().getMemDep();
+      return eliminateDeadStores(F, AA, MD, DT, TLI);
+    }
   }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.setPreservesCFG();
     AU.addRequired<AAResultsWrapperPass>();
     AU.addRequired<TargetLibraryInfoWrapperPass>();
+    AU.addRequired<DominatorTreeWrapperPass>();
     AU.addPreserved<GlobalsAAWrapperPass>();
+    AU.addPreserved<DominatorTreeWrapperPass>();
 
     if (UseMSSA) {
       AU.addRequired<PostDominatorTreeWrapperPass>();
@@ -1466,9 +1487,7 @@ public:
       AU.addPreserved<PostDominatorTreeWrapperPass>();
       AU.addPreserved<MemorySSAWrapperPass>();
     } else {
-      AU.addRequired<DominatorTreeWrapperPass>();
       AU.addRequired<MemoryDependenceWrapperPass>();
-      AU.addPreserved<DominatorTreeWrapperPass>();
       AU.addPreserved<MemoryDependenceWrapperPass>();
     }
   }
@@ -1477,27 +1496,30 @@ public:
 };
 } // end anonymous namespace
 
-char DSELegacyPass<false>::ID = 0;
-INITIALIZE_PASS_BEGIN(DSELegacyPass<false>, "dse", "Dead Store Elimination",
-                      false, false)
+using DSELegacyMemDep = DSELegacyPass<false>;
+template <> char DSELegacyPass<false>::ID = 0;
+INITIALIZE_PASS_BEGIN(DSELegacyMemDep, "dse", "Dead Store Elimination", false,
+                      false)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(GlobalsAAWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(MemoryDependenceWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(TargetLibraryInfoWrapperPass)
-INITIALIZE_PASS_END(DSELegacyPass<false>, "dse", "Dead Store Elimination",
-                    false, false)
+INITIALIZE_PASS_END(DSELegacyMemDep, "dse", "Dead Store Elimination", false,
+                    false)
 
-char DSELegacyPass<true>::ID = 0;
-INITIALIZE_PASS_BEGIN(DSELegacyPass<true>, "dsem", "Dead Store Elimination",
-                      false, false)
+using DSELegacyMSSA = DSELegacyPass<true>;
+template <> char DSELegacyPass<true>::ID = 0;
+INITIALIZE_PASS_BEGIN(DSELegacyMSSA, "dsem",
+                      "Dead Store Elimination (Memory SSA)", false, false)
 INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(GlobalsAAWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(MemorySSAWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(TargetLibraryInfoWrapperPass)
-INITIALIZE_PASS_END(DSELegacyPass<true>, "dsen", "Dead Store Elimination",
-                    false, false)
+INITIALIZE_PASS_END(DSELegacyMSSA, "dsem",
+                    "Dead Store Elimination (Memory SSA)", false, false)
 
 FunctionPass *llvm::createDeadStoreEliminationPass() {
   if (EnableMSSA)
