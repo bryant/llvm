@@ -1186,12 +1186,6 @@ static bool eliminateDeadStores(Function &F, AliasAnalysis *AA,
   return MadeChange;
 }
 
-static bool eliminateDeadStoresMSSA(BasicBlock &BB, AliasAnalysis &AA,
-                                    MemorySSA &MSSA, PostDominatorTree &PDT,
-                                    const TargetLibraryInfo &TLI) {
-    MSSA->getBlockAccesses(BB)
-}
-
 static unsigned numberBlock(BasicBlock &BB, unsigned StartNum,
                             DenseMap<const Instruction *, unsigned> InstNums,
                             SmallVector<unsigned> MayThrows,
