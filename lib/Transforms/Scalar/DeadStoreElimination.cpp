@@ -1329,9 +1329,8 @@ localDeadStoresMSSA(Instruction &Earlier, MemoryDef &EarlierDef,
     int64_t EarlierOff, LaterOff;
     const Module *M = Earlier.getParent()->getModule();
     MemoryLocation LaterLoc = getLocForWrite(LaterDef.getMemoryInst(), AA, TLI);
-    OverwriteResult O =
-        isOverwrite(LaterLoc, EarlierLoc, M->getDataLayout(), TLI, EarlierOff,
-                    LaterOff, LaterDef.getMemoryInst(), IOL);
+    OverwriteResult O = isOverwrite(LaterLoc, EarlierLoc, M->getDataLayout(),
+                                    TLI, EarlierOff, LaterOff, &Earlier, IOL);
     DEBUG(dbgs() << "Overwrite: " << O << "\n");
     auto Lap = AA.alias(LaterLoc, EarlierLoc);
     DEBUG(dbgs() << "got aa result: " << Lap << "\n");
