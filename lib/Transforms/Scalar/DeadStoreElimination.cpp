@@ -1410,17 +1410,30 @@ public:
 };
 } // end anonymous namespace
 
-char DSELegacyPass::ID = 0;
-INITIALIZE_PASS_BEGIN(DSELegacyPass, "dse", "Dead Store Elimination", false,
-                      false)
+char DSELegacyPass<false>::ID = 0;
+INITIALIZE_PASS_BEGIN(DSELegacyPass<false>, "dse", "Dead Store Elimination",
+                      false, false)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(GlobalsAAWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(MemoryDependenceWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(TargetLibraryInfoWrapperPass)
-INITIALIZE_PASS_END(DSELegacyPass, "dse", "Dead Store Elimination", false,
-                    false)
+INITIALIZE_PASS_END(DSELegacyPass<false>, "dse", "Dead Store Elimination",
+                    false, false)
+
+char DSELegacyPass<true>::ID = 0;
+INITIALIZE_PASS_BEGIN(DSELegacyPass<true>, "dsem", "Dead Store Elimination",
+                      false, false)
+INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(GlobalsAAWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(MemorySSAWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(TargetLibraryInfoWrapperPass)
+INITIALIZE_PASS_END(DSELegacyPass<true>, "dsen", "Dead Store Elimination",
+                    false, false)
 
 FunctionPass *llvm::createDeadStoreEliminationPass() {
-  return new DSELegacyPass();
+  if (EnableMSSA)
+    return new DSELegacyPass<true>();
+  return new DSELegacyPass<false>();
 }
