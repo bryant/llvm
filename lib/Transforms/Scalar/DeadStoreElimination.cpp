@@ -40,6 +40,7 @@
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/DeadStoreElimination.h"
 #include "llvm/Transforms/Utils/Local.h"
+#include "llvm/Transforms/Utils/MemorySSA.h"
 #include <map>
 using namespace llvm;
 
