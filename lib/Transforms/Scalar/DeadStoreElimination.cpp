@@ -1322,8 +1322,10 @@ static bool overwriteMSSA(const MemoryLocation &LaterLoc,
                           const MemoryLocation &EarlierLoc,
                           Instruction &Earlier, InstOverlapIntervalsTy &IOL,
                           AliasAnalysis &AA, const TargetLibraryInfo &TLI) {
+  assert(LaterLoc.Ptr && EarlierLoc.Ptr &&
+         "Can't check overwrite on null MemoryLocations");
   const auto &DL = Earlier.getParent()->getModule()->getDataLayout();
-  if (isFreeCall(&Later, &TLI) && LaterLoc.Ptr && EarlierLoc.Ptr)
+  if (isFreeCall(&Later, &TLI))
     return AA.isMustAlias(GetUnderlyingObject(LaterLoc.Ptr, DL),
                           GetUnderlyingObject(EarlierLoc.Ptr, DL));
   int64_t EarlierOff, LaterOff;
@@ -1359,8 +1361,8 @@ localDeadStoresMSSA(Instruction &Earlier, MemoryDef &EarlierDef,
       break;
       */
     MemoryLocation LaterLoc = getLocForWrite(LaterDef.getMemoryInst(), AA, TLI);
-    if (overwriteMSSA(LaterLoc, *LaterDef.getMemoryInst(), EarlierLoc, Earlier,
-                      IOL, AA, TLI)) {
+    if (LaterLoc.Ptr && overwriteMSSA(LaterLoc, *LaterDef.getMemoryInst(),
+                                      EarlierLoc, Earlier, IOL, AA, TLI)) {
       // Done.
       deleteDeadStoreMSSA(Earlier, EarlierDef, IOL, MSSA);
       return std::make_pair(true, Walk);
@@ -1462,8 +1464,8 @@ static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
 
           MemoryLocation LaterLoc =
               getLocForWrite(LaterDef.getMemoryInst(), AA, TLI);
-          if (overwriteMSSA(LaterLoc, *LaterDef.getMemoryInst(), EarlierLoc, *I,
-                            IOL, AA, TLI)) {
+          if (LaterLoc.Ptr && overwriteMSSA(LaterLoc, *LaterDef.getMemoryInst(),
+                                            EarlierLoc, *I, IOL, AA, TLI)) {
             // Done.
             deleteDeadStoreMSSA(*I, EarlierDef, IOL, MSSA);
             Changed = true;
