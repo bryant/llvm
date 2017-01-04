@@ -1343,10 +1343,11 @@ static std::pair<bool, WalkResult>
 localDeadStoresMSSA(Instruction &Earlier, MemoryDef &EarlierDef,
                     const MemoryLocation &EarlierLoc,
                     const DenseMap<const Value *, unsigned> &InstNums,
+                    ArrayRef<unsigned> MayThrows,
                     InstOverlapIntervalsTy &IOL,
                     AliasAnalysis &AA, MemorySSA &MSSA,
                     const PostDominatorTree &PDT,
-                    const TargetLibraryInfo &TLI) {
+                    const TargetLibraryInfo &TLI, bool non_escapes) {
   WalkResult Walk =
       nextMemoryDef(EarlierDef, EarlierLoc, InstNums, AA, PDT, TLI);
   for (; Walk.State == WalkResult::NextDef &&
@@ -1354,12 +1355,12 @@ localDeadStoresMSSA(Instruction &Earlier, MemoryDef &EarlierDef,
        Walk = nextMemoryDef(*Walk.MA, EarlierLoc, InstNums, AA, PDT, TLI)) {
     DEBUG(dbgs() << "local walk result: " << *Walk.MA << "\n");
     const auto &LaterDef = *cast<MemoryDef>(Walk.MA);
-    /* TODO: this
+    // TODO: optimize this.
     if (!non_escapes &&
-        throwInRange(InstNums[Earlier], InstNums[LaterDef.getMemoryInst()],
+        throwInRange(InstNums.find(&Earlier)->second,
+                     InstNums.find(LaterDef.getMemoryInst())->second,
                      MayThrows))
       break;
-      */
     MemoryLocation LaterLoc = getLocForWrite(LaterDef.getMemoryInst(), AA, TLI);
     if (LaterLoc.Ptr && overwriteMSSA(LaterLoc, *LaterDef.getMemoryInst(),
                                       EarlierLoc, Earlier, IOL, AA, TLI)) {
@@ -1439,8 +1440,9 @@ static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
     // Search for a post-dom-ing store that kills I
     bool done;
     WalkResult Walk;
-    std::tie(done, Walk) = localDeadStoresMSSA(
-        *I, EarlierDef, EarlierLoc, InstNums, IOL, AA, MSSA, PDT, TLI);
+    std::tie(done, Walk) =
+        localDeadStoresMSSA(*I, EarlierDef, EarlierLoc, InstNums, MayThrows,
+                            IOL, AA, MSSA, PDT, TLI, non_escapes);
     Changed |= done;
     if (!done) {
       for (; Walk.State <= WalkResult::NextPhi;
