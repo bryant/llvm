@@ -1188,23 +1188,6 @@ static bool eliminateDeadStores(Function &F, AliasAnalysis *AA,
   return MadeChange;
 }
 
-static unsigned numberBlock(BasicBlock &BB, unsigned StartNum,
-                            DenseMap<const Instruction *, unsigned> InstNums,
-                            SmallVector<unsigned> MayThrows,
-                            SmallVector<Instruction *> Stores,
-                            const MemorySSA &MSSA) {
-  for (Instruction &I : reversed(BB)) {
-    if (I->mayThrow()) {
-      InstNums[&I] = StartNum++;
-      MayThrows.push_back(StartNum);
-    } else if (dyn_cast_or_null<MemoryDef>(MSSA->getMemoryAccess(&I))) {
-      InstNums[&I] = StartNum++;
-      if (isRemovable(&I))
-        Stores.push_back(&I);
-    }
-  }
-}
-
 struct WalkResult {
   enum {
     NextDef,
