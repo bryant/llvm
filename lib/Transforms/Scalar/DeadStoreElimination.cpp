@@ -1345,16 +1345,13 @@ localDeadStoresMSSA(Instruction &Earlier, MemoryDef &EarlierDef,
   return std::make_pair(false, Walk);
 }
 
-static bool isNoopStoreMSSA(Instruction &I, MemorySSA &MSSA,
+static bool isNoopStoreMSSA(Instruction &I, AliasAnalysis &AA, MemorySSA &MSSA,
                             const TargetLibraryInfo &TLI) {
   if (auto *SI = dyn_cast<StoreInst>(&I)) {
     MemoryAccess *Clob = MSSA.getWalker()->getClobberingMemoryAccess(SI);
     if (auto *LI = dyn_cast<LoadInst>(SI->getValueOperand())) {
-      if (MSSA.getMemoryAccess(LI)->getDefiningAccess() == Clob)
-        // Counter-example: load and store from different globals could both be
-        // defined by LOE.
-        return !MSSA.isLiveOnEntryDef(Clob) ||
-               LI->getPointerOperand() == SI->getPointerOperand();
+      return MSSA.getMemoryAccess(LI)->getDefiningAccess() == Clob &&
+             AA.isMustAlias(MemoryLocation::get(LI), MemoryLocation::get(SI));
     } else if (auto *MUD = dyn_cast<MemoryUseOrDef>(Clob)) {
       if (!MSSA.isLiveOnEntryDef(MUD)) {
         Constant *C;
@@ -1386,7 +1383,7 @@ static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
     DEBUG(dbgs() << "inspecting " << *I << "\n");
     auto &EarlierDef = *cast<MemoryDef>(MSSA.getMemoryAccess(I));
 
-    if (isNoopStoreMSSA(*I, MSSA, TLI)) {
+    if (isNoopStoreMSSA(*I, AA, MSSA, TLI)) {
       DEBUG(dbgs() << "deleting no-op store " << *I << "\n");
       deleteDeadStoreMSSA(*I, EarlierDef, IOL, MSSA);
       Changed = true;
