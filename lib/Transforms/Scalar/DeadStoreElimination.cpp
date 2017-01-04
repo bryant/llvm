@@ -54,6 +54,8 @@ static cl::opt<bool> EnablePartialOverwriteTracking(
     "enable-dse-partial-overwrite-tracking", cl::init(true), cl::Hidden,
     cl::desc("Enable partial-overwrite tracking in DSE"));
 
+static cl::opt<bool> EnableMSSA("dse-mssa", cl::init(false), cl::Hidden,
+                                cl::desc("Use the new MemorySSA-backed DSE."));
 
 //===----------------------------------------------------------------------===//
 // Helper functions
