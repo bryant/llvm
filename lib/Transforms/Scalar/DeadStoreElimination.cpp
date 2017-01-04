@@ -1335,8 +1335,8 @@ static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
     // continue;
 
     MemoryLocation EarlierLoc = getLocForWrite(I, AA, TLI);
-    if (EarlierDef == MemoryLocation{})
-        continue;
+    if (EarlierLoc == MemoryLocation{})
+      continue;
 
     auto &EarlierDef = *cast<MemoryDef>(MSSA.getMemoryAccess(I));
     // I is killable if it stores after free. TODO: Same for lifetime_end.
