@@ -1438,9 +1438,9 @@ static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
           int64_t EarlierOff, LaterOff;
           MemoryLocation LaterLoc =
               getLocForWrite(LaterDef.getMemoryInst(), AA, TLI);
-          auto O = isOverwrite(LaterLoc, EarlierLoc,
-                               F.getParent()->getDataLayout(), TLI, EarlierOff,
-                               LaterOff, LaterDef.getMemoryInst(), IOL);
+          auto O =
+              isOverwrite(LaterLoc, EarlierLoc, F.getParent()->getDataLayout(),
+                          TLI, EarlierOff, LaterOff, I, IOL);
           DEBUG(dbgs() << "Overwrite: " << O << "\n");
           auto Lap = AA.alias(LaterLoc, EarlierLoc);
           DEBUG(dbgs() << "got aa result: " << Lap << "\n");
