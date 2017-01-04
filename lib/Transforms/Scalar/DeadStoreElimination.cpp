@@ -1359,6 +1359,7 @@ PreservedAnalyses DSEPass::run(Function &F, FunctionAnalysisManager &AM) {
 
 namespace {
 /// A legacy pass for the legacy pass manager that wraps \c DSEPass.
+template <bool UseMSSA>
 class DSELegacyPass : public FunctionPass {
 public:
   DSELegacyPass() : FunctionPass(ID) {
@@ -1369,14 +1370,21 @@ public:
     if (skipFunction(F))
       return false;
 
-    DominatorTree *DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
     AliasAnalysis *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
-    MemoryDependenceResults *MD =
-        &getAnalysis<MemoryDependenceWrapperPass>().getMemDep();
+    if (UseMSSA) {
+      PostDominatorTree *DT =
+          &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
+      MemorySSA *MSSA = &getAnalysis<MemorySSAWrapperPass>().getResult();
+    } else {
+      DominatorTree *DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+      MemoryDependenceResults *MD =
+          &getAnalysis<MemoryDependenceWrapperPass>().getMemDep();
+    }
     const TargetLibraryInfo *TLI =
         &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
 
-    return eliminateDeadStores(F, AA, MD, DT, TLI);
+    return UseMSSA ? eliminateDeadStoresMSSA(F, AA, MSSA, PDT, TLI)
+                   : eliminateDeadStores(F, AA, MD, DT, TLI);
   }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
