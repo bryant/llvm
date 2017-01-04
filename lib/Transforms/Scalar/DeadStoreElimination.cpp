@@ -1293,8 +1293,8 @@ static void numberInstsPO(const Function &F,
 }
 
 static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
-                                    const PostDominatorTree &PDT,
                                     MemorySSA &MSSA,
+                                    const PostDominatorTree &PDT,
                                     const TargetLibraryInfo &TLI) {
   DenseMap<const Instruction *, unsigned> InstNums;
   SmallVector<unsigned> MayThrows;
