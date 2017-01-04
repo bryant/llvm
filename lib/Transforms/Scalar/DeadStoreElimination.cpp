@@ -1202,8 +1202,8 @@ struct WalkResult {
 // Given the current walk location Def, attempt to move downwards to the next
 // MemoryDef.
 static WalkResult nextMemoryDef(MemoryAccess &Def, const MemoryLocation &DefLoc,
-                                const PostDominatorTree &PDT,
-                                AliasAnalysis &AA) {
+                                AliasAnalysis &AA,
+                                const PostDominatorTree &PDT) {
   WalkResult Res = {WalkResult::ReachedEnd, nullptr};
   for (Use &U : Def.uses()) {
     if (auto *Phi = dyn_cast<MemoryPhi>(U.getUser())) {
@@ -1308,9 +1308,9 @@ static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
     const Value *Underlying =
         GetUnderlyingObject(EarlierLoc.Ptr, F.getModule()->getDataLayout());
     // Search for a post-dom-ing store that kills I
-    for (WalkResult Walk = nextMemoryDef(EarlierDef, EarlierLoc, PDT, AA);
+    for (WalkResult Walk = nextMemoryDef(EarlierDef, EarlierLoc, AA, PDT);
          Walk.State <= WalkResult::NextPhi;
-         Walk = nextMemoryDef(Walk.MA, EarlierLoc, PDT, AA)) {
+         Walk = nextMemoryDef(Walk.MA, EarlierLoc, AA, PDT)) {
       if (Walk.State == WalkResult::NextDef) {
         const auto &LaterDef = *cast<MemoryDef>(Walk.MA);
 
