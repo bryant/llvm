@@ -1272,18 +1272,36 @@ static void deleteDeadStoreMSSA(Instruction &I, MemoryDef &D, MemorySSA &MSSA) {
   I.eraseFromParent();
 }
 
+static void numberInstsPO(const Function &F,
+                          DenseMap<const Instruction *, unsigned> InstNums,
+                          SmallVector<unsigned> MayThrows,
+                          SmallVector<Instruction *> Stores,
+                          const MemorySSA &MSSA) {
+  unsigned StartNum = 0;
+  for (BasicBlock &BB : post_order(F)) {
+    for (Instruction &I : reversed(BB)) {
+      if (I->mayThrow()) {
+        InstNums[&I] = StartNum++;
+        MayThrows.push_back(StartNum);
+      } else if (dyn_cast_or_null<MemoryDef>(MSSA->getMemoryAccess(&I))) {
+        InstNums[&I] = StartNum++;
+        if (isRemovable(&I))
+          Stores.push_back(&I);
+      }
+    }
+  }
+}
+
 static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
                                     const PostDominatorTree &PDT,
                                     MemorySSA &MSSA,
                                     const TargetLibraryInfo &TLI) {
-  unsigned BlockNum = 0;
   DenseMap<const Instruction *, unsigned> InstNums;
   SmallVector<unsigned> MayThrows;
   SmallVector<Instruction *> Stores; // stores to visit, post-ordered
 
   // number instructions of interest by post-order
-  for (BasicBlock &BB : post_order(F))
-    BlockNum = numberBlock(BB, BlockNum, InstNums, MayThrows, Stores, MSSA);
+  numberInstsPO(F, InstNums, MayThrows, Stores, MSSA);
 
   for (Instruction *I : Stores) {
     if (eliminateNoopMSSA(I))
