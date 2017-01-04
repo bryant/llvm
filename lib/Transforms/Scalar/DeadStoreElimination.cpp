@@ -1186,6 +1186,155 @@ static bool eliminateDeadStores(Function &F, AliasAnalysis *AA,
   return MadeChange;
 }
 
+static bool eliminateDeadStoresMSSA(BasicBlock &BB, AliasAnalysis &AA,
+                                    MemorySSA &MSSA, PostDominatorTree &PDT,
+                                    const TargetLibraryInfo &TLI) {
+    MSSA->getBlockAccesses(BB)
+}
+
+static unsigned numberBlock(BasicBlock &BB, unsigned StartNum,
+                            DenseMap<const Instruction *, unsigned> InstNums,
+                            SmallVector<unsigned> MayThrows,
+                            SmallVector<Instruction *> Stores,
+                            const MemorySSA &MSSA) {
+  for (Instruction &I : reversed(BB)) {
+    if (I->mayThrow()) {
+      InstNums[&I] = StartNum++;
+      MayThrows.push_back(StartNum);
+    } else if (dyn_cast_or_null<MemoryDef>(MSSA->getMemoryAccess(&I))) {
+      InstNums[&I] = StartNum++;
+      if (isRemovable(&I))
+        Stores.push_back(&I);
+    }
+  }
+}
+
+struct WalkResult {
+  enum {
+    NextDef,
+    NextPhi,
+    KilledByUse,
+    SplitPoint,
+    ReachedEnd,
+  } State;
+  MemoryAccess *MA;
+};
+
+// Given the current walk location Def, attempt to move downwards to the next
+// MemoryDef.
+static WalkResult nextMemoryDef(MemoryAccess &Def, const MemoryLocation &DefLoc,
+                                const PostDominatorTree &PDT,
+                                AliasAnalysis &AA) {
+  WalkResult Res = {WalkResult::ReachedEnd, nullptr};
+  for (Use &U : Def.uses()) {
+    if (auto *Phi = dyn_cast<MemoryPhi>(U.getUser())) {
+      if (Res.MA)
+        // More than one MemoryDef or phi in the uselist implies a split point
+        // in the MSSA graph.
+        return {WalkResult::SplitPoint, nullptr};
+      Res = {WalkResult::NextPhi, Phi};
+    } else if (auto *Load = dyn_cast<MemoryUse>(U.getUser())) {
+      if (AA.getModRefInfo(Load->getInst(), DefLoc) & MRI_Ref)
+        // For a pair of stores to DSE, there can't be any intervening uses of
+        // the stored-to memory.
+        return {WalkResult::KilledByUse, Load};
+    } else if (auto *D = dyn_cast<MemoryDef>(U.getUser())) {
+      if (AA.getModRefInfo(D->getInst(), DefLoc) & MRI_Ref)
+        return {WalkResult::KilledByUse, D};
+      else if (Res.MA)
+        return {SplitPoint, nullptr};
+      Res = {WalkResult::NextDef, D};
+    } else
+      llvm_unreachable("Unexpected MemorySSA node type.");
+  }
+  if (Res.State == WalkResult::ReachedEnd)
+    Res.MA = &Def;
+  return Res;
+}
+
+static bool throwInRange(unsigned Earlier, unsigned Later,
+                         ArrayRef<unsigned> MayThrows) {
+  assert(Earlier >= Later &&
+         "Larger number == later in post-order == earlier in rpo.");
+  return std::upper_bound(MayThrows.begin(), MayThrows.end(), Earlier) !=
+         std::lower_bound(MayThrows.begin(), MayThrows.end(), Later);
+}
+
+static bool laterKillsEarlier(const MemoryDef &LaterDef,
+                              const Instruction &Earlier,
+                              const MemoryLocation &EarlierLoc,
+                              AliasAnalysis &AA, const PostDominatorTree &PDT) {
+  if (!PDT.dominates(Later.getInst(), Earlier))
+    return false;
+  MemoryLocation LaterLoc = getLocForWrite(Later.getInst());
+  return AA.isMustAlias(LaterLoc, EarlierLoc);
+}
+
+static void deleteDeadStoreMSSA(Instruction &I, MemoryDef &D, MemorySSA &MSSA) {
+  DEBUG(dbgs() << "DSE:\n\t" << D << "\n\t" << I << "\n");
+  MSSA->removeMemoryAccess(&D);
+  I.eraseFromParent();
+}
+
+static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
+                                    const PostDominatorTree &PDT,
+                                    MemorySSA &MSSA,
+                                    const TargetLibraryInfo &TLI) {
+  unsigned BlockNum = 0;
+  DenseMap<const Instruction *, unsigned> InstNums;
+  SmallVector<unsigned> MayThrows;
+  SmallVector<Instruction *> Stores; // stores to visit, post-ordered
+
+  // number instructions of interest by post-order
+  for (BasicBlock &BB : post_order(F))
+    BlockNum = numberBlock(BB, BlockNum, InstNums, MayThrows, Stores, MSSA);
+
+  for (Instruction *I : Stores) {
+    if (eliminateNoopMSSA(I))
+      continue;
+
+    const auto &EarlierDef = *cast<MemoryDef>(MSSA->getMemoryAccess(I));
+    MemoryLocation EarlierLoc = getLocForWrite(I, AA);
+    // This store is dead if it's dominated by a free-like call. TODO: Same for
+    // lifetime_end.
+    if (auto *MUD = dyn_cast<MemoryUseOrDef>(
+            MSSA.getWalker()->getClobberingMemoryAccess(
+                EarlierDef->getDefiningAccess(), EarlierLoc))) {
+      if (CallInst *C = isFreeCall(MUD->getInst(), TLI)) {
+        deleteDeadStoreMSSA(*I, EarlierDef, MSSA);
+        continue;
+      }
+    }
+
+    const Value *Underlying =
+        GetUnderlyingObject(EarlierLoc.Ptr, F.getModule()->getDataLayout());
+    // Search for a post-dom-ing store that kills I
+    for (WalkResult Walk = nextMemoryDef(EarlierDef, EarlierLoc, PDT, AA);
+         Walk.State <= WalkResult::NextPhi;
+         Walk = nextMemoryDef(Walk.MA, EarlierLoc, PDT, AA)) {
+      if (Walk.State == WalkResult::NextDef) {
+        const auto &LaterDef = *cast<MemoryDef>(Walk.MA);
+
+        // For escaping memory, check for intervening throws.
+        if (!isa<AllocaInst>(Underlying) &&
+            throwInRange(InstNums[I], InstNums[LaterDef.getInst()], MayThrows))
+          break;
+
+        MemoryLocation LaterLoc = getLocForWrite(Later.getInst(), AA);
+        if (PDT.dominates(LaterDef.getInst(), I) &&
+            AA.isMustAlias(LaterLoc, EarlierLoc)) {
+          // Done.
+          deleteDeadStoreMSSA(*I, EarlierDef, MSSA);
+          break;
+        }
+      }
+    }
+
+    if (Walk.State == WalkResult::ReachedEnd && underlying_no_escape)
+      deleteDeadStoreMSSA(*I, EarlierDef, MSSA);
+  }
+}
+
 //===----------------------------------------------------------------------===//
 // DSE Pass
 //===----------------------------------------------------------------------===//
