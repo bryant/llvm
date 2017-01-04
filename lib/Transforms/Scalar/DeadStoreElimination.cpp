@@ -1213,12 +1213,13 @@ struct WalkResult {
 // Given the current walk location Def, attempt to move downwards to the next
 // MemoryDef.
 static WalkResult nextMemoryDef(MemoryAccess &Def, const MemoryLocation &DefLoc,
-                                AliasAnalysis &AA, const PostDominatorTree &PDT,
+                                AliasAnalysis &AA, const MemorySSA &MSSA,
+                                const PostDominatorTree &PDT,
                                 const TargetLibraryInfo &TLI) {
   WalkResult Res = {WalkResult::ReachedEnd, nullptr};
   for (Use &U : Def.uses()) {
     if (auto *Phi = dyn_cast<MemoryPhi>(U.getUser())) {
-      if (Res.MA || MSSA.dominates(Phi, EarlierDef))
+      if (Res.MA || MSSA.dominates(Phi, &Def))
         // More than one MemoryDef or phi in the uselist implies a split point
         // in the MSSA graph. If the phi dominates the earlier def, then we've
         // walked a loop.
@@ -1293,7 +1294,7 @@ localDeadStoresMSSA(Instruction &I, MemoryDef &D, AliasAnalysis &AA,
   WalkResult Walk = nextMemoryDef(D, EarlierLoc, AA, PDT, TLI);
   for (; Walk.State == WalkResult::NextDef &&
          Walk.MA->getBlock() == I.getParent();
-       Walk = nextMemoryDef(*Walk.MA, EarlierLoc, AA, PDT, TLI)) {
+       Walk = nextMemoryDef(*Walk.MA, EarlierLoc, AA, MSSA, PDT, TLI)) {
     DEBUG(dbgs() << "local walk result: " << *Walk.MA << "\n");
     const auto &LaterDef = *cast<MemoryDef>(Walk.MA);
     /* TODO: this
@@ -1362,13 +1363,9 @@ static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
         localDeadStoresMSSA(*I, EarlierDef, AA, MSSA, PDT, TLI);
     if (!done) {
       for (; Walk.State <= WalkResult::NextPhi;
-           Walk = nextMemoryDef(*Walk.MA, EarlierLoc, AA, PDT, TLI)) {
+           Walk = nextMemoryDef(*Walk.MA, EarlierLoc, AA, MSSA, PDT, TLI)) {
         DEBUG(dbgs() << "walk result: " << *Walk.MA << "\n");
         if (Walk.State == WalkResult::NextPhi) {
-          if (MSSA.dominates(Walk.MA, EarlierDef)) {
-            DEBUG(dbgs() << *Walk.MA << " looks like a loop point\n");
-            break;
-          }
         } else if (Walk.State == WalkResult::NextDef) {
           const auto &LaterDef = *cast<MemoryDef>(Walk.MA);
 
