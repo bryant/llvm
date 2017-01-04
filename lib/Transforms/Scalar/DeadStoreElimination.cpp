@@ -1315,7 +1315,7 @@ localDeadStoresMSSA(Instruction &I, MemoryDef &D, AliasAnalysis &AA,
 }
 
 static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
-                                    const DominatorTree &DT, MemorySSA &MSSA,
+                                    MemorySSA &MSSA,
                                     const PostDominatorTree &PDT,
                                     const TargetLibraryInfo &TLI) {
   DEBUG(MSSA.print(dbgs()));
@@ -1364,7 +1364,7 @@ static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
            Walk = nextMemoryDef(*Walk.MA, EarlierLoc, AA, PDT, TLI)) {
         DEBUG(dbgs() << "walk result: " << *Walk.MA << "\n");
         if (Walk.State == WalkResult::NextPhi) {
-          if (DT.dominates(Walk.MA->getBlock(), I->getParent())) {
+          if (MSSA.dominates(Walk.MA, EarlierDef)) {
             DEBUG(dbgs() << *Walk.MA << " looks like a loop point\n");
             break;
           }
@@ -1432,13 +1432,11 @@ PreservedAnalyses DSEPass<false>::run(Function &F,
 template <>
 PreservedAnalyses DSEPass<true>::run(Function &F, FunctionAnalysisManager &AM) {
   if (!eliminateDeadStoresMSSA(F, AM.getResult<AAManager>(F),
-                               AM.getResult<DominatorTreeAnalysis>(F),
                                AM.getResult<MemorySSAAnalysis>(F).getMSSA(),
                                AM.getResult<PostDominatorTreeAnalysis>(F),
                                AM.getResult<TargetLibraryAnalysis>(F)))
     return PreservedAnalyses::all();
   PreservedAnalyses PA;
-  PA.preserve<DominatorTreeAnalysis>();
   PA.preserve<PostDominatorTreeAnalysis>();
   PA.preserve<MemorySSAAnalysis>();
   PA.preserve<GlobalsAA>();
@@ -1463,13 +1461,13 @@ public:
     AliasAnalysis *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
     const TargetLibraryInfo *TLI =
         &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
-    DominatorTree *DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
     if (UseMSSA) {
       PostDominatorTree &PDT =
           getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
       MemorySSA &MSSA = getAnalysis<MemorySSAWrapperPass>().getMSSA();
-      return eliminateDeadStoresMSSA(F, *AA, *DT, MSSA, PDT, *TLI);
+      return eliminateDeadStoresMSSA(F, *AA, MSSA, PDT, *TLI);
     } else {
+      DominatorTree *DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
       MemoryDependenceResults *MD =
           &getAnalysis<MemoryDependenceWrapperPass>().getMemDep();
       return eliminateDeadStores(F, AA, MD, DT, TLI);
@@ -1518,7 +1516,6 @@ INITIALIZE_PASS_BEGIN(DSELegacyMSSA, "dsem",
 INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(GlobalsAAWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(MemorySSAWrapperPass)
-INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(TargetLibraryInfoWrapperPass)
 INITIALIZE_PASS_END(DSELegacyMSSA, "dsem",
