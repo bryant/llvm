@@ -188,7 +188,7 @@ static MemoryLocation getLocForWrite(Instruction *Inst, AliasAnalysis &AA) {
 static MemoryLocation getLocForWrite(Instruction *Inst, AliasAnalysis &AA,
                                      const TargetLibraryInfo &TLI) {
   MemoryLocation Loc = getLocForWrite(Inst, AA);
-  if (Loc == MemoryLocation{} && isFreeCall(Inst, &TLI))
+  if (!Loc.Ptr && isFreeCall(Inst, &TLI))
     return MemoryLocation::getForArgument(ImmutableCallSite(Inst), 0, TLI);
   return Loc;
 }
@@ -1418,7 +1418,7 @@ static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
     }
 
     MemoryLocation EarlierLoc = getLocForWrite(I, AA, TLI);
-    if (EarlierLoc == MemoryLocation{})
+    if (!EarlierLoc.Ptr)
       continue;
 
     // I is killable if it stores after free. TODO: Same for lifetime_end.
