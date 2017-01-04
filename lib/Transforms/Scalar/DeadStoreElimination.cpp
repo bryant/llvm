@@ -1303,6 +1303,7 @@ static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
   // number instructions of interest by post-order
   numberInstsPO(F, InstNums, MayThrows, Stores, MSSA);
 
+  bool Changed = false;
   for (Instruction *I : Stores) {
     if (eliminateNoopMSSA(I))
       continue;
@@ -1316,6 +1317,7 @@ static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
                 EarlierDef->getDefiningAccess(), EarlierLoc))) {
       if (CallInst *C = isFreeCall(MUD->getInst(), TLI)) {
         deleteDeadStoreMSSA(*I, EarlierDef, MSSA);
+        Changed = true;
         continue;
       }
     }
@@ -1339,6 +1341,7 @@ static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
             AA.isMustAlias(LaterLoc, EarlierLoc)) {
           // Done.
           deleteDeadStoreMSSA(*I, EarlierDef, MSSA);
+          Changed = true;
           break;
         }
       }
@@ -1346,7 +1349,10 @@ static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
 
     if (Walk.State == WalkResult::ReachedEnd && underlying_no_escape)
       deleteDeadStoreMSSA(*I, EarlierDef, MSSA);
+      Changed = true;
+    }
   }
+  return Changed;
 }
 
 //===----------------------------------------------------------------------===//
