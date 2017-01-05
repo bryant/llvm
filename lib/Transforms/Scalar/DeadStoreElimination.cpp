@@ -1450,20 +1450,20 @@ class DSEWalker {
 
   unsigned InstNum;
   DenseMap<const Value *, unsigned> InstNums;
-  // ^ Post-order numbering of MemoryPhis and instructions,
-  // a) that throw, or
-  // b) are DSE candidates.
-  // Used to detect intervening MayThrows or loop latches
+  // ^ Post-order numbering of MemoryPhis and instructions, a) that throw, or b)
+  // are DSE candidates. Used to detect intervening MayThrows or loop latches
   SmallVector<unsigned, 32> MayThrows;
-  SmallVector<Instruction *, 32> Stores;
-  // ^ Stores to visit, post-ordered
   DenseSet<const Value *> NonEscapes;
   // ^ Args and insts that don't escape.
   InstOverlapIntervalsTy IOL;
   // ^ isOverwrite needs this.
+public:
+  SmallVector<MemoryDef *, 32> Stores;
+  // ^ Stores to visit, post-ordered
 
+private:
   AliasAnalysis *AA;
-  const MemorySSA *MSSA;
+  MemorySSA *MSSA;
   const PostDominatorTree *PDT;
   const TargetLibraryInfo *TLI;
 
@@ -1484,7 +1484,213 @@ class DSEWalker {
            (isAllocLikeFn(&I, TLI) && !PointerMayBeCaptured(&I, true, true));
   }
 
-  void numberInstsPO() {
+public:
+  void deleteDead(MemoryDef &D) {
+    Instruction &I = *D.getMemoryInst();
+    DEBUG(dbgs() << "DSE-ing:\n\t" << D << "\n\t" << I << "\n");
+
+    SmallVector<Value *, 32> DeadPool(I.value_op_begin(), I.value_op_end());
+    MSSA->removeMemoryAccess(&D);
+    I.eraseFromParent();
+
+    while (!DeadPool.empty()) {
+      auto *Cand = dyn_cast<Instruction>(DeadPool.pop_back_val());
+      // Check if safe to delete, accounting for possible volatile or atomic.
+      if (Cand && isInstructionTriviallyDead(Cand, TLI)) {
+        DeadPool.insert(DeadPool.end(), Cand->value_op_begin(),
+                        Cand->value_op_end());
+        if (MemoryAccess *MA = MSSA->getMemoryAccess(Cand))
+          MSSA->removeMemoryAccess(MA);
+        Cand->eraseFromParent();
+        IOL.erase(Cand);
+        ++NumFastOther;
+      }
+    }
+  }
+
+  bool isNoop(const MemoryDef &D) {
+    if (auto *SI = dyn_cast<StoreInst>(D.getMemoryInst())) {
+      MemoryAccess *Clob = MSSA->getWalker()->getClobberingMemoryAccess(SI);
+      if (auto *LI = dyn_cast<LoadInst>(SI->getValueOperand())) {
+        if (auto *U = dyn_cast<MemoryUse>(MSSA->getMemoryAccess(LI)))
+          // If LI is a MemoryUse, then MSSA guarantees that its defining access
+          // is accurate.
+          return U->getDefiningAccess() == Clob &&
+                 AA->isMustAlias(MemoryLocation::get(LI),
+                                 MemoryLocation::get(SI));
+        // Otherwise, LI is an abnormal load, i.e. atomic and/or volatile.
+        return Clob == MSSA->getMemoryAccess(LI) &&
+               AA->isMustAlias(MemoryLocation::get(LI),
+                               MemoryLocation::get(SI));
+      } else if (auto *MUD = dyn_cast<MemoryUseOrDef>(Clob)) {
+        // Storing zero to calloc-ed memory counts as no-op.
+        if (!MSSA->isLiveOnEntryDef(MUD)) {
+          Constant *C;
+          return (C = dyn_cast<Constant>(SI->getValueOperand())) &&
+                 C->isNullValue() && isCallocLikeFn(MUD->getMemoryInst(), TLI);
+        }
+      }
+    }
+    // TODO: Can also handle memmove(a <- a) and memcpy(a <- a), though the
+    // latter is technically UB.
+    return false;
+  }
+
+  unsigned po(Instruction &I) {
+    assert(InstNums.find(&I) != InstNums.end() && "Unindexed instruction.");
+    return InstNums.find(&I)->second;
+  }
+
+  unsigned po(MemoryPhi &P) {
+    assert(InstNums.find(&P) != InstNums.end() && "Unindexed MemoryPhi.");
+    return InstNums.find(&P)->second;
+  }
+
+  bool throwInRange(unsigned Earlier, unsigned Later) const {
+    DEBUG(dbgs() << "checking for throws between " << Earlier << " and "
+                 << Later << "\n");
+    assert(Earlier >= Later &&
+           "Larger number == later in post-order == earlier in rpo.");
+    return std::upper_bound(MayThrows.begin(), MayThrows.end(), Earlier) !=
+           std::lower_bound(MayThrows.begin(), MayThrows.end(), Later);
+  }
+
+  // Could Def prevent the DSE of a candidate store to Loc (which necessarily
+  // isn't volatile or atomic)? Example reasons for a yes:
+  // - Def's atomicity is stronger than monotonic
+  // - Def itself uses Loc, e.g., memcpy(... <- Loc)
+  bool isDSEBarrier(MemoryDef &D, const MemoryLocation &Loc) {
+    Instruction *I = D.getMemoryInst();
+
+    if (isFreeCall(I, TLI))
+      // call void @free(%p) is transparent to store hoisting.
+      return false;
+    if (I->isAtomic()) {
+      auto F = [](AtomicOrdering A) {
+        return A == AtomicOrdering::Monotonic || A == AtomicOrdering::Unordered;
+      };
+      // Compensate for AA's skittishness around atomics.
+      if (auto *LI = dyn_cast<LoadInst>(I))
+        return !(F(LI->getOrdering()) &&
+                 AA->isNoAlias(MemoryLocation::get(LI), Loc));
+      else if (auto *SI = dyn_cast<StoreInst>(I))
+        return !F(SI->getOrdering());
+    }
+
+    return AA->getModRefInfo(I, Loc) & MRI_Ref;
+  }
+
+  WalkResult walkNext(MemoryAccess *DefOrPhi, const MemoryLocation &Loc) {
+    DEBUG(dbgs() << "descending past " << *DefOrPhi << "\n");
+    WalkResult Res = {WalkResult::ReachedEnd, nullptr};
+
+    // Ensure that uselist 1) don't MRI_Ref Loc, and 2) contain at most one
+    // MemoryDef or MemoryPhi.
+    for (Use &U : DefOrPhi->uses()) {
+      if (auto *Phi = dyn_cast<MemoryPhi>(U.getUser())) {
+        unsigned EarlierNum;
+        if (auto *D = dyn_cast<MemoryDef>(DefOrPhi))
+          EarlierNum = InstNums.find(D->getMemoryInst())->second;
+        else
+          EarlierNum = InstNums.find(DefOrPhi)->second;
+
+        DEBUG(dbgs() << "found phi: " << *Phi << ", "
+                     << InstNums.find(Phi)->second << ", " << EarlierNum
+                     << "\n");
+
+        if (Res.MA || InstNums.find(Phi)->second > EarlierNum)
+          // More than one MemoryDef or phi in the uselist implies a split point
+          // in the MSSA graph. A Phi with a lower (higher) RPO (PO) number
+          // means that we've encountered a loop latch.
+          return {WalkResult::SplitPoint, nullptr};
+        Res = {WalkResult::NextPhi, Phi};
+      } else if (auto *Load = dyn_cast<MemoryUse>(U.getUser())) {
+        if (AA->getModRefInfo(Load->getMemoryInst(), Loc) & MRI_Ref) {
+          // For a pair of stores to DSE, there can't be any intervening uses of
+          // the stored-to memory.
+          DEBUG(dbgs() << "used by " << *Load << "\n");
+          return {WalkResult::KilledByUse, Load};
+        }
+      } else if (auto *D = dyn_cast<MemoryDef>(U.getUser())) {
+        if (isDSEBarrier(*D, Loc)) {
+          DEBUG(dbgs() << "used by " << *D << "\n");
+          return {WalkResult::KilledByUse, D};
+        } else if (Res.MA)
+          return {WalkResult::SplitPoint, nullptr};
+        Res = {WalkResult::NextDef, D};
+      } else
+        llvm_unreachable("Unexpected MemorySSA node type.");
+    }
+
+    if (Res.State == WalkResult::ReachedEnd)
+      Res.MA = DefOrPhi;
+    return Res;
+  }
+
+  // Represents a DSE candidate and its cached escape info.
+  struct Candidate {
+    MemoryDef *D;
+    MemoryLocation Loc;
+    const Value *Und;
+    bool Escapes;
+  };
+
+  Candidate makeCand(MemoryDef &D) const {
+    assert(hasMemoryWrite(D.getMemoryInst(), *TLI) &&
+           "DSE candidates must write to an analyzable memory location.");
+    const DataLayout &DL = F->getParent()->getDataLayout();
+    MemoryLocation Loc = getLocForWrite(D.getMemoryInst(), *AA);
+    const Value *Und = GetUnderlyingObject(Loc.Ptr, DL);
+    bool Escapes =
+        !(NonEscapes.count(Und) || ([&]() {
+            SmallVector<Value *, 4> Unds;
+            GetUnderlyingObjects(const_cast<Value *>(Und), Unds, DL);
+            return all_of(Unds, [&](Value *V) { return NonEscapes.count(V); });
+          })());
+    DEBUG(dbgs() << "does " << D << " escape? " << Escapes << "\n");
+    return {&D, Loc, Und, Escapes};
+  }
+
+  bool canDSE(const Candidate &Earlier, const MemoryDef &Later,
+              bool NonLocal = false) {
+    DEBUG(dbgs() << "can dse " << Later << "\n");
+    Instruction &EarlierI = *Earlier.D->getMemoryInst();
+    Instruction &LaterI = *Later.getMemoryInst();
+
+    const DataLayout &DL = F->getParent()->getDataLayout();
+    if (isFreeCall(&LaterI, TLI)) {
+      // For frees, the size of MemLoc doesn't matter. TODO: Possibly avoid
+      // repeated calls to GetUnderlyingObject.
+      Value *Ptr =
+          GetUnderlyingObject(cast<CallInst>(&LaterI)->getArgOperand(0), DL);
+      DEBUG(dbgs() << "checking alias with free:\n\t" << *Earlier.Und << "\n\t"
+                   << *Ptr << "\n");
+      return AA->isMustAlias(Earlier.Und, Ptr);
+    }
+
+    MemoryLocation LLoc = getLocForWrite(&LaterI, *AA);
+    if (!LLoc.Ptr ||
+        (NonLocal &&
+         !PDT->dominates(Later.getBlock(), Earlier.D->getBlock())) ||
+        (Earlier.Escapes && throwInRange(po(EarlierI), po(LaterI))))
+      return false;
+
+    int64_t EOff, LOff;
+    OverwriteResult O =
+        isOverwrite(LLoc, Earlier.Loc, DL, *TLI, EOff, LOff, &EarlierI, IOL);
+    DEBUG(dbgs() << "Overwrite: " << O << "\n");
+    return O == OverwriteComplete;
+  }
+
+  DSEWalker(Function &F_, AliasAnalysis &AA_, MemorySSA &MSSA_,
+            const PostDominatorTree &PDT_, const TargetLibraryInfo &TLI_)
+      : F(&F_), InstNum(0), AA(&AA_), MSSA(&MSSA_), PDT(&PDT_), TLI(&TLI_) {
+    // Record non-escaping args.
+    for (Argument &Arg : F->args())
+      if (Arg.hasByValOrInAllocaAttr())
+        NonEscapes.insert(&Arg);
+
+    // Number instructions of interest by post-order
     for (BasicBlock *BB : post_order(F)) {
       for (Instruction &I : reverse(*BB)) {
         if (I.mayThrow()) {
@@ -1496,7 +1702,7 @@ class DSEWalker {
           // qualify, for instance.
           if (hasMemoryWrite(&I, *TLI) && isRemovable(&I)) {
             DEBUG(dbgs() << "candidate: " << I << "\n");
-            Stores.push_back(&I);
+            Stores.push_back(Def);
           }
         }
 
@@ -1511,18 +1717,74 @@ class DSEWalker {
         addPO(*Phi);
     }
   }
-
-  DSEWalker(Function &F, AliasAnalysis &AA, const MemorySSA &MSSA,
-            const PostDominatorTree &PDT, const TargetLibraryInfo &TLI)
-      : F(&F), AA(&AA), MSSA(&MSSA), PDT(&PDT), TLI(&TLI) {
-    numberInstsPO();
-  }
 };
 
 static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
                                     MemorySSA &MSSA,
                                     const PostDominatorTree &PDT,
                                     const TargetLibraryInfo &TLI) {
+  DEBUG(MSSA.print(dbgs()));
+  DSEWalker Walker(F, AA, MSSA, PDT, TLI);
+
+  using Candidate = DSEWalker::Candidate;
+
+  bool Changed = false;
+  for (MemoryDef *D : Walker.Stores) {
+    DEBUG(dbgs() << "inspecting " << *D->getMemoryInst() << "\n");
+
+    if (Walker.isNoop(*D)) {
+      DEBUG(dbgs() << "deleting no-op store " << *D << "\n");
+      Walker.deleteDead(*D);
+      Changed = true;
+      continue;
+    }
+
+    Candidate Cand = Walker.makeCand(*D);
+    WalkResult Res;
+    // Attempt to DSE within the same block because post-dom checks are limited
+    // to BasicBlock granularity.
+    bool next = false;
+    for (Res = Walker.walkNext(D, Cand.Loc);
+         Res.State == WalkResult::NextDef &&
+         Res.MA->getBlock() == D->getBlock();
+         Res = Walker.walkNext(Res.MA, Cand.Loc)) {
+      if (Walker.canDSE(Cand, *cast<MemoryDef>(Res.MA), /* NonLocal */ false)) {
+        Walker.deleteDead(*D);
+        Changed = true;
+        next = true;
+        break;
+      }
+    }
+
+    if (next)
+      continue;
+
+    // Non-local search.
+    for (; Res.State <= WalkResult::NextPhi;
+         Res = Walker.walkNext(Res.MA, Cand.Loc)) {
+      if (auto *Def = dyn_cast<MemoryDef>(Res.MA)) {
+        if (Walker.canDSE(Cand, *Def, /* NonLocal */ true)) {
+          Walker.deleteDead(*D);
+          Changed = true;
+          break;
+        }
+      }
+    }
+
+    DEBUG(dbgs() << "Finished walking. " << Res.State << "\n");
+    if (Res.State == WalkResult::ReachedEnd && !Cand.Escapes) {
+      DEBUG(dbgs() << "Caught unused write to non-escaping memory.\n");
+      Walker.deleteDead(*D);
+      Changed = true;
+    }
+  }
+  return Changed;
+}
+
+static bool eliminateDeadStoresMSSA0(Function &F, AliasAnalysis &AA,
+                                     MemorySSA &MSSA,
+                                     const PostDominatorTree &PDT,
+                                     const TargetLibraryInfo &TLI) {
   DEBUG(MSSA.print(dbgs()));
   DenseMap<const Value *, unsigned> InstNums;
   SmallVector<unsigned, 32> MayThrows;
