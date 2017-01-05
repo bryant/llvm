@@ -1393,7 +1393,13 @@ static bool isNoopStoreMSSA(Instruction &I, AliasAnalysis &AA, MemorySSA &MSSA,
   if (auto *SI = dyn_cast<StoreInst>(&I)) {
     MemoryAccess *Clob = MSSA.getWalker()->getClobberingMemoryAccess(SI);
     if (auto *LI = dyn_cast<LoadInst>(SI->getValueOperand())) {
-      return MSSA.getMemoryAccess(LI)->getDefiningAccess() == Clob &&
+      if (auto *U = dyn_cast<MemoryUse>(MSSA.getMemoryAccess(LI)))
+        // If LI is a MemoryUse, then MSSA guarantees that its defining access
+        // is accurate.
+        return U->getDefiningAccess() == Clob &&
+               AA.isMustAlias(MemoryLocation::get(LI), MemoryLocation::get(SI));
+      // Otherwise, LI is an abnormal load, i.e. atomic and/or volatile.
+      return Clob == MSSA.getMemoryAccess(LI) &&
              AA.isMustAlias(MemoryLocation::get(LI), MemoryLocation::get(SI));
     } else if (auto *MUD = dyn_cast<MemoryUseOrDef>(Clob)) {
       if (!MSSA.isLiveOnEntryDef(MUD)) {
