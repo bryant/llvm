@@ -1484,6 +1484,28 @@ private:
            (isAllocLikeFn(&I, TLI) && !PointerMayBeCaptured(&I, true, true));
   }
 
+  MemoryLocation getWriteLoc(Instruction *I) const {
+    MemoryLocation Loc = getLocForWrite(I, *AA);
+    if (!Loc.Ptr) {
+      if (auto CS = CallSite(I)) {
+        if (Function *F = CS.getCalledFunction()) {
+          StringRef FnName = F->getName();
+          if ((TLI->has(LibFunc::strcpy) &&
+               FnName == TLI->getName(LibFunc::strcpy)) ||
+              (TLI->has(LibFunc::strncpy) &&
+               FnName == TLI->getName(LibFunc::strncpy)) ||
+              (TLI->has(LibFunc::strcat) &&
+               FnName == TLI->getName(LibFunc::strcat)) ||
+              (TLI->has(LibFunc::strncat) &&
+               FnName == TLI->getName(LibFunc::strncat)))
+            return MemoryLocation::getForArgument(ImmutableCallSite(I), 0,
+                                                  *TLI);
+        }
+      }
+    }
+    return Loc;
+  }
+
 public:
   // Represents a DSE candidate and its cached escape info.
   struct Candidate {
@@ -1644,7 +1666,8 @@ public:
     assert(hasMemoryWrite(D.getMemoryInst(), *TLI) &&
            "DSE candidates must write to an analyzable memory location.");
     const DataLayout &DL = F->getParent()->getDataLayout();
-    MemoryLocation Loc = getLocForWrite(D.getMemoryInst(), *AA);
+    MemoryLocation Loc = getWriteLoc(D.getMemoryInst());
+    assert(Loc.Ptr && "Expected a Loc!");
     const Value *Und = GetUnderlyingObject(Loc.Ptr, DL);
     bool Escapes =
         !(NonEscapes.count(Und) || ([&]() {
@@ -1673,7 +1696,7 @@ public:
       return AA->isMustAlias(Earlier.Und, Ptr);
     }
 
-    MemoryLocation LLoc = getLocForWrite(&LaterI, *AA);
+    MemoryLocation LLoc = getWriteLoc(&LaterI);
     if (!LLoc.Ptr ||
         (NonLocal &&
          !PDT->dominates(Later.getBlock(), Earlier.D->getBlock())) ||
