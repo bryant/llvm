@@ -1361,6 +1361,8 @@ localDeadStoresMSSA(Instruction &Earlier, MemoryDef &EarlierDef,
                      InstNums.find(LaterDef.getMemoryInst())->second,
                      MayThrows))
       break;
+    // TODO: both nextMemoryDef and overwriteMSSA make approximately the same
+    // calls to AA.
     MemoryLocation LaterLoc = getLocForWrite(LaterDef.getMemoryInst(), AA, TLI);
     if (LaterLoc.Ptr && overwriteMSSA(LaterLoc, *LaterDef.getMemoryInst(),
                                       EarlierLoc, Earlier, IOL, AA, TLI)) {
@@ -1470,6 +1472,8 @@ static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
             // Some later store after LaterDef could post-dom I.
             continue;
 
+          // TODO: both nextMemoryDef and overwriteMSSA make approximately the
+          // same calls to AA.
           MemoryLocation LaterLoc =
               getLocForWrite(LaterDef.getMemoryInst(), AA, TLI);
           if (LaterLoc.Ptr && overwriteMSSA(LaterLoc, *LaterDef.getMemoryInst(),
