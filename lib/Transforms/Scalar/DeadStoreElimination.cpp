@@ -1300,7 +1300,7 @@ static void numberInstsPO(Function &F,
         MayThrows.push_back(StartNum);
       } else if (auto *Def =
                      dyn_cast_or_null<MemoryDef>(MSSA.getMemoryAccess(&I))) {
-        if (/*hasMemoryWrite(&I, TLI) && */isRemovable(&I)) {
+        if (hasMemoryWrite(&I, TLI) && isRemovable(&I)) {
           InstNums[Def] = StartNum++;
           DEBUG(dbgs() << "PO: " << *Def << ", " << InstNums[Def] <<"\n");
           DEBUG(dbgs() << "pushing back " << I << "\n");
