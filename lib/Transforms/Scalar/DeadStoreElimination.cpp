@@ -1199,6 +1199,32 @@ static bool eliminateDeadStores(Function &F, AliasAnalysis *AA,
   return MadeChange;
 }
 
+// Could Def prevent the DSE of a candidate store to Loc (which necessarily
+// isn't volatile or atomic)? Example reasons for a yes:
+// - Def's atomicity is stronger than monotonic
+// - Def itself uses Loc, e.g., memcpy(... <- Loc)
+static bool isDSEBarrier(MemoryDef &Def, const MemoryLocation &Loc,
+                         AliasAnalysis &AA, const TargetLibraryInfo &TLI) {
+  if (isFreeCall(Def.getMemoryInst(), &TLI))
+    // call void @free(%p) is transparent to store hoisting.
+    return false;
+
+  Instruction *I = Def.getMemoryInst();
+  if (I->isAtomic()) {
+    auto F = [](AtomicOrdering A) {
+      return A == AtomicOrdering::Monotonic || A == AtomicOrdering::Unordered;
+    };
+    // Compensate for AA's skittishness around atomics.
+    if (auto *LI = dyn_cast<LoadInst>(I))
+      return !(F(LI->getOrdering()) &&
+               AA.isNoAlias(MemoryLocation::get(LI), Loc));
+    else if (auto *SI = dyn_cast<StoreInst>(I))
+      return !F(SI->getOrdering());
+  }
+
+  return AA.getModRefInfo(I, Loc) & MRI_Ref;
+}
+
 struct WalkResult {
   enum {
     NextDef,
@@ -1243,10 +1269,7 @@ nextMemoryDef(MemoryAccess &Def, const MemoryLocation &DefLoc,
         return {WalkResult::KilledByUse, Load};
       }
     } else if (auto *D = dyn_cast<MemoryDef>(U.getUser())) {
-      // TODO: also handle atomics? for some reason, aa insists that a load
-      // monotonic loads from the store
-      if (!isFreeCall(D->getMemoryInst(), &TLI) &&
-          AA.getModRefInfo(D->getMemoryInst(), DefLoc) & MRI_Ref) {
+      if (isDSEBarrier(*D, DefLoc, AA, TLI)) {
         DEBUG(dbgs() << "used by " << *D << "\n");
         return {WalkResult::KilledByUse, D};
       } else if (Res.MA)
@@ -1310,6 +1333,8 @@ static void numberInstsPO(Function &F,
         // RPO indexes for Phis and MemoryDefs used to determine loop latches.
         InstNums[&I] = StartNum++;
         DEBUG(dbgs() << "PO: " << *Def << ", " << InstNums[&I] << "\n");
+        // Only consider true DSE candidates. Volatile/atomic stores don't
+        // qualify, for instance.
         if (hasMemoryWrite(&I, TLI) && isRemovable(&I)) {
           DEBUG(dbgs() << "pushing back " << I << "\n");
           Stores.push_back(&I);
