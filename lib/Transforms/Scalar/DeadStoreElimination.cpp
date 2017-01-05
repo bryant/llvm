@@ -1350,11 +1350,10 @@ static std::pair<bool, WalkResult>
 localDeadStoresMSSA(Instruction &Earlier, MemoryDef &EarlierDef,
                     const MemoryLocation &EarlierLoc,
                     const DenseMap<const Value *, unsigned> &InstNums,
-                    ArrayRef<unsigned> MayThrows,
-                    InstOverlapIntervalsTy &IOL,
+                    ArrayRef<unsigned> MayThrows, InstOverlapIntervalsTy &IOL,
                     AliasAnalysis &AA, MemorySSA &MSSA,
-                    const PostDominatorTree &PDT,
-                    const TargetLibraryInfo &TLI, bool non_escapes) {
+                    const PostDominatorTree &PDT, const TargetLibraryInfo &TLI,
+                    bool non_escapes) {
   WalkResult Walk =
       nextMemoryDef(EarlierDef, EarlierLoc, InstNums, AA, PDT, TLI);
   for (; Walk.State == WalkResult::NextDef &&
