@@ -1445,7 +1445,7 @@ static bool isNoopStoreMSSA(Instruction &I, AliasAnalysis &AA, MemorySSA &MSSA,
   return false;
 }
 
-struct DSEWalker {
+class DSEWalker {
   Function *F;
 
   unsigned InstNum;
