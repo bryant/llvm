@@ -1506,6 +1506,20 @@ private:
     return Loc;
   }
 
+  // For free and lifetime_end, the size of MemLoc doesn't matter.
+  Value *getLifetimeEndish(Instruction &I) {
+    const DataLayout &DL = F->getParent()->getDataLayout();
+    if (isFreeCall(&I, TLI))
+      return GetUnderlyingObject(cast<CallInst>(&I)->getArgOperand(0), DL);
+    if (auto *II = dyn_cast<IntrinsicInst>(&I))
+      if (II->getIntrinsicID() == Intrinsic::lifetime_end)
+        // TODO: this isn't entirely  correct, since lifetime_end contains a
+        // size param.
+        return GetUnderlyingObject(cast<CallInst>(&I)->getArgOperand(1), DL);
+
+    return nullptr;
+  }
+
 public:
   // Represents a DSE candidate and its cached escape info.
   struct Candidate {
@@ -1592,9 +1606,9 @@ public:
   bool isDSEBarrier(MemoryDef &D, const Candidate &Cand) {
     Instruction *I = D.getMemoryInst();
 
-    if (isFreeCall(I, TLI))
-      // call void @free(%p) is transparent to store hoisting.
+    if (getLifetimeEndish(*I))
       return false;
+
     if (I->isAtomic()) {
       auto F = [](AtomicOrdering A) {
         return A == AtomicOrdering::Monotonic || A == AtomicOrdering::Unordered;
@@ -1686,11 +1700,8 @@ public:
     Instruction &LaterI = *Later.getMemoryInst();
 
     const DataLayout &DL = F->getParent()->getDataLayout();
-    if (isFreeCall(&LaterI, TLI)) {
-      // For frees, the size of MemLoc doesn't matter. TODO: Possibly avoid
-      // repeated calls to GetUnderlyingObject.
-      Value *Ptr =
-          GetUnderlyingObject(cast<CallInst>(&LaterI)->getArgOperand(0), DL);
+    if (Value *Ptr = getLifetimeEndish(LaterI)) {
+      // TODO: Possibly avoid repeated calls to GetUnderlyingObject.
       DEBUG(dbgs() << "checking alias with free:\n\t" << *Earlier.Und << "\n\t"
                    << *Ptr << "\n");
       return AA->isMustAlias(Earlier.Und, Ptr);
