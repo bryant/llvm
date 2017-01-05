@@ -1211,7 +1211,7 @@ struct WalkResult {
 };
 
 // Given the current walk location Def, attempt to move downwards to the next
-// MemoryDef.
+// MemoryDef. Def is a DSE candidate, i.e., Memory{Def,Phi}
 static WalkResult
 nextMemoryDef(MemoryAccess &Def, const MemoryLocation &DefLoc,
               const DenseMap<const Value *, unsigned> &InstNums,
@@ -1221,10 +1221,15 @@ nextMemoryDef(MemoryAccess &Def, const MemoryLocation &DefLoc,
   DEBUG(dbgs() << "descending " << Def << "\n");
   for (Use &U : Def.uses()) {
     if (auto *Phi = dyn_cast<MemoryPhi>(U.getUser())) {
+      unsigned LaterNum;
+      if (auto *D = dyn_cast<MemoryDef>(&Def))
+        LaterNum = InstNums.find(D->getMemoryInst())->second;
+      else
+        LaterNum = InstNums.find(&Def)->second;
+
       DEBUG(dbgs() << "found phi: " << *Phi << ", "
-                   << InstNums.find(Phi)->second << ", "
-                   << InstNums.find(&Def)->second << "\n");
-      if (Res.MA || InstNums.find(Phi)->second > InstNums.find(&Def)->second)
+                   << InstNums.find(Phi)->second << ", " << LaterNum << "\n");
+      if (Res.MA || InstNums.find(Phi)->second > LaterNum)
         // More than one MemoryDef or phi in the uselist implies a split point
         // in the MSSA graph. A Phi with a lower (higher) RPO (PO) number means
         // we've encountered a loop latch.
@@ -1302,9 +1307,10 @@ static void numberInstsPO(Function &F,
         MayThrows.push_back(StartNum);
       } else if (auto *Def =
                      dyn_cast_or_null<MemoryDef>(MSSA.getMemoryAccess(&I))) {
+        // RPO indexes for Phis and MemoryDefs used to determine loop latches.
+        InstNums[&I] = StartNum++;
+        DEBUG(dbgs() << "PO: " << *Def << ", " << InstNums[&I] << "\n");
         if (hasMemoryWrite(&I, TLI) && isRemovable(&I)) {
-          InstNums[Def] = StartNum++;
-          DEBUG(dbgs() << "PO: " << *Def << ", " << InstNums[Def] << "\n");
           DEBUG(dbgs() << "pushing back " << I << "\n");
           Stores.push_back(&I);
         }
@@ -1366,7 +1372,7 @@ localDeadStoresMSSA(Instruction &Earlier, MemoryDef &EarlierDef,
     const auto &LaterDef = *cast<MemoryDef>(Walk.MA);
     // TODO: optimize this.
     if (!non_escapes &&
-        throwInRange(InstNums.find(&Earlier)->second,
+        throwInRange(InstNums.find(&EarlierDef)->second,
                      InstNums.find(LaterDef.getMemoryInst())->second,
                      MayThrows))
       break;
@@ -1492,8 +1498,9 @@ static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
                        << "\ncalling throwInRange with " << *I << ", "
                        << *LaterDef.getMemoryInst() << "\n");
           // For escaping memory, check for intervening throws.
-          if (!non_escapes && throwInRange(InstNums[&EarlierDef],
-                                           InstNums[&LaterDef], MayThrows))
+          if (!non_escapes &&
+              throwInRange(InstNums[I], InstNums[LaterDef.getMemoryInst()],
+                           MayThrows))
             break;
 
           if (!PDT.dominates(LaterDef.getBlock(), I->getParent()))
