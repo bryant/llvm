@@ -1297,13 +1297,13 @@ static void numberInstsPO(Function &F,
     for (Instruction &I : reverse(*BB)) {
       if (I.mayThrow()) {
         InstNums[&I] = StartNum++;
-        DEBUG(dbgs() << "PO: " << I << ", " << InstNums[&I] <<"\n");
+        DEBUG(dbgs() << "PO: " << I << ", " << InstNums[&I] << "\n");
         MayThrows.push_back(StartNum);
       } else if (auto *Def =
                      dyn_cast_or_null<MemoryDef>(MSSA.getMemoryAccess(&I))) {
         if (hasMemoryWrite(&I, TLI) && isRemovable(&I)) {
           InstNums[Def] = StartNum++;
-          DEBUG(dbgs() << "PO: " << *Def << ", " << InstNums[Def] <<"\n");
+          DEBUG(dbgs() << "PO: " << *Def << ", " << InstNums[Def] << "\n");
           DEBUG(dbgs() << "pushing back " << I << "\n");
           Stores.push_back(&I);
         }
