@@ -1373,6 +1373,12 @@ localDeadStoresMSSA(Instruction &Earlier, MemoryDef &EarlierDef,
   return std::make_pair(false, Walk);
 }
 
+// TODO: this fails to catch the following case:
+//
+// p = load x;
+// while (...) { store p, x; store _, x; ... }
+//
+// memoryIsNotModifiedBetween is able to detect this.
 static bool isNoopStoreMSSA(Instruction &I, AliasAnalysis &AA, MemorySSA &MSSA,
                             const TargetLibraryInfo &TLI) {
   if (auto *SI = dyn_cast<StoreInst>(&I)) {
