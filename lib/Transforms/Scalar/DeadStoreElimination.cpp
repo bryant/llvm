@@ -1289,7 +1289,8 @@ static void numberInstsPO(Function &F,
                           DenseMap<const Value *, unsigned> &InstNums,
                           SmallVectorImpl<unsigned> &MayThrows,
                           SmallVectorImpl<Instruction *> &Stores,
-                          const MemorySSA &MSSA) {
+                          DenseSet<const Value *> &NonEscapes,
+                          const MemorySSA &MSSA, const TargetLibraryInfo &TLI) {
   unsigned StartNum = 0;
   for (BasicBlock *BB : post_order(&F)) {
     for (Instruction &I : reverse(*BB)) {
@@ -1305,6 +1306,11 @@ static void numberInstsPO(Function &F,
           DEBUG(dbgs() << "pushing back " << I << "\n");
           Stores.push_back(&I);
         }
+      } else if (isa<AllocaInst>(&I) ||
+                 (isAllocLikeFn(&I, &TLI) &&
+                  !PointerMayBeCaptured(&I, true, true))) {
+        DEBUG(dbgs() << "Found non-escaping mem: " << I << "\n");
+        NonEscapes.insert(&I);
       }
     }
 
@@ -1410,10 +1416,16 @@ static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
   DenseMap<const Value *, unsigned> InstNums;
   SmallVector<unsigned, 32> MayThrows;
   SmallVector<Instruction *, 32> Stores; // stores to visit, post-ordered
+  DenseSet<const Value *> NonEscapes;    // Args and insts that don't escape.
   InstOverlapIntervalsTy IOL;
 
+  // Record non-escaping args.
+  for (Argument &Arg : F.args())
+    if (Arg.hasByValOrInAllocaAttr())
+      NonEscapes.insert(&Arg);
+
   // number instructions of interest by post-order
-  numberInstsPO(F, InstNums, MayThrows, Stores, MSSA);
+  numberInstsPO(F, InstNums, MayThrows, Stores, NonEscapes, MSSA, TLI);
 
   bool Changed = false;
   for (Instruction *I : Stores) {
@@ -1444,8 +1456,15 @@ static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
       }
     }
 
-    bool non_escapes = isa<AllocaInst>(
-        GetUnderlyingObject(EarlierLoc.Ptr, F.getParent()->getDataLayout()));
+    const DataLayout &DL = F.getParent()->getDataLayout();
+    const Value *Und = GetUnderlyingObject(EarlierLoc.Ptr, DL);
+    bool non_escapes =
+        NonEscapes.count(Und) || ([&]() {
+          SmallVector<Value *, 4> Unds;
+          GetUnderlyingObjects(const_cast<Value *>(EarlierLoc.Ptr), Unds, DL);
+          return all_of(Unds, [&](Value *V) { return NonEscapes.count(V); });
+        })();
+
     // Search for a post-dom-ing store that kills I
     bool done;
     WalkResult Walk;
