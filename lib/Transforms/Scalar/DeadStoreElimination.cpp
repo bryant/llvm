@@ -1485,6 +1485,14 @@ private:
   }
 
 public:
+  // Represents a DSE candidate and its cached escape info.
+  struct Candidate {
+    MemoryDef *D;
+    MemoryLocation Loc;
+    const Value *Und;
+    bool Escapes;
+  };
+
   void deleteDead(MemoryDef &D) {
     Instruction &I = *D.getMemoryInst();
     DEBUG(dbgs() << "DSE-ing:\n\t" << D << "\n\t" << I << "\n");
@@ -1626,14 +1634,6 @@ public:
       Res.MA = DefOrPhi;
     return Res;
   }
-
-  // Represents a DSE candidate and its cached escape info.
-  struct Candidate {
-    MemoryDef *D;
-    MemoryLocation Loc;
-    const Value *Und;
-    bool Escapes;
-  };
 
   Candidate makeCand(MemoryDef &D) const {
     assert(hasMemoryWrite(D.getMemoryInst(), *TLI) &&
