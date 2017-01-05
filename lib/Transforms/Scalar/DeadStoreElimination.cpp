@@ -1695,7 +1695,7 @@ public:
 
   bool canDSE(const Candidate &Earlier, const MemoryDef &Later,
               bool NonLocal = false) {
-    DEBUG(dbgs() << "can dse " << Later << "\n");
+    DEBUG(dbgs() << "can dse " << Later << "?\n");
     Instruction &EarlierI = *Earlier.D->getMemoryInst();
     Instruction &LaterI = *Later.getMemoryInst();
 
@@ -1854,7 +1854,8 @@ static bool eliminateDeadStoresMSSA0(Function &F, AliasAnalysis &AA,
     if (!EarlierLoc.Ptr)
       continue;
 
-    // I is killable if it stores after free. TODO: Same for lifetime_end.
+    // I is killable if it stores after free. TODO: Same for lifetime_end, but
+    // the default MSSA walker intentionally ignores it.
     if (auto *MUD = dyn_cast<MemoryUseOrDef>(
             MSSA.getWalker()->getClobberingMemoryAccess(
                 EarlierDef.getDefiningAccess(), EarlierLoc))) {
