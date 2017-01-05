@@ -1274,6 +1274,7 @@ static void deleteDeadStoreMSSA(Instruction &I, MemoryDef &D,
   I.eraseFromParent();
   while (!DeadPool.empty()) {
     auto *Cand = dyn_cast<Instruction>(DeadPool.pop_back_val());
+    // Check if safe to delete, accounting for possible volatile or atomic.
     if (Cand && isInstructionTriviallyDead(Cand, &TLI)) {
       DeadPool.insert(DeadPool.end(), Cand->value_op_begin(),
                       Cand->value_op_end());
