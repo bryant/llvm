@@ -1583,6 +1583,11 @@ public:
                  AA->isNoAlias(MemoryLocation::get(LI), Cand.Loc));
       else if (auto *SI = dyn_cast<StoreInst>(I))
         return !F(SI->getOrdering());
+      else if (isa<FenceInst>(I) && !Cand.Escapes)
+        // From the old DSE: "Fences only constraints the ordering of already
+        // visible stores, it does not make a store visible to other threads.
+        // So, skipping over a fence does not change a store from being dead."
+        return false;
     }
 
     return AA->getModRefInfo(I, Cand.Loc) & MRI_Ref;
