@@ -1232,6 +1232,7 @@ struct WalkResult {
     KilledByUse,
     SplitPoint,
     ReachedEnd,
+    CanDSE,
   } State;
   MemoryAccess *MA;
 };
