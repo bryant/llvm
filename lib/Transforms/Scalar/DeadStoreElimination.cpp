@@ -1347,10 +1347,8 @@ static bool overwriteMSSA(const MemoryLocation &LaterLoc,
   int64_t EarlierOff, LaterOff;
   OverwriteResult O = isOverwrite(LaterLoc, EarlierLoc, DL, TLI, EarlierOff,
                                   LaterOff, &Earlier, IOL);
-  auto Lap = AA.alias(LaterLoc, EarlierLoc);
   DEBUG(dbgs() << "Overwrite: " << O << "\n");
-  DEBUG(dbgs() << "got aa result: " << Lap << "\n");
-  return O == OverwriteComplete || Lap == MustAlias;
+  return O == OverwriteComplete;
 }
 
 // Attempt to DSE only within I's basic block. Needed because post-dom checks
