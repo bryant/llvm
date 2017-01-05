@@ -1306,9 +1306,10 @@ static void numberInstsPO(Function &F,
           DEBUG(dbgs() << "pushing back " << I << "\n");
           Stores.push_back(&I);
         }
-      } else if (isa<AllocaInst>(&I) ||
-                 (isAllocLikeFn(&I, &TLI) &&
-                  !PointerMayBeCaptured(&I, true, true))) {
+      }
+
+      if (isa<AllocaInst>(&I) ||
+          (isAllocLikeFn(&I, &TLI) && !PointerMayBeCaptured(&I, true, true))) {
         DEBUG(dbgs() << "Found non-escaping mem: " << I << "\n");
         NonEscapes.insert(&I);
       }
