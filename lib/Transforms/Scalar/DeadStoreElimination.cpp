@@ -1242,8 +1242,7 @@ nextMemoryDef(MemoryAccess &Def, const MemoryLocation &DefLoc,
           AA.getModRefInfo(D->getMemoryInst(), DefLoc) & MRI_Ref) {
         DEBUG(dbgs() << "used by " << *D << "\n");
         return {WalkResult::KilledByUse, D};
-      }
-      else if (Res.MA)
+      } else if (Res.MA)
         return {WalkResult::SplitPoint, nullptr};
       Res = {WalkResult::NextDef, D};
     } else
