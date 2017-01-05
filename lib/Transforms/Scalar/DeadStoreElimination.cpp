@@ -1567,7 +1567,7 @@ public:
   // isn't volatile or atomic)? Example reasons for a yes:
   // - Def's atomicity is stronger than monotonic
   // - Def itself uses Loc, e.g., memcpy(... <- Loc)
-  bool isDSEBarrier(MemoryDef &D, const MemoryLocation &Loc) {
+  bool isDSEBarrier(MemoryDef &D, const Candidate &Cand) {
     Instruction *I = D.getMemoryInst();
 
     if (isFreeCall(I, TLI))
@@ -1577,23 +1577,23 @@ public:
       auto F = [](AtomicOrdering A) {
         return A == AtomicOrdering::Monotonic || A == AtomicOrdering::Unordered;
       };
-      // Compensate for AA's skittishness around atomics.
       if (auto *LI = dyn_cast<LoadInst>(I))
+        // Compensate for AA's skittishness around atomics.
         return !(F(LI->getOrdering()) &&
-                 AA->isNoAlias(MemoryLocation::get(LI), Loc));
+                 AA->isNoAlias(MemoryLocation::get(LI), Cand.Loc));
       else if (auto *SI = dyn_cast<StoreInst>(I))
         return !F(SI->getOrdering());
     }
 
-    return AA->getModRefInfo(I, Loc) & MRI_Ref;
+    return AA->getModRefInfo(I, Cand.Loc) & MRI_Ref;
   }
 
-  WalkResult walkNext(MemoryAccess *DefOrPhi, const MemoryLocation &Loc) {
+  WalkResult walkNext(MemoryAccess *DefOrPhi, const Candidate &Cand) {
     DEBUG(dbgs() << "descending past " << *DefOrPhi << "\n");
     WalkResult Res = {WalkResult::ReachedEnd, nullptr};
 
-    // Ensure that uselist 1) don't MRI_Ref Loc, and 2) contain at most one
-    // MemoryDef or MemoryPhi.
+    // Ensure that the uselist 1) doesn't MRI_Ref Cand.Loc, and 2) contains at
+    // most one MemoryDef or MemoryPhi.
     for (Use &U : DefOrPhi->uses()) {
       if (auto *Phi = dyn_cast<MemoryPhi>(U.getUser())) {
         unsigned EarlierNum;
@@ -1613,14 +1613,14 @@ public:
           return {WalkResult::SplitPoint, nullptr};
         Res = {WalkResult::NextPhi, Phi};
       } else if (auto *Load = dyn_cast<MemoryUse>(U.getUser())) {
-        if (AA->getModRefInfo(Load->getMemoryInst(), Loc) & MRI_Ref) {
+        if (AA->getModRefInfo(Load->getMemoryInst(), Cand.Loc) & MRI_Ref) {
           // For a pair of stores to DSE, there can't be any intervening uses of
           // the stored-to memory.
           DEBUG(dbgs() << "used by " << *Load << "\n");
           return {WalkResult::KilledByUse, Load};
         }
       } else if (auto *D = dyn_cast<MemoryDef>(U.getUser())) {
-        if (isDSEBarrier(*D, Loc)) {
+        if (isDSEBarrier(*D, Cand)) {
           DEBUG(dbgs() << "used by " << *D << "\n");
           return {WalkResult::KilledByUse, D};
         } else if (Res.MA)
@@ -1744,10 +1744,9 @@ static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
     // Attempt to DSE within the same block because post-dom checks are limited
     // to BasicBlock granularity.
     bool next = false;
-    for (Res = Walker.walkNext(D, Cand.Loc);
-         Res.State == WalkResult::NextDef &&
-         Res.MA->getBlock() == D->getBlock();
-         Res = Walker.walkNext(Res.MA, Cand.Loc)) {
+    for (Res = Walker.walkNext(D, Cand); Res.State == WalkResult::NextDef &&
+                                         Res.MA->getBlock() == D->getBlock();
+         Res = Walker.walkNext(Res.MA, Cand)) {
       if (Walker.canDSE(Cand, *cast<MemoryDef>(Res.MA), /* NonLocal */ false)) {
         Walker.deleteDead(*D);
         Changed = true;
@@ -1761,7 +1760,7 @@ static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
 
     // Non-local search.
     for (; Res.State <= WalkResult::NextPhi;
-         Res = Walker.walkNext(Res.MA, Cand.Loc)) {
+         Res = Walker.walkNext(Res.MA, Cand)) {
       if (auto *Def = dyn_cast<MemoryDef>(Res.MA)) {
         if (Walker.canDSE(Cand, *Def, /* NonLocal */ true)) {
           Walker.deleteDead(*D);
