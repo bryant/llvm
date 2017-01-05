@@ -1266,14 +1266,15 @@ static bool throwInRange(unsigned Earlier, unsigned Later,
 }
 
 static void deleteDeadStoreMSSA(Instruction &I, MemoryDef &D,
-                                InstOverlapIntervalsTy &IOL, MemorySSA &MSSA) {
+                                InstOverlapIntervalsTy &IOL, MemorySSA &MSSA,
+                                const TargetLibraryInfo &TLI) {
   DEBUG(dbgs() << "DSE:\n\t" << D << "\n\t" << I << "\n");
   SmallVector<Value *, 32> DeadPool(I.value_op_begin(), I.value_op_end());
   MSSA.removeMemoryAccess(&D);
   I.eraseFromParent();
   while (!DeadPool.empty()) {
     auto *Cand = dyn_cast<Instruction>(DeadPool.pop_back_val());
-    if (Cand && Cand->use_empty()) {
+    if (Cand && isInstructionTriviallyDead(Cand, &TLI)) {
       DeadPool.insert(DeadPool.end(), Cand->value_op_begin(),
                       Cand->value_op_end());
       if (MemoryAccess *MA = MSSA.getMemoryAccess(Cand))
@@ -1374,7 +1375,7 @@ localDeadStoresMSSA(Instruction &Earlier, MemoryDef &EarlierDef,
     if (LaterLoc.Ptr && overwriteMSSA(LaterLoc, *LaterDef.getMemoryInst(),
                                       EarlierLoc, Earlier, IOL, AA, TLI)) {
       // Done.
-      deleteDeadStoreMSSA(Earlier, EarlierDef, IOL, MSSA);
+      deleteDeadStoreMSSA(Earlier, EarlierDef, IOL, MSSA, TLI);
       return std::make_pair(true, Walk);
     }
   }
@@ -1440,7 +1441,7 @@ static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
 
     if (isNoopStoreMSSA(*I, AA, MSSA, TLI)) {
       DEBUG(dbgs() << "deleting no-op store " << *I << "\n");
-      deleteDeadStoreMSSA(*I, EarlierDef, IOL, MSSA);
+      deleteDeadStoreMSSA(*I, EarlierDef, IOL, MSSA, TLI);
       Changed = true;
       continue;
     }
@@ -1455,7 +1456,7 @@ static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
                 EarlierDef.getDefiningAccess(), EarlierLoc))) {
       if (!MSSA.isLiveOnEntryDef(MUD)) {
         if (isFreeCall(MUD->getMemoryInst(), &TLI)) {
-          deleteDeadStoreMSSA(*I, EarlierDef, IOL, MSSA);
+          deleteDeadStoreMSSA(*I, EarlierDef, IOL, MSSA, TLI);
           Changed = true;
           continue;
         }
@@ -1505,7 +1506,7 @@ static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
           if (LaterLoc.Ptr && overwriteMSSA(LaterLoc, *LaterDef.getMemoryInst(),
                                             EarlierLoc, *I, IOL, AA, TLI)) {
             // Done.
-            deleteDeadStoreMSSA(*I, EarlierDef, IOL, MSSA);
+            deleteDeadStoreMSSA(*I, EarlierDef, IOL, MSSA, TLI);
             Changed = true;
             break;
           }
@@ -1514,7 +1515,7 @@ static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
 
       DEBUG(dbgs() << "Finished walking. " << Walk.State << "\n");
       if (Walk.State == WalkResult::ReachedEnd && non_escapes) {
-        deleteDeadStoreMSSA(*I, EarlierDef, IOL, MSSA);
+        deleteDeadStoreMSSA(*I, EarlierDef, IOL, MSSA, TLI);
         Changed = true;
       }
     }
