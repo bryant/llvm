@@ -1445,6 +1445,80 @@ static bool isNoopStoreMSSA(Instruction &I, AliasAnalysis &AA, MemorySSA &MSSA,
   return false;
 }
 
+struct DSEWalker {
+  Function *F;
+
+  unsigned InstNum;
+  DenseMap<const Value *, unsigned> InstNums;
+  // ^ Post-order numbering of MemoryPhis and instructions,
+  // a) that throw, or
+  // b) are DSE candidates.
+  // Used to detect intervening MayThrows or loop latches
+  SmallVector<unsigned, 32> MayThrows;
+  SmallVector<Instruction *, 32> Stores;
+  // ^ Stores to visit, post-ordered
+  DenseSet<const Value *> NonEscapes;
+  // ^ Args and insts that don't escape.
+  InstOverlapIntervalsTy IOL;
+  // ^ isOverwrite needs this.
+
+  AliasAnalysis *AA;
+  const MemorySSA *MSSA;
+  const PostDominatorTree *PDT;
+  const TargetLibraryInfo *TLI;
+
+  unsigned addPO(Instruction &I) {
+    InstNums[&I] = InstNum++;
+    DEBUG(dbgs() << "PO: " << I << ", " << InstNums[&I] << "\n");
+    return InstNums[&I];
+  }
+
+  unsigned addPO(MemoryPhi &P) {
+    InstNums[&P] = InstNum++;
+    DEBUG(dbgs() << "PO: " << P << ", " << InstNums[&P] << "\n");
+    return InstNums[&P];
+  }
+
+  bool nonEscapingMem(Instruction &I) {
+    return isa<AllocaInst>(&I) ||
+           (isAllocLikeFn(&I, TLI) && !PointerMayBeCaptured(&I, true, true));
+  }
+
+  void numberInstsPO() {
+    for (BasicBlock *BB : post_order(F)) {
+      for (Instruction &I : reverse(*BB)) {
+        if (I.mayThrow()) {
+          MayThrows.push_back(addPO(I));
+        } else if (auto *Def =
+                       dyn_cast_or_null<MemoryDef>(MSSA->getMemoryAccess(&I))) {
+          addPO(I);
+          // Only consider true DSE candidates. Volatile/atomic stores don't
+          // qualify, for instance.
+          if (hasMemoryWrite(&I, *TLI) && isRemovable(&I)) {
+            DEBUG(dbgs() << "candidate: " << I << "\n");
+            Stores.push_back(&I);
+          }
+        }
+
+        if (nonEscapingMem(I)) {
+          DEBUG(dbgs() << "found non-escaping mem: " << I << "\n");
+          NonEscapes.insert(&I);
+        }
+      }
+
+      if (MemoryPhi *Phi = MSSA->getMemoryAccess(BB))
+        // Phis numbers are used to recognize loop latches.
+        addPO(*Phi);
+    }
+  }
+
+  DSEWalker(Function &F, AliasAnalysis &AA, const MemorySSA &MSSA,
+            const PostDominatorTree &PDT, const TargetLibraryInfo &TLI)
+      : F(&F), AA(&AA), MSSA(&MSSA), PDT(&PDT), TLI(&TLI) {
+    numberInstsPO();
+  }
+};
+
 static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
                                     MemorySSA &MSSA,
                                     const PostDominatorTree &PDT,
