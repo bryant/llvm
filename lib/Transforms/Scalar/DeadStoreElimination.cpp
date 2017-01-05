@@ -1238,6 +1238,8 @@ nextMemoryDef(MemoryAccess &Def, const MemoryLocation &DefLoc,
         return {WalkResult::KilledByUse, Load};
       }
     } else if (auto *D = dyn_cast<MemoryDef>(U.getUser())) {
+      // TODO: also handle atomics? for some reason, aa insists that a load
+      // monotonic loads from the store
       if (!isFreeCall(D->getMemoryInst(), &TLI) &&
           AA.getModRefInfo(D->getMemoryInst(), DefLoc) & MRI_Ref) {
         DEBUG(dbgs() << "used by " << *D << "\n");
