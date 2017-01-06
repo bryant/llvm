@@ -185,14 +185,6 @@ static MemoryLocation getLocForWrite(Instruction *Inst, AliasAnalysis &AA) {
   }
 }
 
-static MemoryLocation getLocForWrite(Instruction *Inst, AliasAnalysis &AA,
-                                     const TargetLibraryInfo &TLI) {
-  MemoryLocation Loc = getLocForWrite(Inst, AA);
-  if (!Loc.Ptr && isFreeCall(Inst, &TLI))
-    return MemoryLocation::getForArgument(ImmutableCallSite(Inst), 0, TLI);
-  return Loc;
-}
-
 /// Return the location read by the specified "hasMemoryWrite" instruction if
 /// any.
 static MemoryLocation getLocForRead(Instruction *Inst,
