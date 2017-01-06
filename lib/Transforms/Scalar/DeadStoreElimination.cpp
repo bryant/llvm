@@ -1454,7 +1454,7 @@ class DSEWalker {
   // are DSE candidates. Used to detect intervening MayThrows or loop latches
   SmallVector<unsigned, 32> MayThrows;
   DenseSet<const Value *> NonEscapes;
-  // ^ Args and insts that don't escape.
+  // ^ Args and insts that don't escape on unwind of F.
   InstOverlapIntervalsTy IOL;
   // ^ isOverwrite needs this.
 public:
@@ -1479,9 +1479,9 @@ private:
     return InstNums[&P];
   }
 
-  bool nonEscapingMem(Instruction &I) {
+  bool nonEscapingOnUnwind(Instruction &I) {
     return isa<AllocaInst>(&I) ||
-           (isAllocLikeFn(&I, TLI) && !PointerMayBeCaptured(&I, true, true));
+           (isAllocLikeFn(&I, TLI) && !PointerMayBeCaptured(&I, false, true));
   }
 
   MemoryLocation getWriteLoc(Instruction *I) const {
@@ -1527,6 +1527,8 @@ public:
     MemoryLocation Loc;
     const Value *Und;
     bool Escapes;
+    // ^ If execution in the function unwinds after this candidate writes, will
+    // its memory location escapes?
   };
 
   void deleteDead(MemoryDef &D) {
@@ -1745,7 +1747,7 @@ public:
           }
         }
 
-        if (nonEscapingMem(I)) {
+        if (nonEscapingOnUnwind(I)) {
           DEBUG(dbgs() << "found non-escaping mem: " << I << "\n");
           NonEscapes.insert(&I);
         }
