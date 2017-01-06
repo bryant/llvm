@@ -90,7 +90,7 @@ MemoryLocation MemoryLocation::getForDest(const MemIntrinsic *MTI) {
   return MemoryLocation(MTI->getRawDest(), Size, AATags);
 }
 
-static bool validIntrinArg(const IntrinsicInst *II, unsigned ArgIdx) {
+bool MemoryLocation::validIntrinArg(const IntrinsicInst *II, unsigned ArgIdx) {
   switch (II->getIntrinsicID()) {
   default:
     return true;
