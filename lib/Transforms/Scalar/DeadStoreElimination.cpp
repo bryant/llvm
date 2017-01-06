@@ -1765,9 +1765,10 @@ public:
         addPO(*Phi);
 
       if (auto *RI = dyn_cast<ReturnInst>(BB->getTerminator())) {
-        // TODO: Possibly ignore unreachable blocks, which would require DT.
         const DataLayout &DL = F->getParent()->getDataLayout();
-        Returns.insert(GetUnderlyingObject(RI->getReturnValue(), DL));
+        // TODO: Possibly ignore unreachable blocks, which would require DT.
+        if (Value *RetVal = RI->getReturnValue())
+          Returns.insert(GetUnderlyingObject(RetVal, DL));
       }
     }
   }
