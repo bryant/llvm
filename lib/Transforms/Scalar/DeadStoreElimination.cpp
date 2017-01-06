@@ -1826,7 +1826,8 @@ static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
     }
 
     DEBUG(dbgs() << "Finished walking. " << Res.State << "\n");
-    if (Res.State == WalkResult::ReachedEnd && !Cand.Escapes) {
+    if (Res.State == WalkResult::ReachedEnd && !Cand.Escapes &&
+        !Cand.Returned) {
       DEBUG(dbgs() << "Caught unused write to non-escaping memory.\n");
       Walker.deleteDead(*D);
       Changed = true;
