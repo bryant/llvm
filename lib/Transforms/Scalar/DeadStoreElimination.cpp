@@ -1540,19 +1540,23 @@ public:
     DEBUG(dbgs() << "DSE-ing:\n\t" << D << "\n\t" << I << "\n");
 
     SmallVector<Value *, 32> DeadPool(I.value_op_begin(), I.value_op_end());
+    DenseSet<Instruction *> Deleted; // Prevents double deletion.
     MSSA->removeMemoryAccess(&D);
     I.eraseFromParent();
 
     while (!DeadPool.empty()) {
       auto *Cand = dyn_cast<Instruction>(DeadPool.pop_back_val());
-      // Check if safe to delete, accounting for possible volatile or atomic.
-      if (Cand && isInstructionTriviallyDead(Cand, TLI)) {
+      if (Cand && !Deleted.count(Cand) &&
+          // Check if safe to delete, accounting for possible volatile or
+          // atomic.
+          isInstructionTriviallyDead(Cand, TLI)) {
         DeadPool.insert(DeadPool.end(), Cand->value_op_begin(),
                         Cand->value_op_end());
         if (MemoryAccess *MA = MSSA->getMemoryAccess(Cand))
           MSSA->removeMemoryAccess(MA);
         Cand->eraseFromParent();
         IOL.erase(Cand);
+        Deleted.insert(Cand);
         ++NumFastOther;
       }
     }
