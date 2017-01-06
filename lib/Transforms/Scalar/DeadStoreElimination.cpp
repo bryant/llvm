@@ -1697,27 +1697,27 @@ public:
 
 using DSELegacyMemDep = DSELegacyPass<false>;
 template <> char DSELegacyPass<false>::ID = 0;
-INITIALIZE_PASS_BEGIN(DSELegacyMemDep, "dse", "Dead Store Elimination", false,
+INITIALIZE_PASS_BEGIN(DSELegacyMemDep, "dsemd", "Dead Store Elimination", false,
                       false)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(GlobalsAAWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(MemoryDependenceWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(TargetLibraryInfoWrapperPass)
-INITIALIZE_PASS_END(DSELegacyMemDep, "dse", "Dead Store Elimination", false,
+INITIALIZE_PASS_END(DSELegacyMemDep, "dsemd", "Dead Store Elimination", false,
                     false)
 
 using DSELegacyMSSA = DSELegacyPass<true>;
 template <> char DSELegacyPass<true>::ID = 0;
-INITIALIZE_PASS_BEGIN(DSELegacyMSSA, "dsem",
+INITIALIZE_PASS_BEGIN(DSELegacyMSSA, "dse",
                       "Dead Store Elimination (Memory SSA)", false, false)
 INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(GlobalsAAWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(MemorySSAWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(TargetLibraryInfoWrapperPass)
-INITIALIZE_PASS_END(DSELegacyMSSA, "dsem",
-                    "Dead Store Elimination (Memory SSA)", false, false)
+INITIALIZE_PASS_END(DSELegacyMSSA, "dse", "Dead Store Elimination (Memory SSA)",
+                    false, false)
 
 FunctionPass *llvm::createDeadStoreEliminationPass() {
   if (EnableMSSA)
