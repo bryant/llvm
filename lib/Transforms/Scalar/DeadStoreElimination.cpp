@@ -1543,6 +1543,7 @@ public:
     DenseSet<Instruction *> Deleted; // Prevents double deletion.
     MSSA->removeMemoryAccess(&D);
     I.eraseFromParent();
+    IOL.erase(&I);
 
     while (!DeadPool.empty()) {
       auto *Cand = dyn_cast<Instruction>(DeadPool.pop_back_val());
