@@ -1640,6 +1640,8 @@ public:
     return AA->getModRefInfo(I, Cand.Loc) & MRI_Ref;
   }
 
+  // Given the current walk location DefOrPhi, attempt to move downwards to the
+  // next MemoryDef that could DSE Cand.
   WalkResult walkNext(MemoryAccess *DefOrPhi, const Candidate &Cand) {
     DEBUG(dbgs() << "descending past " << *DefOrPhi << "\n");
     WalkResult Res = {WalkResult::ReachedEnd, nullptr};
