@@ -1563,6 +1563,12 @@ public:
     }
   }
 
+  // TODO: this fails to catch the following case:
+  //
+  // p = load x;
+  // while (...) { store p, x; store _, x; ... }
+  //
+  // memoryIsNotModifiedBetween is able to detect this.
   bool isNoop(const MemoryDef &D) {
     if (auto *SI = dyn_cast<StoreInst>(D.getMemoryInst())) {
       MemoryAccess *Clob = MSSA->getWalker()->getClobberingMemoryAccess(SI);
