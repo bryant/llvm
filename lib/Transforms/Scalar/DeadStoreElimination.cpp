@@ -1676,9 +1676,7 @@ public:
     AU.setPreservesCFG();
     AU.addRequired<AAResultsWrapperPass>();
     AU.addRequired<TargetLibraryInfoWrapperPass>();
-    AU.addRequired<DominatorTreeWrapperPass>();
     AU.addPreserved<GlobalsAAWrapperPass>();
-    AU.addPreserved<DominatorTreeWrapperPass>();
 
     if (UseMSSA) {
       AU.addRequired<PostDominatorTreeWrapperPass>();
@@ -1686,7 +1684,9 @@ public:
       AU.addPreserved<PostDominatorTreeWrapperPass>();
       AU.addPreserved<MemorySSAWrapperPass>();
     } else {
+      AU.addRequired<DominatorTreeWrapperPass>();
       AU.addRequired<MemoryDependenceWrapperPass>();
+      AU.addPreserved<DominatorTreeWrapperPass>();
       AU.addPreserved<MemoryDependenceWrapperPass>();
     }
   }
