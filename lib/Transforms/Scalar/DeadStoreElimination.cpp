@@ -1709,7 +1709,8 @@ public:
 
     const DataLayout &DL = F->getParent()->getDataLayout();
     if (Value *Ptr = getLifetimeEndish(LaterI)) {
-      // TODO: Possibly avoid repeated calls to GetUnderlyingObject.
+      // TODO: Possibly avoid repeated calls to GetUnderlyingObject through
+      // getLifetimeEndish.
       DEBUG(dbgs() << "checking alias with free:\n\t" << *Earlier.Und << "\n\t"
                    << *Ptr << "\n");
       return AA->isMustAlias(Earlier.Und, Ptr);
