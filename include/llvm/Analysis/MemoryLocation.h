@@ -92,6 +92,8 @@ public:
   static MemoryLocation getForArgument(ImmutableCallSite CS, unsigned ArgIdx,
                                        const TargetLibraryInfo &TLI);
 
+  static bool validIntrinArg(const IntrinsicInst *, unsigned ArgIdx);
+
   explicit MemoryLocation(const Value *Ptr = nullptr,
                           uint64_t Size = UnknownSize,
                           const AAMDNodes &AATags = AAMDNodes())

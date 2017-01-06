@@ -90,6 +90,29 @@ MemoryLocation MemoryLocation::getForDest(const MemIntrinsic *MTI) {
   return MemoryLocation(MTI->getRawDest(), Size, AATags);
 }
 
+static bool validIntrinArg(const IntrinsicInst *II, unsigned ArgIdx) {
+  switch (II->getIntrinsicID()) {
+  default:
+    return true;
+  case Intrinsic::memset:
+  case Intrinsic::memcpy:
+  case Intrinsic::memmove:
+    return ArgIdx <= 1;
+
+  case Intrinsic::lifetime_start:
+  case Intrinsic::lifetime_end:
+  case Intrinsic::invariant_start:
+    return ArgIdx == 1;
+
+  case Intrinsic::invariant_end:
+    return ArgIdx == 2;
+
+  case Intrinsic::arm_neon_vld1:
+  case Intrinsic::arm_neon_vst1:
+    return ArgIdx == 0;
+  }
+}
+
 MemoryLocation MemoryLocation::getForArgument(ImmutableCallSite CS,
                                               unsigned ArgIdx,
                                               const TargetLibraryInfo &TLI) {
@@ -101,14 +124,13 @@ MemoryLocation MemoryLocation::getForArgument(ImmutableCallSite CS,
   if (const IntrinsicInst *II = dyn_cast<IntrinsicInst>(CS.getInstruction())) {
     const DataLayout &DL = II->getModule()->getDataLayout();
 
+    assert(validIntrinArg(II, ArgIdx) && "Invalid argument index");
     switch (II->getIntrinsicID()) {
     default:
       break;
     case Intrinsic::memset:
     case Intrinsic::memcpy:
     case Intrinsic::memmove:
-      assert((ArgIdx == 0 || ArgIdx == 1) &&
-             "Invalid argument index for memory intrinsic");
       if (ConstantInt *LenCI = dyn_cast<ConstantInt>(II->getArgOperand(2)))
         return MemoryLocation(Arg, LenCI->getZExtValue(), AATags);
       break;
@@ -116,23 +138,19 @@ MemoryLocation MemoryLocation::getForArgument(ImmutableCallSite CS,
     case Intrinsic::lifetime_start:
     case Intrinsic::lifetime_end:
     case Intrinsic::invariant_start:
-      assert(ArgIdx == 1 && "Invalid argument index");
       return MemoryLocation(
           Arg, cast<ConstantInt>(II->getArgOperand(0))->getZExtValue(), AATags);
 
     case Intrinsic::invariant_end:
-      assert(ArgIdx == 2 && "Invalid argument index");
       return MemoryLocation(
           Arg, cast<ConstantInt>(II->getArgOperand(1))->getZExtValue(), AATags);
 
     case Intrinsic::arm_neon_vld1:
-      assert(ArgIdx == 0 && "Invalid argument index");
       // LLVM's vld1 and vst1 intrinsics currently only support a single
       // vector register.
       return MemoryLocation(Arg, DL.getTypeStoreSize(II->getType()), AATags);
 
     case Intrinsic::arm_neon_vst1:
-      assert(ArgIdx == 0 && "Invalid argument index");
       return MemoryLocation(
           Arg, DL.getTypeStoreSize(II->getArgOperand(1)->getType()), AATags);
     }

@@ -176,6 +176,9 @@ ModRefInfo AAResults::getModRefInfo(ImmutableCallSite CS,
         if (!Arg->getType()->isPointerTy())
           continue;
         unsigned ArgIdx = std::distance(CS.arg_begin(), AI);
+        if (auto *II = dyn_cast<IntrinsicInst>(CS.getInstruction()))
+          if (!MemoryLocation::validIntrinArg(II, ArgIdx))
+            continue;
         MemoryLocation ArgLoc = MemoryLocation::getForArgument(CS, ArgIdx, TLI);
         AliasResult ArgAlias = alias(ArgLoc, Loc);
         if (ArgAlias != NoAlias) {
@@ -245,6 +248,9 @@ ModRefInfo AAResults::getModRefInfo(ImmutableCallSite CS1,
         if (!Arg->getType()->isPointerTy())
           continue;
         unsigned CS2ArgIdx = std::distance(CS2.arg_begin(), I);
+        if (auto *II = dyn_cast<IntrinsicInst>(CS2.getInstruction()))
+          if (!MemoryLocation::validIntrinArg(II, CS2ArgIdx))
+            continue;
         auto CS2ArgLoc = MemoryLocation::getForArgument(CS2, CS2ArgIdx, TLI);
 
         // ArgMask indicates what CS2 might do to CS2ArgLoc, and the dependence
@@ -275,6 +281,9 @@ ModRefInfo AAResults::getModRefInfo(ImmutableCallSite CS1,
         if (!Arg->getType()->isPointerTy())
           continue;
         unsigned CS1ArgIdx = std::distance(CS1.arg_begin(), I);
+        if (auto *II = dyn_cast<IntrinsicInst>(CS1.getInstruction()))
+          if (!MemoryLocation::validIntrinArg(II, CS1ArgIdx))
+            continue;
         auto CS1ArgLoc = MemoryLocation::getForArgument(CS1, CS1ArgIdx, TLI);
 
         // ArgMask indicates what CS1 might do to CS1ArgLoc; if CS1 might Mod
