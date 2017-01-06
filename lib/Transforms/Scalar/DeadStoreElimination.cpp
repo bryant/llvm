@@ -1453,6 +1453,8 @@ class DSEWalker {
   // ^ Post-order numbering of MemoryPhis and instructions, a) that throw, or b)
   // are DSE candidates. Used to detect intervening MayThrows or loop latches
   SmallVector<unsigned, 32> MayThrows;
+  SmallPtrSet<const Value *, 16> Returns;
+  // ^ Values returned by F.
   DenseSet<const Value *> NonEscapes;
   // ^ Args and insts that don't escape on unwind of F.
   InstOverlapIntervalsTy IOL;
@@ -1526,6 +1528,8 @@ public:
     MemoryDef *D;
     MemoryLocation Loc;
     const Value *Und;
+    bool Returned;
+    // ^ Is this candidate's memory location returned by the function?
     bool Escapes;
     // ^ If execution in the function unwinds after this candidate writes, will
     // its memory location escapes?
@@ -1621,7 +1625,7 @@ public:
                  AA->isNoAlias(MemoryLocation::get(LI), Cand.Loc));
       else if (auto *SI = dyn_cast<StoreInst>(I))
         return !F(SI->getOrdering());
-      else if (isa<FenceInst>(I) && !Cand.Escapes)
+      else if (isa<FenceInst>(I) && !Cand.Escapes && !Cand.Returned)
         // From the old DSE: "Fences only constraints the ordering of already
         // visible stores, it does not make a store visible to other threads.
         // So, skipping over a fence does not change a store from being dead."
@@ -1685,6 +1689,8 @@ public:
     MemoryLocation Loc = getWriteLoc(D.getMemoryInst());
     assert(Loc.Ptr && "Expected a Loc!");
     const Value *Und = GetUnderlyingObject(Loc.Ptr, DL);
+    bool Returned = Returns.count(Und);
+    DEBUG(dbgs() << "is " << D << " returned? " << Returned << "\n");
     bool Escapes =
         !(NonEscapes.count(Und) || ([&]() {
             SmallVector<Value *, 4> Unds;
@@ -1692,7 +1698,7 @@ public:
             return all_of(Unds, [&](Value *V) { return NonEscapes.count(V); });
           })());
     DEBUG(dbgs() << "does " << D << " escape? " << Escapes << "\n");
-    return {&D, Loc, Und, Escapes};
+    return {&D, Loc, Und, Returned, Escapes};
   }
 
   bool canDSE(const Candidate &Earlier, const MemoryDef &Later,
@@ -1756,6 +1762,12 @@ public:
       if (MemoryPhi *Phi = MSSA->getMemoryAccess(BB))
         // Phis numbers are used to recognize loop latches.
         addPO(*Phi);
+
+      if (auto *RI = dyn_cast<ReturnInst>(BB->getTerminator())) {
+        // TODO: Possibly ignore unreachable blocks, which would require DT.
+        const DataLayout &DL = F->getParent()->getDataLayout();
+        Returns.insert(GetUnderlyingObject(RI->getReturnValue(), DL));
+      }
     }
   }
 };
