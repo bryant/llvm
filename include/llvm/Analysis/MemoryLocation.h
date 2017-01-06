@@ -24,6 +24,7 @@ namespace llvm {
 
 class LoadInst;
 class StoreInst;
+class IntrinsicInst;
 class MemTransferInst;
 class MemIntrinsic;
 class TargetLibraryInfo;
