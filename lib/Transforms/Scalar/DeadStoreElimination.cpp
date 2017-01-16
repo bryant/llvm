@@ -1551,8 +1551,6 @@ static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
   DEBUG(MSSA.print(dbgs()));
   DSEWalker Walker(F, AA, MSSA, PDT, TLI);
 
-  using Candidate = DSEWalker::Candidate;
-
   bool Changed = false;
   for (MemoryDef *D : Walker.Stores) {
     DEBUG(dbgs() << "inspecting " << *D->getMemoryInst() << "\n");
@@ -1564,7 +1562,7 @@ static bool eliminateDeadStoresMSSA(Function &F, AliasAnalysis &AA,
       continue;
     }
 
-    Candidate Cand = Walker.makeCand(*D);
+    DSEWalker::Candidate Cand = Walker.makeCand(*D);
     WalkResult Res;
     // Attempt to DSE within the same block because post-dom checks are limited
     // to BasicBlock granularity.
