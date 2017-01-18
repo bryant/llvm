@@ -62,7 +62,19 @@ set(sources
 add_llvm_target(X86CodeGen ${sources}
 
   LINK_COMPONENTS
-
+    Analysis
+    AsmPrinter
+    CodeGen
+    Core
+    MC
+    SelectionDAG
+    Support
+    Target
+    X86AsmPrinter
+    X86Desc
+    X86Info
+    X86Utils
+    GlobalISel
 
 )
 

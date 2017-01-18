@@ -27,7 +27,16 @@ add_llvm_target(SparcCodeGen
   SparcTargetObjectFile.cpp
 
   LINK_COMPONENTS
-
+    AsmPrinter
+    CodeGen
+    Core
+    MC
+    SelectionDAG
+    SparcAsmPrinter
+    SparcDesc
+    SparcInfo
+    Support
+    Target
 
 )
 
