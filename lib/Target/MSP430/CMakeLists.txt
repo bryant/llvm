@@ -22,7 +22,16 @@ add_llvm_target(MSP430CodeGen
   MSP430MCInstLower.cpp
 
   LINK_COMPONENTS
-
+    AsmPrinter
+    CodeGen
+    Core
+    MC
+    MSP430AsmPrinter
+    MSP430Desc
+    MSP430Info
+    SelectionDAG
+    Support
+    Target
 
 )
 

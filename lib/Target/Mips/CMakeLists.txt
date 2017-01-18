@@ -49,7 +49,17 @@ add_llvm_target(MipsCodeGen
   MipsTargetObjectFile.cpp
 
   LINK_COMPONENTS
-
+    Analysis
+    AsmPrinter
+    CodeGen
+    Core
+    MC
+    MipsAsmPrinter
+    MipsDesc
+    MipsInfo
+    SelectionDAG
+    Support
+    Target
 
 )
 

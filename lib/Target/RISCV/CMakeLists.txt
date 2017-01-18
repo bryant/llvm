@@ -10,7 +10,11 @@ add_llvm_target(RISCVCodeGen
   RISCVTargetMachine.cpp
 
   LINK_COMPONENTS
-
+    Core
+    CodeGen
+    RISCVInfo
+    Support
+    Target
 
 )
 

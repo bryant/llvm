@@ -63,7 +63,19 @@ add_llvm_target(ARMCodeGen
   ${GLOBAL_ISEL_BUILD_FILES}
 
   LINK_COMPONENTS
-
+    ARMAsmPrinter
+    ARMDesc
+    ARMInfo
+    Analysis
+    AsmPrinter
+    CodeGen
+    Core
+    MC
+    ScalarOpts
+    SelectionDAG
+    Support
+    Target
+    GlobalISel
 
 )
 

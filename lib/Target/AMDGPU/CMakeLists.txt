@@ -88,7 +88,22 @@ add_llvm_target(AMDGPUCodeGen
   ${GLOBAL_ISEL_BUILD_FILES}
 
   LINK_COMPONENTS
-
+    Analysis
+    AsmPrinter
+    CodeGen
+    Core
+    ipo
+    MC
+    AMDGPUAsmPrinter
+    AMDGPUDesc
+    AMDGPUInfo
+    AMDGPUUtils
+    ScalarOpts
+    SelectionDAG
+    Support
+    Target
+    TransformUtils
+    Vectorize
 
 )
 

@@ -48,7 +48,19 @@ add_llvm_target(WebAssemblyCodeGen
   intrinsics_gen
 
   LINK_COMPONENTS
-
+    Analysis
+    AsmPrinter
+    CodeGen
+    Core
+    MC
+    ScalarOpts
+    SelectionDAG
+    Support
+    Target
+    TransformUtils
+    WebAssemblyAsmPrinter
+    WebAssemblyDesc
+    WebAssemblyInfo
 
 )
 
