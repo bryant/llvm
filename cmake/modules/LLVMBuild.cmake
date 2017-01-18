@@ -5,7 +5,7 @@
 # utils/llvm-build.
 function(validate_component_deps components)
   foreach(component ${components})
-    get_target_property(cdeps ${component} LINK_LIBRARIES)
+    get_target_property(cdeps ${component} INTERFACE_LINK_LIBRARIES)
     list(GET cdeps 0 first_dep)
     if(NOT ${first_dep} STREQUAL "cdeps-NOTFOUND")
       foreach(cdep ${cdeps})
@@ -29,7 +29,7 @@ function(gen_libdep_inc components targets noninstalls)
   list(FILTER leaf_comps INCLUDE REGEX "^LLVM")
   foreach(component ${components})
     if(component MATCHES "^LLVM")
-      get_target_property(cdeps ${component} LINK_LIBRARIES)
+      get_target_property(cdeps ${component} INTERFACE_LINK_LIBRARIES)
       list(FILTER cdeps INCLUDE REGEX "^LLVM")
 
       set(cdepz "")
