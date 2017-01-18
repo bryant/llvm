@@ -13,7 +13,10 @@ add_llvm_library(LLVMTarget
   ${LLVM_MAIN_INCLUDE_DIR}/llvm/Target
 
   LINK_COMPONENTS
-
+    Analysis
+    Core
+    MC
+    Support
 
 )
 
