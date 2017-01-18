@@ -28,7 +28,7 @@ class ThisAintALib(Exception): pass
 
 def copy_lb_deps(comp):
     raw = comp_cmake(comp)
-    m = re.findall(r"^add_llvm_(library|target)\(([^\)]+)\)", raw,
+    m = re.findall(r"^add_llvm_(?:library|target)\([^\)]+\)", raw,
                    flags=re.DOTALL | re.MULTILINE)
     if len(m) != 1 or "LINK_COMPONENTS" in raw:
         #raise ThisAintALib
