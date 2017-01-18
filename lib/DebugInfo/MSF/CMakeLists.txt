@@ -7,4 +7,8 @@ add_llvm_library(LLVMDebugInfoMSF
   StreamWriter.cpp
   ADDITIONAL_HEADER_DIRS
   "${LLVM_MAIN_INCLUDE_DIR}/llvm/DebugInfo/MSF"
-  )
+
+  LINK_COMPONENTS
+    Support
+
+)

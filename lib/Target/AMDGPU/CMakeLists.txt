@@ -86,7 +86,11 @@ add_llvm_target(AMDGPUCodeGen
   SITypeRewriter.cpp
   SIWholeQuadMode.cpp
   ${GLOBAL_ISEL_BUILD_FILES}
-  )
+
+  LINK_COMPONENTS
+
+
+)
 
 add_subdirectory(AsmParser)
 add_subdirectory(InstPrinter)

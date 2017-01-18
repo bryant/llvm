@@ -6,4 +6,8 @@ add_llvm_library(LLVMObjectYAML
   MachOYAML.cpp
   ObjectYAML.cpp
   YAML.cpp
-  )
+
+  LINK_COMPONENTS
+    Support
+
+)

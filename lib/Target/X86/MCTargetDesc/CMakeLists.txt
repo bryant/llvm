@@ -7,4 +7,13 @@ add_llvm_library(LLVMX86Desc
   X86ELFObjectWriter.cpp
   X86WinCOFFStreamer.cpp
   X86WinCOFFObjectWriter.cpp
-  )
+
+  LINK_COMPONENTS
+    MC
+    MCDisassembler
+    Object
+    Support
+    X86AsmPrinter
+    X86Info
+
+)

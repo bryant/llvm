@@ -67,4 +67,12 @@ add_llvm_library(LLVMScalarOpts
 
   DEPENDS
   intrinsics_gen
-  )
+
+  LINK_COMPONENTS
+    Analysis
+    Core
+    InstCombine
+    Support
+    TransformUtils
+
+)

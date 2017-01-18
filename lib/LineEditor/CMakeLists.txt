@@ -11,4 +11,8 @@ add_llvm_library(LLVMLineEditor
   LINK_LIBS
   LLVMSupport
   ${link_libs}
-  )
+
+  LINK_COMPONENTS
+    Support
+
+)

@@ -4,5 +4,11 @@ add_public_tablegen_target(LibOptionsTableGen)
 
 add_llvm_library(LLVMLibDriver
   LibDriver.cpp
-  )
+
+  LINK_COMPONENTS
+    Object
+    Option
+    Support
+
+)
 add_dependencies(LLVMLibDriver LibOptionsTableGen)

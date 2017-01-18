@@ -12,4 +12,13 @@ add_llvm_library(LLVMOrcJIT
 
   DEPENDS
   intrinsics_gen
-  )
+
+  LINK_COMPONENTS
+    Core
+    ExecutionEngine
+    Object
+    RuntimeDyld
+    Support
+    TransformUtils
+
+)

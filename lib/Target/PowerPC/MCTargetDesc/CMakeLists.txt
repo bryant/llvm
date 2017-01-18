@@ -7,4 +7,11 @@ add_llvm_library(LLVMPowerPCDesc
   PPCPredicates.cpp
   PPCMachObjectWriter.cpp
   PPCELFObjectWriter.cpp
-  )
+
+  LINK_COMPONENTS
+    MC
+    PowerPCAsmPrinter
+    PowerPCInfo
+    Support
+
+)

@@ -6,4 +6,17 @@ add_llvm_library(LLVMPasses
 
   DEPENDS
   intrinsics_gen
-  )
+
+  LINK_COMPONENTS
+    Analysis
+    CodeGen
+    Core
+    ipo
+    InstCombine
+    ScalarOpts
+    Support
+    TransformUtils
+    Vectorize
+    Instrumentation
+
+)

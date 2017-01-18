@@ -58,4 +58,10 @@ add_llvm_library(LLVMTransformUtils
 
   DEPENDS
   intrinsics_gen
-  )
+
+  LINK_COMPONENTS
+    Analysis
+    Core
+    Support
+
+)
