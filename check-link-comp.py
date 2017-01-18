@@ -34,6 +34,10 @@ def copy_lb_deps(comp):
         #raise ThisAintALib
         return None
 
+    # for target comps, the deps are found in target_name + "CodeGen"
+    if m[0].startswith("add_llvm_target") and not comp.name.endswith("CodeGen"):
+        comp = libs[comp.name + "CodeGen"]
+
     def subit(m):
         deps = "\n".join(" " * 4 + libnames.get(dep, "WTF")
                          for dep in comp.required_libraries)
