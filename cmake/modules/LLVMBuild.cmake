@@ -86,7 +86,7 @@ function(gen_libdep_inc components targets noninstalls)
     set(entries "${entries}" "${entry}")
     gen_libdep_entry(entry "nativecodegen" "" 1 "")
     set(entries "${entries}" "${entry}")
-    gen_libdep_entry(entry "engine" "" 1 interpreter)
+    gen_libdep_entry(entry "engine" "" 1 "interpreter")
     set(entries "${entries}" "${entry}")
   endif()
 
