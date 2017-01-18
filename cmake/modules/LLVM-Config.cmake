@@ -197,11 +197,9 @@ function(llvm_map_components_to_libnames out_libs)
       string(TOUPPER "${c}" capitalized)
       list(FIND capitalized_libs LLVM${capitalized} lib_idx)
       if( lib_idx LESS 0 )
-        # The component is unknown. Maybe is an omitted target?
-        is_llvm_target_library(${c} iltl_result)
-        if( NOT iltl_result )
-          message(FATAL_ERROR "Library `${c}' not found in list of llvm libraries.")
-        endif()
+        # The component is unknown. Maybe is an omitted target? Assume it's a
+        # valid component that is yet to be scanned.
+        list(APPEND expanded_components LLVM${c})
       else( lib_idx LESS 0 )
         list(GET LLVM_AVAILABLE_LIBS ${lib_idx} canonical_lib)
         list(APPEND expanded_components ${canonical_lib})
