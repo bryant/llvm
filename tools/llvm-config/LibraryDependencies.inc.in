@@ -1,0 +1,23 @@
+//===- llvm-build generated file --------------------------------*- C++ -*-===//
+//
+// Component Library Depenedency Table
+//
+// Automatically generated file, do not edit!
+//
+//===----------------------------------------------------------------------===//
+
+struct AvailableComponent {
+  /// The name of the component.
+  const char *Name;
+
+  /// The name of the library for this component (or NULL).
+  const char *Library;
+
+  /// Whether the component is installed.
+  bool IsInstalled;
+
+  /// The list of libraries required when linking this component.
+  const char *RequiredLibraries[17];
+} AvailableComponents[@LLVM_COMPONENT_COUNT@] = {
+@LLVM_COMPONENTS@
+};
