@@ -20,7 +20,11 @@ add_llvm_target(MSP430CodeGen
   MSP430TargetMachine.cpp
   MSP430AsmPrinter.cpp
   MSP430MCInstLower.cpp
-  )
+
+  LINK_COMPONENTS
+
+
+)
 
 add_subdirectory(InstPrinter)
 add_subdirectory(TargetInfo)

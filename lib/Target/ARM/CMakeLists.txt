@@ -61,7 +61,11 @@ add_llvm_target(ARMCodeGen
   Thumb2SizeReduction.cpp
   ARMComputeBlockSize.cpp
   ${GLOBAL_ISEL_BUILD_FILES}
-  )
+
+  LINK_COMPONENTS
+
+
+)
 
 add_subdirectory(TargetInfo)
 add_subdirectory(AsmParser)

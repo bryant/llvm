@@ -47,7 +47,11 @@ add_llvm_target(MipsCodeGen
   MipsSubtarget.cpp
   MipsTargetMachine.cpp
   MipsTargetObjectFile.cpp
-  )
+
+  LINK_COMPONENTS
+
+
+)
 
 add_subdirectory(InstPrinter)
 add_subdirectory(Disassembler)

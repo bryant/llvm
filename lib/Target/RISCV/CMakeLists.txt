@@ -8,7 +8,11 @@ add_public_tablegen_target(RISCVCommonTableGen)
 
 add_llvm_target(RISCVCodeGen
   RISCVTargetMachine.cpp
-  )
+
+  LINK_COMPONENTS
+
+
+)
 
 add_subdirectory(TargetInfo)
 add_subdirectory(MCTargetDesc)

@@ -5,4 +5,13 @@ add_llvm_library(LLVMMIRParser
 
   DEPENDS
   intrinsics_gen
-  )
+
+  LINK_COMPONENTS
+    AsmParser
+    CodeGen
+    Core
+    MC
+    Support
+    Target
+
+)

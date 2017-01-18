@@ -5,4 +5,12 @@ add_llvm_library(LLVMLanaiDesc
   LanaiMCCodeEmitter.cpp
   LanaiMCExpr.cpp
   LanaiMCTargetDesc.cpp
+
+  LINK_COMPONENTS
+    LanaiInfo
+    LanaiInstPrinter
+    MC
+    MCDisassembler
+    Support
+
 )

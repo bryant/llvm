@@ -33,6 +33,10 @@ add_llvm_target(AVRCodeGen
 
   DEPENDS
   intrinsics_gen
+
+  LINK_COMPONENTS
+
+
 )
 
 add_subdirectory(AsmParser)

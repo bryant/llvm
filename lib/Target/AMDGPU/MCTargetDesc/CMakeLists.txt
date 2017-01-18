@@ -10,4 +10,13 @@ add_llvm_library(LLVMAMDGPUDesc
   AMDGPUTargetStreamer.cpp
   R600MCCodeEmitter.cpp
   SIMCCodeEmitter.cpp
-  )
+
+  LINK_COMPONENTS
+    Core
+    MC
+    AMDGPUAsmPrinter
+    AMDGPUInfo
+    AMDGPUUtils
+    Support
+
+)

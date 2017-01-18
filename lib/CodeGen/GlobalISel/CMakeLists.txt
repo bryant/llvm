@@ -32,4 +32,14 @@ add_llvm_library(LLVMGlobalISel
         
         DEPENDS
         intrinsics_gen
-  )
+
+  LINK_COMPONENTS
+    Analysis
+    CodeGen
+    Core
+    MC
+    Support
+    Target
+    TransformUtils
+
+)

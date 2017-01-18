@@ -10,4 +10,8 @@ add_llvm_library(LLVMTableGen
 
   ADDITIONAL_HEADER_DIRS
   ${LLVM_MAIN_INCLUDE_DIR}/llvm/TableGen
-  )
+
+  LINK_COMPONENTS
+    Support
+
+)

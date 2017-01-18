@@ -62,4 +62,23 @@ add_llvm_library(LLVMLTO
 
   DEPENDS
   intrinsics_gen
+
+  LINK_COMPONENTS
+    Analysis
+    BitReader
+    BitWriter
+    CodeGen
+    Core
+    ipo
+    InstCombine
+    Linker
+    MC
+    ObjCARCOpts
+    Object
+    Passes
+    ScalarOpts
+    Support
+    Target
+    TransformUtils
+
 )

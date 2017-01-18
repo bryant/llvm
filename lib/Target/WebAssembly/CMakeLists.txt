@@ -46,6 +46,10 @@ add_llvm_target(WebAssemblyCodeGen
 
   DEPENDS
   intrinsics_gen
+
+  LINK_COMPONENTS
+
+
 )
 
 add_subdirectory(Disassembler)

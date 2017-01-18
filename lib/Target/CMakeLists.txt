@@ -11,7 +11,11 @@ add_llvm_library(LLVMTarget
 
   ADDITIONAL_HEADER_DIRS
   ${LLVM_MAIN_INCLUDE_DIR}/llvm/Target
-  )
+
+  LINK_COMPONENTS
+
+
+)
 
 foreach(t ${LLVM_TARGETS_TO_BUILD})
   message(STATUS "Targeting ${t}")

@@ -26,6 +26,22 @@ add_llvm_target(LanaiCodeGen
   LanaiSubtarget.cpp
   LanaiTargetMachine.cpp
   LanaiTargetObjectFile.cpp
+
+  LINK_COMPONENTS
+    Analysis
+    AsmPrinter
+    CodeGen
+    Core
+    LanaiAsmParser
+    LanaiDesc
+    LanaiInfo
+    LanaiInstPrinter
+    MC
+    SelectionDAG
+    Support
+    Target
+    TransformUtils
+
 )
 
 add_subdirectory(AsmParser)

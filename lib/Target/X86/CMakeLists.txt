@@ -59,7 +59,12 @@ set(sources
   ${GLOBAL_ISEL_BUILD_FILES}
   )
 
-add_llvm_target(X86CodeGen ${sources})
+add_llvm_target(X86CodeGen ${sources}
+
+  LINK_COMPONENTS
+
+
+)
 
 add_subdirectory(AsmParser)
 add_subdirectory(Disassembler)

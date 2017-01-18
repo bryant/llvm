@@ -35,7 +35,12 @@ set(NVPTXCodeGen_sources
   NVVMReflect.cpp
   )
 
-add_llvm_target(NVPTXCodeGen ${NVPTXCodeGen_sources})
+add_llvm_target(NVPTXCodeGen ${NVPTXCodeGen_sources}
+
+  LINK_COMPONENTS
+
+
+)
 
 add_subdirectory(TargetInfo)
 add_subdirectory(InstPrinter)

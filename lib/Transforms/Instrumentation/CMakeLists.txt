@@ -17,4 +17,13 @@ add_llvm_library(LLVMInstrumentation
 
   DEPENDS
   intrinsics_gen
-  )
+
+  LINK_COMPONENTS
+    Analysis
+    Core
+    MC
+    Support
+    TransformUtils
+    ProfileData
+
+)

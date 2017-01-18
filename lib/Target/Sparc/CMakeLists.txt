@@ -25,7 +25,11 @@ add_llvm_target(SparcCodeGen
   SparcTargetMachine.cpp
   SparcMCInstLower.cpp
   SparcTargetObjectFile.cpp
-  )
+
+  LINK_COMPONENTS
+
+
+)
 
 add_subdirectory(TargetInfo)
 add_subdirectory(MCTargetDesc)
