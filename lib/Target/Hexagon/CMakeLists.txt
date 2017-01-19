@@ -73,7 +73,6 @@ add_llvm_target(HexagonCodeGen
     Support
     Target
     TransformUtils
-
 )
 
 add_subdirectory(AsmParser)

@@ -3,5 +3,4 @@ add_llvm_library(LLVMSystemZInfo
 
   LINK_COMPONENTS
     Support
-
 )

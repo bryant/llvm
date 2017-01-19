@@ -28,5 +28,4 @@ add_llvm_library(LLVMDebugInfoDWARF
   LINK_COMPONENTS
     Object
     Support
-
 )

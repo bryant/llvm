@@ -3,5 +3,4 @@ add_llvm_library(LLVMAMDGPUInfo
 
   LINK_COMPONENTS
     Support
-
 )

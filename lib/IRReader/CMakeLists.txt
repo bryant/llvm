@@ -12,5 +12,4 @@ add_llvm_library(LLVMIRReader
     BitReader
     Core
     Support
-
 )

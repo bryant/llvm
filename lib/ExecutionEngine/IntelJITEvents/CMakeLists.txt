@@ -20,7 +20,6 @@ add_llvm_library(LLVMIntelJITEvents
     Support
     Object
     ExecutionEngine
-
 )
 
 add_dependencies(LLVMIntelJITEvents LLVMCodeGen)

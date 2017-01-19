@@ -8,5 +8,4 @@ add_llvm_library(LLVMX86AsmParser
     Support
     X86Desc
     X86Info
-
 )

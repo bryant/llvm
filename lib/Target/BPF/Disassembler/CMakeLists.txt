@@ -5,6 +5,5 @@ add_llvm_library(LLVMBPFDisassembler
     MCDisassembler
     BPFInfo
     Support
-
 )
 

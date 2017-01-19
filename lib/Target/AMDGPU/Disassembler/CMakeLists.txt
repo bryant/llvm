@@ -10,7 +10,6 @@ add_llvm_library(LLVMAMDGPUDisassembler
     MC
     MCDisassembler
     Support
-
 )
 
 add_dependencies(LLVMAMDGPUDisassembler AMDGPUCommonTableGen LLVMAMDGPUUtils)

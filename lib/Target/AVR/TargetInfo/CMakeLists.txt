@@ -7,7 +7,6 @@ add_llvm_library(LLVMAVRInfo
   LINK_COMPONENTS
     MC
     Support
-
 )
 
 add_dependencies(LLVMAVRInfo AVRCommonTableGen)

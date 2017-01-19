@@ -15,7 +15,6 @@ add_llvm_target(RISCVCodeGen
     RISCVInfo
     Support
     Target
-
 )
 
 add_subdirectory(TargetInfo)

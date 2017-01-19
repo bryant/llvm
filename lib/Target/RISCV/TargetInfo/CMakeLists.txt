@@ -3,5 +3,4 @@ add_llvm_library(LLVMRISCVInfo
 
   LINK_COMPONENTS
     Support
-
 )

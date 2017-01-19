@@ -4,5 +4,4 @@ add_llvm_library(LLVMNVPTXAsmPrinter
   LINK_COMPONENTS
     MC
     Support
-
 )

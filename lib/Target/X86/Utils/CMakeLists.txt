@@ -4,5 +4,4 @@ add_llvm_library(LLVMX86Utils
   LINK_COMPONENTS
     Core
     Support
-
 )

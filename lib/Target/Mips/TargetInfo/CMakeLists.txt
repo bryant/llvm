@@ -3,5 +3,4 @@ add_llvm_library(LLVMMipsInfo
 
   LINK_COMPONENTS
     Support
-
 )

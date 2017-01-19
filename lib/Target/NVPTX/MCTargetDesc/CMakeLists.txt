@@ -7,5 +7,4 @@ add_llvm_library(LLVMNVPTXDesc
     NVPTXAsmPrinter
     NVPTXInfo
     Support
-
 )

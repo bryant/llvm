@@ -5,5 +5,4 @@ add_llvm_library(LLVMMipsDisassembler
     MCDisassembler
     MipsInfo
     Support
-
 )

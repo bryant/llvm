@@ -5,7 +5,6 @@ add_llvm_library(LLVMAMDGPUAsmPrinter
     MC
     Support
     AMDGPUUtils
-
 )
 
 add_dependencies(LLVMAMDGPUAsmPrinter LLVMAMDGPUUtils)

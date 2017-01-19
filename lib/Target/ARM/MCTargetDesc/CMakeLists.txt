@@ -20,5 +20,4 @@ add_llvm_library(LLVMARMDesc
     MC
     MCDisassembler
     Support
-
 )

@@ -18,7 +18,6 @@ add_llvm_library(LLVMHexagonDesc
     HexagonInfo
     MC
     Support
-
 )
 
 add_dependencies(LLVMHexagonDesc HexagonCommonTableGen)

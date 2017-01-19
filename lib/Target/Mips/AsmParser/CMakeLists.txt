@@ -7,5 +7,4 @@ add_llvm_library(LLVMMipsAsmParser
     MipsDesc
     MipsInfo
     Support
-
 )

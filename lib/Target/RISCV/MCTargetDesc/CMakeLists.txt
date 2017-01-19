@@ -9,5 +9,4 @@ add_llvm_library(LLVMRISCVDesc
     MC
     RISCVInfo
     Support
-
 )

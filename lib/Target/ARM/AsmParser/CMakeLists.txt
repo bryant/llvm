@@ -7,5 +7,4 @@ add_llvm_library(LLVMARMAsmParser
     MC
     MCParser
     Support
-
 )

@@ -41,7 +41,6 @@ add_llvm_target(LanaiCodeGen
     Support
     Target
     TransformUtils
-
 )
 
 add_subdirectory(AsmParser)

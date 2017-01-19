@@ -15,5 +15,4 @@ add_llvm_library(LLVMMCParser
   LINK_COMPONENTS
     MC
     Support
-
 )

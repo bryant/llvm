@@ -13,7 +13,6 @@ add_llvm_library(LLVMAVRDesc
     AVRAsmPrinter
     AVRInfo
     Support
-
 )
 
 add_dependencies(LLVMAVRDesc AVRCommonTableGen)

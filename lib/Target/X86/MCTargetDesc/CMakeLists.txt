@@ -15,5 +15,4 @@ add_llvm_library(LLVMX86Desc
     Support
     X86AsmPrinter
     X86Info
-
 )

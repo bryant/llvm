@@ -76,7 +76,6 @@ add_llvm_target(ARMCodeGen
     Support
     Target
     GlobalISel
-
 )
 
 add_subdirectory(TargetInfo)

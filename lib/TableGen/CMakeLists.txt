@@ -13,5 +13,4 @@ add_llvm_library(LLVMTableGen
 
   LINK_COMPONENTS
     Support
-
 )

@@ -8,5 +8,4 @@ add_llvm_library(LLVMMCDisassembler
   LINK_COMPONENTS
     MC
     Support
-
 )

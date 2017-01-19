@@ -14,7 +14,6 @@ add_llvm_library(LLVMAArch64Desc
     AArch64Info
     MC
     Support
-
 )
 add_dependencies(LLVMAArch64Desc AArch64CommonTableGen)
 

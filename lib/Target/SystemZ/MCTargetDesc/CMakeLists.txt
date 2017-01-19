@@ -10,5 +10,4 @@ add_llvm_library(LLVMSystemZDesc
     Support
     SystemZAsmPrinter
     SystemZInfo
-
 )

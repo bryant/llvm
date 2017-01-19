@@ -11,7 +11,6 @@ add_llvm_library(LLVMAArch64Disassembler
     MC
     MCDisassembler
     Support
-
 )
 
 add_dependencies(LLVMAArch64Disassembler AArch64CommonTableGen)

@@ -41,5 +41,4 @@ add_llvm_library(LLVMGlobalISel
     Support
     Target
     TransformUtils
-
 )

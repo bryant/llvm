@@ -3,5 +3,4 @@ add_llvm_library(LLVMLanaiInfo
 
   LINK_COMPONENTS
     Support
-
 )

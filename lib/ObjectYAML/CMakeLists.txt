@@ -8,5 +8,4 @@ add_llvm_library(LLVMObjectYAML
 
   LINK_COMPONENTS
     Support
-
 )

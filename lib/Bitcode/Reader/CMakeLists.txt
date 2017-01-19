@@ -14,5 +14,4 @@ add_llvm_library(LLVMBitReader
   LINK_COMPONENTS
     Core
     Support
-
 )

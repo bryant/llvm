@@ -10,5 +10,4 @@ add_llvm_library(LLVMDebugInfoMSF
 
   LINK_COMPONENTS
     Support
-
 )

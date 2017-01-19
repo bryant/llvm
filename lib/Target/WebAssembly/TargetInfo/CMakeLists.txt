@@ -5,7 +5,6 @@ add_llvm_library(LLVMWebAssemblyInfo
 
   LINK_COMPONENTS
     Support
-
 )
 
 add_dependencies(LLVMWebAssemblyInfo WebAssemblyCommonTableGen)

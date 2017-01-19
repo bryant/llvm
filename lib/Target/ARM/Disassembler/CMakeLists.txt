@@ -6,5 +6,4 @@ add_llvm_library(LLVMARMDisassembler
     ARMInfo
     MCDisassembler
     Support
-
 )

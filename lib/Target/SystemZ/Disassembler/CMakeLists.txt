@@ -7,5 +7,4 @@ add_llvm_library(LLVMSystemZDisassembler
     Support
     SystemZDesc
     SystemZInfo
-
 )

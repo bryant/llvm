@@ -4,5 +4,4 @@ add_llvm_library(LLVMLanaiInstPrinter
   LINK_COMPONENTS
     MC
     Support
-
 )

@@ -9,6 +9,5 @@ add_llvm_library(LLVMLibDriver
     Object
     Option
     Support
-
 )
 add_dependencies(LLVMLibDriver LibOptionsTableGen)

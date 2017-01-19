@@ -3,5 +3,4 @@ add_llvm_library(LLVMHexagonInfo
 
   LINK_COMPONENTS
     Support
-
 )

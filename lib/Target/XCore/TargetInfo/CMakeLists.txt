@@ -3,5 +3,4 @@ add_llvm_library(LLVMXCoreInfo
 
   LINK_COMPONENTS
     Support
-
 )

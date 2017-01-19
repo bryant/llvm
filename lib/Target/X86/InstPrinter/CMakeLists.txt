@@ -7,5 +7,4 @@ add_llvm_library(LLVMX86AsmPrinter
     MC
     Support
     X86Utils
-
 )

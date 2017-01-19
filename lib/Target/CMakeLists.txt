@@ -17,7 +17,6 @@ add_llvm_library(LLVMTarget
     Core
     MC
     Support
-
 )
 
 foreach(t ${LLVM_TARGETS_TO_BUILD})

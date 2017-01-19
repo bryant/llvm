@@ -11,5 +11,4 @@ add_llvm_library(LLVMSymbolize
     DebugInfoPDB
     Object
     Support
-
 )

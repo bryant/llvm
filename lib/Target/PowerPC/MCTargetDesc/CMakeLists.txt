@@ -13,5 +13,4 @@ add_llvm_library(LLVMPowerPCDesc
     PowerPCAsmPrinter
     PowerPCInfo
     Support
-
 )

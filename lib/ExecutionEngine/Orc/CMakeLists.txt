@@ -20,5 +20,4 @@ add_llvm_library(LLVMOrcJIT
     RuntimeDyld
     Support
     TransformUtils
-
 )

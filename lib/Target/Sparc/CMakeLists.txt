@@ -37,7 +37,6 @@ add_llvm_target(SparcCodeGen
     SparcInfo
     Support
     Target
-
 )
 
 add_subdirectory(TargetInfo)

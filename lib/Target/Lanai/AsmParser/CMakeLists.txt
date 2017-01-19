@@ -9,7 +9,6 @@ add_llvm_library(LLVMLanaiAsmParser
     Support
     LanaiDesc
     LanaiInfo
-
 )
 
 add_dependencies( LLVMLanaiAsmParser LanaiCommonTableGen )

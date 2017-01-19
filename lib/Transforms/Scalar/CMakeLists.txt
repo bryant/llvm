@@ -70,5 +70,4 @@ add_llvm_library(LLVMScalarOpts
     InstCombine
     Support
     TransformUtils
-
 )

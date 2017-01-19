@@ -80,5 +80,4 @@ add_llvm_library(LLVMLTO
     Support
     Target
     TransformUtils
-
 )

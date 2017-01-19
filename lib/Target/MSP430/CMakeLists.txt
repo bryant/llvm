@@ -32,7 +32,6 @@ add_llvm_target(MSP430CodeGen
     SelectionDAG
     Support
     Target
-
 )
 
 add_subdirectory(InstPrinter)

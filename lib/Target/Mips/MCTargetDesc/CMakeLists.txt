@@ -17,5 +17,4 @@ add_llvm_library(LLVMMipsDesc
     MipsAsmPrinter
     MipsInfo
     Support
-
 )

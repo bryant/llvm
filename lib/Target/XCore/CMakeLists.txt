@@ -38,7 +38,6 @@ add_llvm_target(XCoreCodeGen
     XCoreAsmPrinter
     XCoreDesc
     XCoreInfo
-
 )
 
 add_subdirectory(Disassembler)

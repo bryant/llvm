@@ -104,7 +104,6 @@ add_llvm_library(LLVMDebugInfoPDB
     Support
     DebugInfoCodeView
     DebugInfoMSF
-
 )
 
 target_link_libraries(LLVMDebugInfoPDB INTERFACE "${LIBPDB_ADDITIONAL_LIBRARIES}")

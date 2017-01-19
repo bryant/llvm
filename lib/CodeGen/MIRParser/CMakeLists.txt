@@ -13,5 +13,4 @@ add_llvm_library(LLVMMIRParser
     MC
     Support
     Target
-
 )

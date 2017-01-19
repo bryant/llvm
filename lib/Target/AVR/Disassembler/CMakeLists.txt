@@ -5,6 +5,5 @@ add_llvm_library(LLVMAVRDisassembler
     MCDisassembler
     AVRInfo
     Support
-
 )
 

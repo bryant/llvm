@@ -4,5 +4,4 @@ add_llvm_library(LLVMARMAsmPrinter
   LINK_COMPONENTS
     MC
     Support
-
 )
