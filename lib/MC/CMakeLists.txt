@@ -53,7 +53,6 @@ add_llvm_library(LLVMMC
 
   LINK_COMPONENTS
     Support
-
 )
 
 add_subdirectory(MCParser)

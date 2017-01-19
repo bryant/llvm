@@ -87,7 +87,6 @@ add_llvm_target(AArch64CodeGen
     Support
     Target
     GlobalISel
-
 )
 
 add_subdirectory(TargetInfo)

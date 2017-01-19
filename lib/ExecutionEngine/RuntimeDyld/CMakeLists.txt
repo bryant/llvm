@@ -15,5 +15,4 @@ add_llvm_library(LLVMRuntimeDyld
     MC
     Object
     Support
-
 )

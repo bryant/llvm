@@ -47,7 +47,6 @@ add_llvm_target(SystemZCodeGen
     SystemZDesc
     SystemZInfo
     Target
-
 )
 
 add_subdirectory(AsmParser)

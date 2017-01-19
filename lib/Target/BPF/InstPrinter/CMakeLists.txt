@@ -4,5 +4,4 @@ add_llvm_library(LLVMBPFAsmPrinter
   LINK_COMPONENTS
     MC
     Support
-
 )

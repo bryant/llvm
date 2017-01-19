@@ -3,5 +3,4 @@ add_llvm_library(LLVMX86Info
 
   LINK_COMPONENTS
     Support
-
 )

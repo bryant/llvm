@@ -7,5 +7,4 @@ add_llvm_library(LLVMPowerPCAsmParser
     PowerPCDesc
     PowerPCInfo
     Support
-
 )

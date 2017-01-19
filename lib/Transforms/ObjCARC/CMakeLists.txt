@@ -20,5 +20,4 @@ add_llvm_library(LLVMObjCARCOpts
     Core
     Support
     TransformUtils
-
 )

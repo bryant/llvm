@@ -140,7 +140,6 @@ add_llvm_library(LLVMSupport
 
   LINK_COMPONENTS
     Demangle
-
 )
 
 set_property(TARGET LLVMSupport PROPERTY LLVM_SYSTEM_LIBS "${system_libs}")

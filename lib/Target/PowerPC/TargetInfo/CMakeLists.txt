@@ -3,5 +3,4 @@ add_llvm_library(LLVMPowerPCInfo
 
   LINK_COMPONENTS
     Support
-
 )

@@ -7,5 +7,4 @@ add_llvm_library(LLVMSystemZAsmParser
     Support
     SystemZDesc
     SystemZInfo
-
 )

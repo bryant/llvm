@@ -4,5 +4,4 @@ add_llvm_library(LLVMPowerPCAsmPrinter
   LINK_COMPONENTS
     MC
     Support
-
 )

@@ -14,5 +14,4 @@ add_llvm_library(LLVMCoverage
     Object
     ProfileData
     Support
-
 )

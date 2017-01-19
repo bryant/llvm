@@ -52,7 +52,6 @@ add_llvm_target(NVPTXCodeGen ${NVPTXCodeGen_sources}
     Target
     TransformUtils
     Vectorize
-
 )
 
 add_subdirectory(TargetInfo)

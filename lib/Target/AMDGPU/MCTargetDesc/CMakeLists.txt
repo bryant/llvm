@@ -18,5 +18,4 @@ add_llvm_library(LLVMAMDGPUDesc
     AMDGPUInfo
     AMDGPUUtils
     Support
-
 )

@@ -6,5 +6,4 @@ add_llvm_library(LLVMX86Disassembler
     MCDisassembler
     Support
     X86Info
-
 )

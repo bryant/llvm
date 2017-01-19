@@ -13,5 +13,4 @@ add_llvm_library(LLVMAsmParser
   LINK_COMPONENTS
     Core
     Support
-
 )

@@ -3,5 +3,4 @@ add_llvm_library(LLVMBPFInfo
 
   LINK_COMPONENTS
     Support
-
 )

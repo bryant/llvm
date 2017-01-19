@@ -7,7 +7,6 @@ add_llvm_library(LLVMAVRAsmPrinter
   LINK_COMPONENTS
     MC
     Support
-
 )
 
 add_dependencies(LLVMAVRAsmPrinter AVRCommonTableGen)

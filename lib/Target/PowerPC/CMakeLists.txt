@@ -56,7 +56,6 @@ add_llvm_target(PowerPCCodeGen
     Support
     Target
     TransformUtils
-
 )
 
 add_subdirectory(AsmParser)

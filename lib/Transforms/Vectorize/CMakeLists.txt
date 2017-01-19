@@ -16,5 +16,4 @@ add_llvm_library(LLVMVectorize
     Core
     Support
     TransformUtils
-
 )

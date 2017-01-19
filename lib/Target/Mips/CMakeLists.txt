@@ -60,7 +60,6 @@ add_llvm_target(MipsCodeGen
     SelectionDAG
     Support
     Target
-
 )
 
 add_subdirectory(InstPrinter)

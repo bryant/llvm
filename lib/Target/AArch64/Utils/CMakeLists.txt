@@ -3,5 +3,4 @@ add_llvm_library(LLVMAArch64Utils
 
   LINK_COMPONENTS
     Support
-
 )

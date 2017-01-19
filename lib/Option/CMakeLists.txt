@@ -9,5 +9,4 @@ add_llvm_library(LLVMOption
 
   LINK_COMPONENTS
     Support
-
 )

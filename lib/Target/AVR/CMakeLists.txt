@@ -45,7 +45,6 @@ add_llvm_target(AVRCodeGen
     SelectionDAG
     Support
     Target
-
 )
 
 add_subdirectory(AsmParser)

@@ -3,5 +3,4 @@ add_llvm_library(LLVMARMInfo
 
   LINK_COMPONENTS
     Support
-
 )

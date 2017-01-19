@@ -35,5 +35,4 @@ add_llvm_library(LLVMSelectionDAG
     Support
     Target
     TransformUtils
-
 )

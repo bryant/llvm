@@ -10,6 +10,5 @@ add_llvm_library(LLVMAArch64AsmParser
     MC
     MCParser
     Support
-
 )
 

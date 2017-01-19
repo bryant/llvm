@@ -33,7 +33,6 @@ add_llvm_target(BPFCodeGen
     SelectionDAG
     Support
     Target
-
 )
 
 add_subdirectory(Disassembler)

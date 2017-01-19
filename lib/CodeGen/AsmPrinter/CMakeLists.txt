@@ -36,5 +36,4 @@ add_llvm_library(LLVMAsmPrinter
     MCParser
     Support
     Target
-
 )

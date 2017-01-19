@@ -12,5 +12,4 @@ add_llvm_library(LLVMLinker
     Core
     Support
     TransformUtils
-
 )

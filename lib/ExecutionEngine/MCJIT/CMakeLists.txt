@@ -11,5 +11,4 @@ add_llvm_library(LLVMMCJIT
     RuntimeDyld
     Support
     Target
-
 )

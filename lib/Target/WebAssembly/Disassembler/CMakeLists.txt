@@ -5,5 +5,4 @@ add_llvm_library(LLVMWebAssemblyDisassembler
     MCDisassembler
     WebAssemblyInfo
     Support
-
 )

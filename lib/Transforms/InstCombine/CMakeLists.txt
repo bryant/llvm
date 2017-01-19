@@ -25,5 +25,4 @@ add_llvm_library(LLVMInstCombine
     Core
     Support
     TransformUtils
-
 )

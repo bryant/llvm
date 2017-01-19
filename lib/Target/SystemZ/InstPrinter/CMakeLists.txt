@@ -4,5 +4,4 @@ add_llvm_library(LLVMSystemZAsmPrinter
   LINK_COMPONENTS
     MC
     Support
-
 )

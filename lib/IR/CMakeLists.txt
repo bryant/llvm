@@ -62,5 +62,4 @@ add_llvm_library(LLVMCore
 
   LINK_COMPONENTS
     Support
-
 )

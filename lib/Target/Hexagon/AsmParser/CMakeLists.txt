@@ -9,7 +9,6 @@ add_llvm_library(LLVMHexagonAsmParser
     Support
     HexagonDesc
     HexagonInfo
-
 )
 
 add_dependencies( LLVMHexagonAsmParser HexagonCommonTableGen )

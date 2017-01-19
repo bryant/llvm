@@ -61,7 +61,6 @@ add_llvm_target(WebAssemblyCodeGen
     WebAssemblyAsmPrinter
     WebAssemblyDesc
     WebAssemblyInfo
-
 )
 
 add_subdirectory(Disassembler)

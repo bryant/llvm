@@ -75,7 +75,6 @@ add_llvm_target(X86CodeGen ${sources}
     X86Info
     X86Utils
     GlobalISel
-
 )
 
 add_subdirectory(AsmParser)

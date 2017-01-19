@@ -12,5 +12,4 @@ add_llvm_library(LLVMLanaiDesc
     MC
     MCDisassembler
     Support
-
 )

@@ -104,7 +104,6 @@ add_llvm_target(AMDGPUCodeGen
     Target
     TransformUtils
     Vectorize
-
 )
 
 add_subdirectory(AsmParser)

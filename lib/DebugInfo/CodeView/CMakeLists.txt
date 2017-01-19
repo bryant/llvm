@@ -25,5 +25,4 @@ add_llvm_library(LLVMDebugInfoCodeView
   LINK_COMPONENTS
     Support
     DebugInfoMSF
-
 )

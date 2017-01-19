@@ -19,7 +19,6 @@ add_llvm_library(LLVMInterpreter
     Core
     ExecutionEngine
     Support
-
 )
 
 if( LLVM_ENABLE_FFI )

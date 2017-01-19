@@ -3,5 +3,4 @@ add_llvm_library(LLVMMSP430Info
 
   LINK_COMPONENTS
     Support
-
 )

@@ -8,7 +8,6 @@ add_llvm_library(LLVMAMDGPUAsmParser
     AMDGPUInfo
     AMDGPUUtils
     Support
-
 )
 
 add_dependencies(LLVMAMDGPUAsmParser LLVMAMDGPUUtils)

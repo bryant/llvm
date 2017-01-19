@@ -16,7 +16,6 @@ add_llvm_library(LLVMProfileData
   LINK_COMPONENTS
     Core
     Support
-
 )
 
 add_subdirectory(Coverage)

@@ -4,5 +4,4 @@ add_llvm_library(LLVMWebAssemblyAsmPrinter
   LINK_COMPONENTS
     MC
     Support
-
 )
