@@ -32,6 +32,28 @@ function(is_llvm_target_library library return_var)
   endforeach()
 endfunction(is_llvm_target_library)
 
+function(is_omitted_target_lib library return_var)
+  set(${return_var} OFF PARENT_SCOPE)
+  string(TOUPPER "${library}" capitalized_lib)
+  set(omitted_targets ${LLVM_ALL_TARGETS})
+  list(REMOVE_ITEM omitted_targets ${LLVM_TARGETS_TO_BUILD})
+  string(TOUPPER "${omitted_targets}" targets)
+  foreach(t ${targets})
+    if( capitalized_lib STREQUAL t OR
+        capitalized_lib STREQUAL "${t}" OR
+        capitalized_lib STREQUAL "${t}DESC" OR
+        capitalized_lib STREQUAL "${t}CODEGEN" OR
+        capitalized_lib STREQUAL "${t}ASMPARSER" OR
+        capitalized_lib STREQUAL "${t}ASMPRINTER" OR
+        capitalized_lib STREQUAL "${t}DISASSEMBLER" OR
+        capitalized_lib STREQUAL "${t}INFO" OR
+        capitalized_lib STREQUAL "${t}UTILS" OR
+        capitalized_lib STREQUAL "${t}INSTPRINTER" )
+      set(${return_var} ON PARENT_SCOPE)
+      break()
+    endif()
+  endforeach()
+endfunction(is_omitted_target_lib)
 
 macro(llvm_config executable)
   cmake_parse_arguments(ARG "USE_SHARED" "" "" ${ARGN})
@@ -201,12 +223,12 @@ function(llvm_map_components_to_libnames out_libs)
       list(FIND capitalized_libs LLVM${capitalized} lib_idx)
       if( lib_idx LESS 0 )
         # The component is unknown. Maybe is an omitted target?
-        is_llvm_target_library(${c} iltl_result)
-        if( NOT iltl_result )
-          # If it is not an omitted target we should assume it is a component
-          # that hasn't yet been processed by CMake. Missing components will
-          # cause errors later in the configuration, so we can safely assume
-          # that this is valid here.
+        is_omitted_target_lib(${c} iltl_result)
+        if(iltl_result)
+          message(FATAL_ERROR "Depended on ${c}, whose target isn't builts.")
+        else()
+          # either target lib or a normal lib that will be built but has yet to
+          # be scanned.
           list(APPEND expanded_components "$<LINK_ONLY:LLVM${c}>")
         endif()
       else( lib_idx LESS 0 )
