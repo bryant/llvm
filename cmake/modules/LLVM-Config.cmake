@@ -200,7 +200,11 @@ function(llvm_map_components_to_libnames out_libs)
         # The component is unknown. Maybe is an omitted target?
         is_llvm_target_library(${c} iltl_result)
         if( NOT iltl_result )
-          message(FATAL_ERROR "Library `${c}' not found in list of llvm libraries.")
+          # If it is not an omitted target we should assume it is a component
+          # that hasn't yet been processed by CMake. Missing components will
+          # cause errors later in the configuration, so we can safely assume
+          # that this is valid here.
+          list(APPEND expanded_components "$<LINK_ONLY:LLVM${c}>")
         endif()
       else( lib_idx LESS 0 )
         list(GET LLVM_AVAILABLE_LIBS ${lib_idx} canonical_lib)
