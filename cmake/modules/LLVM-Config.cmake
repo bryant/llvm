@@ -17,12 +17,15 @@ function(is_llvm_target_library library return_var)
   string(TOUPPER "${LLVM_ALL_TARGETS}" targets)
   foreach(t ${targets})
     if( capitalized_lib STREQUAL t OR
-        capitalized_lib STREQUAL "LLVM${t}" OR
-        capitalized_lib STREQUAL "LLVM${t}CODEGEN" OR
-        capitalized_lib STREQUAL "LLVM${t}ASMPARSER" OR
-        capitalized_lib STREQUAL "LLVM${t}ASMPRINTER" OR
-        capitalized_lib STREQUAL "LLVM${t}DISASSEMBLER" OR
-        capitalized_lib STREQUAL "LLVM${t}INFO" )
+        capitalized_lib STREQUAL "${t}" OR
+        capitalized_lib STREQUAL "${t}DESC" OR
+        capitalized_lib STREQUAL "${t}CODEGEN" OR
+        capitalized_lib STREQUAL "${t}ASMPARSER" OR
+        capitalized_lib STREQUAL "${t}ASMPRINTER" OR
+        capitalized_lib STREQUAL "${t}DISASSEMBLER" OR
+        capitalized_lib STREQUAL "${t}INFO" OR
+        capitalized_lib STREQUAL "${t}UTILS" OR
+        capitalized_lib STREQUAL "${t}INSTPRINTER" )
       set(${return_var} ON PARENT_SCOPE)
       break()
     endif()
