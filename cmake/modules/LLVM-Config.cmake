@@ -223,9 +223,9 @@ function(llvm_map_components_to_libnames out_libs)
       list(FIND capitalized_libs LLVM${capitalized} lib_idx)
       if( lib_idx LESS 0 )
         # The component is unknown. Maybe is an omitted target?
-        is_omitted_target_lib(${c} iltl_result)
-        if(iltl_result)
-          message(FATAL_ERROR "Depended on ${c}, whose target isn't builts.")
+        is_omitted_target_lib(${c} omitted_result)
+        if(omitted_result)
+          message(FATAL_ERROR "Library `${c}' not found in list of llvm libraries.")
         else()
           # either target lib or a normal lib that will be built but has yet to
           # be scanned.
