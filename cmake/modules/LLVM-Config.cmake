@@ -9,30 +9,9 @@ function(link_system_libs target)
 endfunction()
 
 
-function(is_llvm_target_library library return_var)
-  # Sets variable `return_var' to ON if `library' corresponds to a
-  # LLVM supported target. To OFF if it doesn't.
-  set(${return_var} OFF PARENT_SCOPE)
-  string(TOUPPER "${library}" capitalized_lib)
-  string(TOUPPER "${LLVM_ALL_TARGETS}" targets)
-  foreach(t ${targets})
-    if( capitalized_lib STREQUAL t OR
-        capitalized_lib STREQUAL "${t}" OR
-        capitalized_lib STREQUAL "${t}DESC" OR
-        capitalized_lib STREQUAL "${t}CODEGEN" OR
-        capitalized_lib STREQUAL "${t}ASMPARSER" OR
-        capitalized_lib STREQUAL "${t}ASMPRINTER" OR
-        capitalized_lib STREQUAL "${t}DISASSEMBLER" OR
-        capitalized_lib STREQUAL "${t}INFO" OR
-        capitalized_lib STREQUAL "${t}UTILS" OR
-        capitalized_lib STREQUAL "${t}INSTPRINTER" )
-      set(${return_var} ON PARENT_SCOPE)
-      break()
-    endif()
-  endforeach()
-endfunction(is_llvm_target_library)
-
 function(is_omitted_target_lib library return_var)
+  # Sets variable `return_var' to ON if `library' corresponds to an omitted or
+  # unsupported LLVM target. To OFF if it doesn't.
   set(${return_var} OFF PARENT_SCOPE)
   string(TOUPPER "${library}" capitalized_lib)
   set(omitted_targets ${LLVM_ALL_TARGETS})
