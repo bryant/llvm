@@ -206,7 +206,6 @@ function(llvm_map_components_to_libnames out_libs)
         # target, which is the only case when error is certain.
         is_omitted_target_lib(${c} omitted_result)
         if(omitted_result)
-          # It's part of an omitted target. W
           message(FATAL_ERROR "Library `${c}' not found in list of llvm libraries.")
         else()
           # ${c} is either a malformed component, or one that is yet to be
