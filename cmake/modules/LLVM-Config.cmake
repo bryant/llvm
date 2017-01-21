@@ -10,8 +10,8 @@ endfunction()
 
 
 function(is_omitted_target_lib library return_var)
-  # Sets variable `return_var' to ON if `library' corresponds to an omitted or
-  # unsupported LLVM target. To OFF if it doesn't.
+  # Sets variable `return_var' to ON if `library' corresponds to an omitted LLVM
+  # target. To OFF otherwise.
   set(${return_var} OFF PARENT_SCOPE)
   string(TOUPPER "${library}" capitalized_lib)
   set(omitted_targets ${LLVM_ALL_TARGETS})
@@ -201,13 +201,19 @@ function(llvm_map_components_to_libnames out_libs)
       string(TOUPPER "${c}" capitalized)
       list(FIND capitalized_libs LLVM${capitalized} lib_idx)
       if( lib_idx LESS 0 )
-        # The component is unknown. Maybe is an omitted target?
+        # The component is neither a known target (X86, MSP430, etc.) nor a
+        # component that has been scanned. Check if it's part of an omitted
+        # target, which is the only case when error is certain.
         is_omitted_target_lib(${c} omitted_result)
         if(omitted_result)
+          # It's part of an omitted target. W
           message(FATAL_ERROR "Library `${c}' not found in list of llvm libraries.")
         else()
-          # either target lib or a normal lib that will be built but has yet to
-          # be scanned.
+          # ${c} is either a malformed component, or one that is yet to be
+          # scanned. Ideally, we could distinguish between the two by scanning
+          # components in RPO of their dependency graph. But this isn't the
+          # case, so defer the well-formedness check to CMake at generation
+          # time.
           list(APPEND expanded_components "$<LINK_ONLY:LLVM${c}>")
         endif()
       else( lib_idx LESS 0 )
