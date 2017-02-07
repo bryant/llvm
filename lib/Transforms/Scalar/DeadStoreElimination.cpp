@@ -1249,14 +1249,14 @@ private:
       if (auto CS = CallSite(I)) {
         if (Function *F = CS.getCalledFunction()) {
           StringRef FnName = F->getName();
-          if ((TLI->has(LibFunc::strcpy) &&
-               FnName == TLI->getName(LibFunc::strcpy)) ||
-              (TLI->has(LibFunc::strncpy) &&
-               FnName == TLI->getName(LibFunc::strncpy)) ||
-              (TLI->has(LibFunc::strcat) &&
-               FnName == TLI->getName(LibFunc::strcat)) ||
-              (TLI->has(LibFunc::strncat) &&
-               FnName == TLI->getName(LibFunc::strncat)))
+          if ((TLI->has(LibFunc_strcpy) &&
+               FnName == TLI->getName(LibFunc_strcpy)) ||
+              (TLI->has(LibFunc_strncpy) &&
+               FnName == TLI->getName(LibFunc_strncpy)) ||
+              (TLI->has(LibFunc_strcat) &&
+               FnName == TLI->getName(LibFunc_strcat)) ||
+              (TLI->has(LibFunc_strncat) &&
+               FnName == TLI->getName(LibFunc_strncat)))
             return MemoryLocation::getForArgument(ImmutableCallSite(I), 0,
                                                   *TLI);
         }
