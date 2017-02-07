@@ -680,7 +680,8 @@ ModulePassManager PassBuilder::buildLTODefaultPipeline(OptimizationLevel Level,
   MainFPM.addPass(MemCpyOptPass());
 
   // Nuke dead stores.
-  MainFPM.addPass(DSEPass());
+  MainFPM.addPass(DSEPass<false>());
+  MainFPM.addPass(DSEPass<true>());
 
   // FIXME: at this point, we run a bunch of loop passes:
   // indVarSimplify, loopDeletion, loopInterchange, loopUnrool,
