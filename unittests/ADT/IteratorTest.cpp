@@ -280,7 +280,7 @@ TEST(ZipIteratorTest, Filter) {
 
   unsigned iters = 0;
   // pi is length 6, but the zip RHS is length 7.
-  auto zipped = zip_first(pi, SmallVector<bool, 0>{1, 1, 0, 1, 1, 1, 0});
+  auto zipped = zip_first(pi, vector<bool>{1, 1, 0, 1, 1, 1, 0});
   for (auto tup : make_filter_range(
            zipped, [](decltype(zipped)::value_type t) { return get<1>(t); })) {
     EXPECT_EQ(get<0>(tup) & 0x01, get<1>(tup));
