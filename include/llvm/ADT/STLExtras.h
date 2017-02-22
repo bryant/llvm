@@ -428,16 +428,16 @@ public:
 private:
   std::tuple<Args...> ts;
 
-  template <size_t... Ns> iterator begin_impl(index_sequence<Ns...>) {
+  template <size_t... Ns> iterator begin_impl(index_sequence<Ns...>) const {
     return iterator(std::begin(std::get<Ns>(ts))...);
   }
-  template <size_t... Ns> iterator end_impl(index_sequence<Ns...>) {
+  template <size_t... Ns> iterator end_impl(index_sequence<Ns...>) const {
     return iterator(std::end(std::get<Ns>(ts))...);
   }
 
 public:
-  iterator begin() { return begin_impl(index_sequence_for<Args...>{}); }
-  iterator end() { return end_impl(index_sequence_for<Args...>{}); }
+  iterator begin() const { return begin_impl(index_sequence_for<Args...>{}); }
+  iterator end() const { return end_impl(index_sequence_for<Args...>{}); }
   zippy(Args &&... ts_) : ts(std::forward<Args>(ts_)...) {}
 };
 } // End detail namespace
