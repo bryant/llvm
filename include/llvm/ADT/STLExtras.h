@@ -356,6 +356,14 @@ template <size_t... I> struct index_sequence;
 template <class... Ts> struct index_sequence_for;
 
 namespace detail {
+template <typename ZipType, typename... Iters>
+using zip_traits =
+    iterator_facade_base<ZipType, std::input_iterator_tag,
+                         std::tuple<decltype(*std::declval<Iters>())...>,
+                         std::ptrdiff_t,
+                         std::tuple<decltype(*std::declval<Iters>())...> *,
+                         std::tuple<decltype(*std::declval<Iters>())...>>;
+
 template <typename... Iters> class zip_first {
 public:
   typedef std::input_iterator_tag iterator_category;
