@@ -423,7 +423,12 @@ public:
 
 template <template <typename...> class ItType, typename... Args> class zippy {
 public:
-  typedef ItType<decltype(std::begin(std::declval<Args>()))...> iterator;
+  using iterator = ItType<decltype(std::begin(std::declval<Args>()))...>;
+  using iterator_category = typename iterator::iterator_category;
+  using value_type = typename iterator::value_type;
+  using difference_type = typename iterator::difference_type;
+  using pointer = typename iterator::pointer;
+  using reference = typename iterator::reference;
 
 private:
   std::tuple<Args...> ts;
