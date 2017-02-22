@@ -364,6 +364,37 @@ using zip_traits =
                          std::tuple<decltype(*std::declval<Iters>())...> *,
                          std::tuple<decltype(*std::declval<Iters>())...>>;
 
+template <typename ZipType, typename... Iters>
+struct zip_common : public zip_traits<ZipType, Iters...> {
+  using value_type = typename zip_traits<ZipType, Iters...>::value_type;
+
+  std::tuple<Iters...> iterators;
+
+protected:
+  template <size_t... Ns> value_type deref(index_sequence<Ns...>) const {
+    return value_type(*std::get<Ns>(iterators)...);
+  }
+
+  template <size_t... Ns>
+  decltype(iterators) tup_inc(index_sequence<Ns...>) const {
+    return std::tuple<Iters...>(std::next(std::get<Ns>(iterators))...);
+  }
+
+public:
+  zip_common(Iters &&... ts) : iterators(std::forward<Iters>(ts)...) {}
+
+  value_type operator*() { return deref(index_sequence_for<Iters...>{}); }
+
+  const value_type operator*() const {
+    return deref(index_sequence_for<Iters...>{});
+  }
+
+  ZipType &operator++() {
+    iterators = tup_inc(index_sequence_for<Iters...>{});
+    return *reinterpret_cast<ZipType *>(this);
+  }
+};
+
 template <typename... Iters> class zip_first {
 public:
   typedef std::input_iterator_tag iterator_category;
