@@ -360,8 +360,10 @@ using std::declval;
 
 template <typename ZipType, typename... Iters>
 using zip_traits = iterator_facade_base<
-    ZipType, typename std::common_type<typename std::iterator_traits<
-                 Iters>::iterator_category...>::type,
+    ZipType, typename std::common_type<std::bidirectional_iterator_tag,
+                                       typename std::iterator_traits<
+                                           Iters>::iterator_category...>::type,
+    // ^ TODO: Implement random access methods.
     std::tuple<decltype(*declval<Iters>())...>,
     typename std::iterator_traits<typename std::tuple_element<
         0, std::tuple<Iters...>>::type>::difference_type,
