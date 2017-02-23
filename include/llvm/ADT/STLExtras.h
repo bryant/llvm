@@ -356,17 +356,30 @@ template <size_t... I> struct index_sequence;
 template <class... Ts> struct index_sequence_for;
 
 namespace detail {
+using std::declval;
+
 template <typename ZipType, typename... Iters>
-using zip_traits =
-    iterator_facade_base<ZipType, std::input_iterator_tag,
-                         std::tuple<decltype(*std::declval<Iters>())...>,
-                         std::ptrdiff_t,
-                         std::tuple<decltype(*std::declval<Iters>())...> *,
-                         std::tuple<decltype(*std::declval<Iters>())...>>;
+using zip_traits = iterator_facade_base<
+    ZipType, typename std::common_type<std::bidirectional_iterator_tag,
+                                       typename std::iterator_traits<
+                                           Iters>::iterator_category...>::type,
+    // ^ FIXME: Stunted at bidirectional_iterator_tag because of
+    // iterator_facade_base's requirement that operator-- is omitted for
+    // random access iterators. But we want operator-- for reverse to work.
+    std::tuple<decltype(*declval<Iters>())...>,
+    typename std::iterator_traits<typename std::tuple_element<
+        0, std::tuple<Iters...>>::type>::difference_type,
+    // ^ FIXME: This follows boost::make_zip_iterator's assumption that all
+    // inner iterators have the same difference_type. It would fail if, for
+    // instance, the second field's difference_type were non-numeric while the
+    // first is.
+    std::tuple<decltype(*declval<Iters>())...> *,
+    std::tuple<decltype(*declval<Iters>())...>>;
 
 template <typename ZipType, typename... Iters>
 struct zip_common : public zip_traits<ZipType, Iters...> {
-  using value_type = typename zip_traits<ZipType, Iters...>::value_type;
+  using Base = zip_traits<ZipType, Iters...>;
+  using value_type = typename Base::value_type;
 
   std::tuple<Iters...> iterators;
 
@@ -378,6 +391,11 @@ protected:
   template <size_t... Ns>
   decltype(iterators) tup_inc(index_sequence<Ns...>) const {
     return std::tuple<Iters...>(std::next(std::get<Ns>(iterators))...);
+  }
+
+  template <size_t... Ns>
+  decltype(iterators) tup_dec(index_sequence<Ns...>) const {
+    return std::tuple<Iters...>(std::prev(std::get<Ns>(iterators))...);
   }
 
 public:
@@ -393,14 +411,23 @@ public:
     iterators = tup_inc(index_sequence_for<Iters...>{});
     return *reinterpret_cast<ZipType *>(this);
   }
+
+  ZipType &operator--() {
+    static_assert(Base::IsBidirectional,
+                  "All inner iterators must be at least bidirectional.");
+    iterators = tup_dec(index_sequence_for<Iters...>{});
+    return *reinterpret_cast<ZipType *>(this);
+  }
 };
 
 template <typename... Iters>
 struct zip_first : public zip_common<zip_first<Iters...>, Iters...> {
   using Base = zip_common<zip_first<Iters...>, Iters...>;
+
   bool operator==(const zip_first<Iters...> &other) const {
     return std::get<0>(this->iterators) == std::get<0>(other.iterators);
   }
+
   zip_first(Iters &&... ts) : Base(std::forward<Iters>(ts)...) {}
 };
 
@@ -415,9 +442,11 @@ class zip_shortest : public zip_common<zip_shortest<Iters...>, Iters...> {
 
 public:
   using Base = zip_common<zip_shortest<Iters...>, Iters...>;
+
   bool operator==(const zip_shortest<Iters...> &other) const {
     return !test(other, index_sequence_for<Iters...>{});
   }
+
   zip_shortest(Iters &&... ts) : Base(std::forward<Iters>(ts)...) {}
 };
 

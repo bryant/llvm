@@ -295,4 +295,28 @@ TEST(ZipIteratorTest, Filter) {
   EXPECT_TRUE(all_of(pi, [](unsigned n) { return (n & 0x01) == 0; }));
 }
 
+template <typename T> struct Answer;
+TEST(ZipIteratorTest, Reverse) {
+  using namespace std;
+  vector<unsigned> ascending{0, 1, 2, 3, 4, 5};
+
+  auto zipped = zip_first(ascending, vector<bool>{0, 1, 0, 1, 0, 1});
+  unsigned last = 6;
+  for (auto tup : reverse(zipped)) {
+    // Check that this is in reverse.
+    EXPECT_LT(get<0>(tup), last);
+    last = get<0>(tup);
+    EXPECT_EQ(get<0>(tup) & 0x01, get<1>(tup));
+    get<0>(tup) = 23;
+  }
+
+  // FIXME: This should work and requires operator-- for filter_iterator.
+  // auto odds = [](decltype(zipped)::value_type tup) { return get<1>(tup); };
+  // for (auto tup : reverse(make_filter_range(zipped, odds))) {
+  // }
+
+  // Ensure that in-place mutation works.
+  EXPECT_TRUE(all_of(ascending, [](unsigned n) { return n == 23; }));
+}
+
 } // anonymous namespace
