@@ -360,12 +360,8 @@ using std::declval;
 
 template <typename ZipType, typename... Iters>
 using zip_traits = iterator_facade_base<
-    ZipType, typename std::common_type<std::bidirectional_iterator_tag,
-                                       typename std::iterator_traits<
-                                           Iters>::iterator_category...>::type,
-    // ^ FIXME: Stunted at bidirectional_iterator_tag because of
-    // iterator_facade_base's requirement that operator-- is omitted for
-    // random access iterators. But we want operator-- for reverse to work.
+    ZipType, typename std::common_type<typename std::iterator_traits<
+                 Iters>::iterator_category...>::type,
     std::tuple<decltype(*declval<Iters>())...>,
     typename std::iterator_traits<typename std::tuple_element<
         0, std::tuple<Iters...>>::type>::difference_type,
@@ -413,7 +409,7 @@ public:
   }
 
   ZipType &operator--() {
-    static_assert(Base::IsBidirectional || Base::IsRandomAccess,
+    static_assert(Base::IsBidirectional,
                   "All inner iterators must be at least bidirectional.");
     iterators = tup_dec(index_sequence_for<Iters...>{});
     return *reinterpret_cast<ZipType *>(this);
