@@ -413,7 +413,7 @@ public:
   }
 
   ZipType &operator--() {
-    static_assert(Base::IsBidirectional,
+    static_assert(Base::IsBidirectional || Base::IsRandomAccess,
                   "All inner iterators must be at least bidirectional.");
     iterators = tup_dec(index_sequence_for<Iters...>{});
     return *reinterpret_cast<ZipType *>(this);
