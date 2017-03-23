@@ -101,8 +101,12 @@ declare noalias i8* @malloc(i32)
 declare void @free(i8* nocapture)
 
 define void @dont_rename_lib_funcs() {
-; CHECK: call i8* @malloc
-; CHECK: call void @free
+; CHECK-LABEL: @foo(
+; CHECK-NEXT:  bb:
+; CHECK-NEXT:    [[TMP:%.*]] = call i8* @malloc(i32 23)
+; CHECK-NEXT:    call void @free(i8* [[TMP]])
+; CHECK-NEXT:    ret void
+;
   %x = call i8* @malloc(i32 23)
   call void @free(i8* %x)
   ret void
