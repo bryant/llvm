@@ -96,3 +96,14 @@ define i32 @varargs_func_6_xxx(i32 %arg_1_xxx, i32 %arg_2_xxx, ...) nounwind uwt
   store i32 %arg_2_xxx, i32* %2, align 4
   ret i32 6
 }
+
+declare noalias i8* @malloc(i32)
+declare void @free(i8* nocapture)
+
+define void @dont_rename_lib_funcs() {
+; CHECK: call i8* @malloc
+; CHECK: call void @free
+  %x = call i8* @malloc(i32 23)
+  call void @free(i8* %x)
+  ret void
+}
