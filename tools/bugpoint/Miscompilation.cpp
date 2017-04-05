@@ -225,8 +225,10 @@ public:
 /// output is different. If the DeleteInputs argument is set to true then this
 /// function deletes both input modules before it returns.
 ///
-static Expected<std::unique_ptr<Module>>
-testMergedProgram(const BugDriver &BD, Module &M1, Module &M2, bool &Broken) {
+static Expected<std::unique_ptr<Module>> testMergedProgram(const BugDriver &BD,
+                                                           const Module &M1,
+                                                           const Module &M2,
+                                                           bool &Broken) {
   // Resulting merge of M1 and M2.
   auto Merged = CloneModule(&M1);
   if (Linker::linkModules(*Merged, CloneModule(&M2)))
