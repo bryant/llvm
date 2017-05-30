@@ -954,9 +954,10 @@ const Expression *NewGVN::checkSimplificationResults(Expression *E,
 
   CongruenceClass *CC = ValueToClass.lookup(V);
   if (CC && CC->getDefiningExpr()) {
-    // If we simplified to something else, we need to communicate
-    // that we're users of the value we simplified to.
-    if (I != V)
+    // If I has been simplified to V and is a concrete instruction in the
+    // function, then mark I as a user so that it's re-visited if V is further
+    // altered.
+    if (I != V && I->getParent())
       addAdditionalUsers(V, I);
     if (I)
       DEBUG(dbgs() << "Simplified " << *I << " to "
